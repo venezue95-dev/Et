@@ -44,7 +44,7 @@ PRE_CONFIGURATED_USERS = {
         "moodle_host": "https://moodle.instec.cu/",
         "moodle_repo_id": 3,
         "moodle_user": "ernesto_santiesteban",
-        "moodle_password": "shadalman52",
+        "moodle_password": "Ernesto4545",
         "zips": 1023,
         "uploadtype": "evidence",
         "proxy": "",
