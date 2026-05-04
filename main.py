@@ -50,7 +50,7 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "thu,Satoru_2115": {
+    "thu,Satoru_2115,SchnauzerMinnie,alejandrorosell,jc041228": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.uo.edu.cu/",
         "moodle_repo_id": 4,
@@ -61,7 +61,7 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "VanNeiFertio,SchnauzerMinnie,alejandrorosell,Emanuel14APK,jc041228": {
+    "VanNeiFertio,jdj": {
         "cloudtype": "moodle",
         "moodle_host": "https://caipd.ucf.edu.cu/",
         "moodle_repo_id": 5,
