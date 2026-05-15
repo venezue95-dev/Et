@@ -61,11 +61,11 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "VanNeiFertio,SchnauzerMinnie,alejandrorosell,jc041228,RancesCuit": {
+    "VanNeiFertio,SchnauzerMinnie,jc041228,RancesCuit,alejandrorosell": {
         "cloudtype": "moodle",
         "moodle_host": "https://caipd.ucf.edu.cu/",
         "moodle_repo_id": 5,
-        "moodle_user": "eliel21",
+        "moodle_user": "eliel2222",
         "moodle_password": "ElielThali2115.",
         "zips": 99,
         "uploadtype": "evidence",
