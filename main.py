@@ -23,7 +23,7 @@ import pytz
 import threading
 
 # FIXED CONFIGURATION IN CODE
-BOT_TOKEN = "8781013647:AAHjQ_1uzrLOyvd4IHv_psPkz7stifonPF8"
+BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
 
 # ADMINISTRATOR CONFIGURATION
 ADMIN_USERNAME = "Eliel_21"
@@ -39,7 +39,7 @@ USER_EVIDENCE_MARKER = " "  # Space as separator
 
 # PRE-CONFIGURACIÓN DE USUARIOS
 PRE_CONFIGURATED_USERS = {
-    "Eliel_21,Thali355,gatitoo_miauu,Kev_inn10": {
+    "Eliel_21,Thali355,gatitoo_miauu": {
         "cloudtype": "moodle",
         "moodle_host": "https://moodle.instec.cu/",
         "moodle_repo_id": 3,
