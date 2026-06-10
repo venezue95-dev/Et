@@ -65,7 +65,7 @@ PRE_CONFIGURATED_USERS = {
         "cloudtype": "moodle",
         "moodle_host": "https://caipd.ucf.edu.cu/",
         "moodle_repo_id": 5,
-        "moodle_user": "eliel2222",
+        "moodle_user": "eliel21212115",
         "moodle_password": "ElielThali2115.",
         "zips": 99,
         "uploadtype": "evidence",
