@@ -39,7 +39,7 @@ USER_EVIDENCE_MARKER = " "  # Space as separator
 
 # PRE-CONFIGURACIÓN DE USUARIOS
 PRE_CONFIGURATED_USERS = {
-    "Eliel_21,Thali355,gatitoo_miauu": {
+    "Eliel_21,Thali355,gatitoo_miauu,Kev_inn10": {
         "cloudtype": "moodle",
         "moodle_host": "https://moodle.instec.cu/",
         "moodle_repo_id": 3,
