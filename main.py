@@ -39,7 +39,7 @@ USER_EVIDENCE_MARKER = " "  # Space as separator
 
 # PRE-CONFIGURACIÓN DE USUARIOS
 PRE_CONFIGURATED_USERS = {
-    "Eliel_21,Thali355,gatitoo_miauu,Kev_inn10": {
+    "Thali355,Eliel_21,Kev_inn10": {
         "cloudtype": "moodle",
         "moodle_host": "https://moodle.instec.cu/",
         "moodle_repo_id": 3,
@@ -50,7 +50,7 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "thu,Satoru_2115": {
+    "thu,gatitoo_miauu,Satoru_2115,jc041228": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.uo.edu.cu/",
         "moodle_repo_id": 4,
@@ -61,7 +61,7 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "VanNeiFertio,SchnauzerMinnie,jc041228,RancesCuit": {
+    "VanNeiFertio,SchnauzerMinnie": {
         "cloudtype": "moodle",
         "moodle_host": "https://caipd.ucf.edu.cu/",
         "moodle_repo_id": 5,
