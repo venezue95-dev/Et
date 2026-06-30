@@ -21,6 +21,7 @@ import traceback
 import random
 import pytz
 import threading
+import tempfile  # <-- CAMBIO: Añadido para usar /tmp
 
 # FIXED CONFIGURATION IN CODE
 BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
@@ -412,7 +413,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                     iter += 1
                     if iter>=10:
                         break
-                os.unlink(f)
+                os.unlink(f)  # <-- CAMBIO: Esto ya no es crítico porque los archivos están en /tmp
             try:
                 client.saveEvidence(evidence)
             except:pass
@@ -436,9 +437,10 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
     if file_size > max_file_size:
         compresingInfo = infos.createCompresing(file,file_size,max_file_size)
         bot.editMessageText(message,compresingInfo)
-        zipname = str(file).split('.')[0] + createID()
+        # <-- CAMBIO: Usar /tmp para el ZIP
+        zipname = f"/tmp/{str(file).split('.')[0]}_{createID()}.zip"
         mult_file = zipfile.MultiFile(zipname,max_file_size)
-        zip = zipfile.ZipFile(mult_file,  mode='w', compression=zipfile.ZIP_DEFLATED)
+        zip = zipfile.ZipFile(mult_file, mode='w', compression=zipfile.ZIP_DEFLATED)
         zip.write(file)
         zip.close()
         mult_file.close()
@@ -513,7 +515,8 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
 
 def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
     downloader = Downloader()
-    file = downloader.download_url(url,progressfunc=downloadFile,args=(bot,message,thread))
+    # <-- CAMBIO: Descargar directamente a /tmp
+    file = downloader.download_url(url, progressfunc=downloadFile, args=(bot, message, thread), output_dir='/tmp')
     if not downloader.stoping:
         if file:
             processFile(update,bot,message,file,jdb=jdb)
@@ -524,7 +527,9 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                 bot.editMessageText(message,'➥ Error en la descarga ✗')
 
 def sendTxt(name,files,update,bot):
-    txt = open(name,'w')
+    # <-- CAMBIO: Usar /tmp para el archivo TXT
+    txtname = f"/tmp/{name}"
+    txt = open(txtname,'w')
     
     for i, f in enumerate(files):
         url = f['directurl']
@@ -543,8 +548,8 @@ def sendTxt(name,files,update,bot):
             txt.write('\n\n')
     
     txt.close()
-    bot.sendFile(update.message.chat.id,name)
-    os.unlink(name)
+    bot.sendFile(update.message.chat.id, txtname)  # <-- CAMBIO: Enviar desde /tmp
+    os.unlink(txtname)  # <-- CAMBIO: Eliminar de /tmp después de enviar
 
 def initialize_database(jdb):
     expanded_users = expand_user_groups()
@@ -1508,7 +1513,8 @@ Aún no se ha realizado ninguna acción en el bot.
                                 if not safe_name:
                                     safe_name = f"evidencia_{cloud_idx}_{evid_idx}"
                                 
-                                txtname = f"{safe_name}.txt"
+                                # <-- CAMBIO: Usar /tmp para el TXT
+                                txtname = f"/tmp/{safe_name}.txt"
                                 txt = open(txtname, 'w')
                                 
                                 for i, f in enumerate(files):
@@ -2021,7 +2027,7 @@ Aún no se ha realizado ninguna acción en el bot.
                     evindex = visible_list[findex]['original']
                     clean_name = visible_list[findex]['clean_name']
                     
-                    txtname = clean_name + '.txt'
+                    txtname = f"/tmp/{clean_name}.txt"  # <-- CAMBIO: Usar /tmp
                     
                     sendTxt(txtname, evindex['files'], update, bot)
                     
@@ -2231,66 +2237,3 @@ if __name__ == '__main__':
         main()
     except:
         main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
