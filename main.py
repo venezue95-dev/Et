@@ -536,20 +536,33 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             except:
                 pass
 
+# =============================================
+# CAMBIO 3: ddl VERSIÓN ORIGINAL (sin /tmp)
+# =============================================
 def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
     downloader = Downloader()
-    file = downloader.download_url(url, progressfunc=downloadFile, args=(bot, message, thread), output_dir='/tmp')
-    if not downloader.stoping:
-        if file:
-            processFile(update,bot,message,file,jdb=jdb)
-        else:
+    file = None
+    try:
+        # <-- VERSIÓN ORIGINAL: descarga en el directorio actual (./)
+        file = downloader.download_url(url, progressfunc=downloadFile, args=(bot, message, thread))
+        if not downloader.stoping:
+            if file:
+                processFile(update,bot,message,file,jdb=jdb)
+            else:
+                try:
+                    bot.editMessageText(message,'➥ Error en la descarga ✗')
+                except:
+                    bot.editMessageText(message,'➥ Error en la descarga ✗')
+    finally:
+        # <-- LIMPIEZA GARANTIZADA: Elimina el archivo si quedó en el directorio actual
+        if file and os.path.exists(file):
             try:
-                bot.editMessageText(message,'➥ Error en la descarga ✗')
+                os.unlink(file)
             except:
-                bot.editMessageText(message,'➥ Error en la descarga ✗')
+                pass
 
 # =============================================
-# CAMBIO 3: sendTxt con limpieza garantizada
+# CAMBIO 4: sendTxt con limpieza garantizada
 # =============================================
 def sendTxt(name,files,update,bot):
     txtname = f"/tmp/{name}"
