@@ -21,7 +21,6 @@ import traceback
 import random
 import pytz
 import threading
-import tempfile
 
 # FIXED CONFIGURATION IN CODE
 BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
@@ -436,7 +435,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         return None
 
 # =============================================
-# CAMBIO 2: processFile con limpieza garantizada
+# CAMBIO 2: processFile con limpieza garantizada (sin /tmp)
 # =============================================
 def processFile(update,bot,message,file,thread=None,jdb=None):
     file_size = get_file_size(file)
@@ -452,7 +451,8 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if file_size > max_file_size:
             compresingInfo = infos.createCompresing(file,file_size,max_file_size)
             bot.editMessageText(message,compresingInfo)
-            zipname = f"/tmp/{str(file).split('.')[0]}_{createID()}.zip"
+            # <-- SIN /tmp: ZIP en el directorio actual
+            zipname = f"{str(file).split('.')[0]}_{createID()}.zip"
             mult_file = zipfile.MultiFile(zipname,max_file_size)
             zip = zipfile.ZipFile(mult_file, mode='w', compression=zipfile.ZIP_DEFLATED)
             zip.write(file)
@@ -537,7 +537,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 pass
 
 # =============================================
-# CAMBIO 3: ddl VERSIÓN ORIGINAL (sin /tmp)
+# CAMBIO 3: ddl VERSIÓN ORIGINAL (sin /tmp) con limpieza
 # =============================================
 def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
     downloader = Downloader()
@@ -562,10 +562,11 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                 pass
 
 # =============================================
-# CAMBIO 4: sendTxt con limpieza garantizada
+# CAMBIO 4: sendTxt con limpieza garantizada (sin /tmp)
 # =============================================
 def sendTxt(name,files,update,bot):
-    txtname = f"/tmp/{name}"
+    # <-- SIN /tmp: TXT en el directorio actual
+    txtname = name
     try:
         txt = open(txtname,'w')
         
@@ -1555,7 +1556,8 @@ Aún no se ha realizado ninguna acción en el bot.
                                 if not safe_name:
                                     safe_name = f"evidencia_{cloud_idx}_{evid_idx}"
                                 
-                                txtname = f"/tmp/{safe_name}.txt"
+                                # <-- SIN /tmp: TXT en directorio actual
+                                txtname = f"{safe_name}.txt"
                                 try:
                                     txt = open(txtname, 'w')
                                     
@@ -2065,7 +2067,8 @@ Aún no se ha realizado ninguna acción en el bot.
                     evindex = visible_list[findex]['original']
                     clean_name = visible_list[findex]['clean_name']
                     
-                    txtname = f"/tmp/{clean_name}.txt"
+                    # <-- SIN /tmp: TXT en el directorio actual
+                    txtname = f"{clean_name}.txt"
                     
                     sendTxt(txtname, evindex['files'], update, bot)
                     
