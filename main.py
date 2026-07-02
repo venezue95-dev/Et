@@ -367,7 +367,7 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
     pass
 
 # =============================================
-# CAMBIO 1: processUploadFiles con limpieza garantizada
+# processUploadFiles con limpieza garantizada
 # =============================================
 def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jdb=None):
     try:
@@ -387,7 +387,8 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             evidences = client.getEvidences()
             username = update.message.sender.username
             
-            original_evidname = str(filename).split('.')[0]
+            # <-- CORRECCIÓN: Usar solo el nombre del archivo, no la ruta completa
+            original_evidname = os.path.basename(str(filename)).split('.')[0]
             visible_evidname = original_evidname
             internal_evidname = f"{original_evidname}{USER_EVIDENCE_MARKER}{username}"
             
@@ -435,7 +436,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         return None
 
 # =============================================
-# CAMBIO 2: processFile con limpieza garantizada (sin /tmp)
+# processFile con limpieza GARANTIZADA después de la subida
 # =============================================
 def processFile(update,bot,message,file,thread=None,jdb=None):
     file_size = get_file_size(file)
@@ -443,7 +444,9 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
     max_file_size = 1024 * 1024 * getUser['zips']
     file_upload_count = 0
     client = None
-    zipname = None  # <-- Para poder limpiar el ZIP en finally
+    zipname = None
+    mult_file = None  # <-- Guardar referencia para limpiar después
+    zip_parts = []    # <-- Guardar lista de partes para limpieza
     
     username = update.message.sender.username
     
@@ -451,23 +454,26 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if file_size > max_file_size:
             compresingInfo = infos.createCompresing(file,file_size,max_file_size)
             bot.editMessageText(message,compresingInfo)
-            # <-- SIN /tmp: ZIP en el directorio actual
-            zipname = f"{str(file).split('.')[0]}_{createID()}.zip"
-            mult_file = zipfile.MultiFile(zipname,max_file_size)
+            zipname = f"{os.path.basename(file).split('.')[0]}_{createID()}.zip"
+            mult_file = zipfile.MultiFile(zipname, max_file_size)
             zip = zipfile.ZipFile(mult_file, mode='w', compression=zipfile.ZIP_DEFLATED)
             zip.write(file)
             zip.close()
             mult_file.close()
-            client = processUploadFiles(file,file_size,mult_file.files,update,bot,message,jdb=jdb)
-            file_upload_count = len(mult_file.files)
+            zip_parts = mult_file.files  # <-- Guardar lista de partes
+            
+            # <-- SUBIR TODAS LAS PARTES PRIMERO
+            client = processUploadFiles(file, file_size, zip_parts, update, bot, message, jdb=jdb)
+            file_upload_count = len(zip_parts)
         else:
-            client = processUploadFiles(file,file_size,[file],update,bot,message,jdb=jdb)
+            client = processUploadFiles(file, file_size, [file], update, bot, message, jdb=jdb)
             file_upload_count = 1
         
         visible_evidname = ''
         files = []
         if client:
-            original_evidname = str(file).split('.')[0]
+            # <-- Usar solo el nombre base del archivo
+            original_evidname = os.path.basename(file).split('.')[0]
             visible_evidname = original_evidname
             internal_evidname = f"{original_evidname}{USER_EVIDENCE_MARKER}{username}"
             
@@ -519,17 +525,28 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             )
             
             if len(files)>0:
-                txtname = str(file).split('/')[-1].split('.')[0] + '.txt'
+                txtname = os.path.basename(file).split('.')[0] + '.txt'
                 sendTxt(txtname,files,update,bot)
         else:
             bot.editMessageText(message,'➥ Error en la página ✗')
     finally:
-        # <-- LIMPIEZA GARANTIZADA: Siempre elimina el archivo original y el ZIP
+        # <-- LIMPIEZA GARANTIZADA: Solo después de que TODO termine
+        # Eliminar archivo original
         if os.path.exists(file):
             try:
                 os.unlink(file)
             except:
                 pass
+        
+        # Eliminar cada parte del ZIP si aún existen
+        for part in zip_parts:
+            if os.path.exists(part):
+                try:
+                    os.unlink(part)
+                except:
+                    pass
+        
+        # Eliminar el ZIP principal
         if zipname and os.path.exists(zipname):
             try:
                 os.unlink(zipname)
@@ -537,13 +554,12 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 pass
 
 # =============================================
-# CAMBIO 3: ddl VERSIÓN ORIGINAL (sin /tmp) con limpieza
+# ddl VERSIÓN ORIGINAL con limpieza
 # =============================================
 def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
     downloader = Downloader()
     file = None
     try:
-        # <-- VERSIÓN ORIGINAL: descarga en el directorio actual (./)
         file = downloader.download_url(url, progressfunc=downloadFile, args=(bot, message, thread))
         if not downloader.stoping:
             if file:
@@ -554,7 +570,6 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                 except:
                     bot.editMessageText(message,'➥ Error en la descarga ✗')
     finally:
-        # <-- LIMPIEZA GARANTIZADA: Elimina el archivo si quedó en el directorio actual
         if file and os.path.exists(file):
             try:
                 os.unlink(file)
@@ -562,10 +577,9 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                 pass
 
 # =============================================
-# CAMBIO 4: sendTxt con limpieza garantizada (sin /tmp)
+# sendTxt con limpieza garantizada
 # =============================================
 def sendTxt(name,files,update,bot):
-    # <-- SIN /tmp: TXT en el directorio actual
     txtname = name
     try:
         txt = open(txtname,'w')
@@ -589,7 +603,6 @@ def sendTxt(name,files,update,bot):
         txt.close()
         bot.sendFile(update.message.chat.id, txtname)
     finally:
-        # <-- LIMPIEZA GARANTIZADA: Siempre elimina el TXT
         if os.path.exists(txtname):
             try:
                 os.unlink(txtname)
@@ -1556,7 +1569,6 @@ Aún no se ha realizado ninguna acción en el bot.
                                 if not safe_name:
                                     safe_name = f"evidencia_{cloud_idx}_{evid_idx}"
                                 
-                                # <-- SIN /tmp: TXT en directorio actual
                                 txtname = f"{safe_name}.txt"
                                 try:
                                     txt = open(txtname, 'w')
@@ -2067,7 +2079,6 @@ Aún no se ha realizado ninguna acción en el bot.
                     evindex = visible_list[findex]['original']
                     clean_name = visible_list[findex]['clean_name']
                     
-                    # <-- SIN /tmp: TXT en el directorio actual
                     txtname = f"{clean_name}.txt"
                     
                     sendTxt(txtname, evindex['files'], update, bot)
