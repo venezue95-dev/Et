@@ -21,6 +21,8 @@ import traceback
 import random
 import pytz
 import threading
+import unicodedata  # <-- NUEVO
+import re  # <-- NUEVO
 
 # FIXED CONFIGURATION IN CODE
 BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
@@ -121,7 +123,7 @@ class CloudCache:
         self.last_refresh = {}
         self.last_full_refresh = None
 
-cloud_cache = CloudCache(ttl_seconds=30)
+cloud_cache = CloudCache(ttl_seconds=30)  # 30 segundos de caché
 
 def get_cuba_time():
     if CUBA_TZ:
@@ -343,6 +345,16 @@ def expand_user_groups():
             expanded[user] = config.copy()
     return expanded
 
+# <-- NUEVA FUNCIÓN: Limpia nombres de archivo
+def clean_filename(filename):
+    """Limpia un nombre de archivo eliminando caracteres especiales y tildes"""
+    base = os.path.basename(str(filename))
+    normalized = unicodedata.normalize('NFKD', base)
+    clean = re.sub(r'[^a-zA-Z0-9\s\-\.]', '', normalized)
+    if not clean or clean.strip() == '':
+        clean = f"archivo_{createID()}"
+    return clean
+
 def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
     try:
         bot = args[0]
@@ -366,9 +378,6 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
     except Exception as ex: print(str(ex))
     pass
 
-# =============================================
-# CAMBIO 1: processUploadFiles con limpieza garantizada
-# =============================================
 def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jdb=None):
     try:
         bot.editMessageText(message,'⬆️ Preparando Para Subir ☁ ●●○')
@@ -387,7 +396,9 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             evidences = client.getEvidences()
             username = update.message.sender.username
             
-            original_evidname = str(filename).split('.')[0]
+            # <-- CAMBIO: Usar nombre limpio
+            clean_name = clean_filename(filename)
+            original_evidname = clean_name.split('.')[0]
             visible_evidname = original_evidname
             internal_evidname = f"{original_evidname}{USER_EVIDENCE_MARKER}{username}"
             
@@ -409,20 +420,19 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 tokenize = False
                 if user_info['tokenize']!=0:
                    tokenize = True
-                try:
-                    while resp is None:
+                # <-- CAMBIO: Bucle con límite y try/except
+                while resp is None and iter < 10:
+                    try:
                         fileid,resp = client.upload_file(f,evidence,fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread),tokenize=tokenize)
                         draftlist.append(resp)
-                        iter += 1
-                        if iter>=10:
-                            break
-                finally:
-                    # <-- LIMPIEZA GARANTIZADA: Siempre elimina el archivo temporal
-                    if os.path.exists(f):
-                        try:
-                            os.unlink(f)
-                        except:
-                            pass
+                    except Exception as e:
+                        print(f"Error en subida: {e}")
+                        break
+                    iter += 1
+                    if iter >= 10:
+                        bot.editMessageText(message, '⚠️ No se pudo subir después de 10 intentos')
+                        break
+                os.unlink(f)
             try:
                 client.saveEvidence(evidence)
             except:pass
@@ -434,167 +444,134 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         bot.editMessageText(message,'➥ Error ✗\n' + str(ex))
         return None
 
-# =============================================
-# CAMBIO 2: processFile con limpieza garantizada (sin /tmp)
-# =============================================
 def processFile(update,bot,message,file,thread=None,jdb=None):
     file_size = get_file_size(file)
     getUser = jdb.get_user(update.message.sender.username)
     max_file_size = 1024 * 1024 * getUser['zips']
     file_upload_count = 0
     client = None
-    zipname = None  # <-- Para poder limpiar el ZIP en finally
     
     username = update.message.sender.username
     
-    try:
-        if file_size > max_file_size:
-            compresingInfo = infos.createCompresing(file,file_size,max_file_size)
-            bot.editMessageText(message,compresingInfo)
-            # <-- SIN /tmp: ZIP en el directorio actual
-            zipname = f"{str(file).split('.')[0]}_{createID()}.zip"
-            mult_file = zipfile.MultiFile(zipname,max_file_size)
-            zip = zipfile.ZipFile(mult_file, mode='w', compression=zipfile.ZIP_DEFLATED)
-            zip.write(file)
-            zip.close()
-            mult_file.close()
-            client = processUploadFiles(file,file_size,mult_file.files,update,bot,message,jdb=jdb)
-            file_upload_count = len(mult_file.files)
-        else:
-            client = processUploadFiles(file,file_size,[file],update,bot,message,jdb=jdb)
-            file_upload_count = 1
+    # <-- CAMBIO: Usar nombre limpio para todo
+    clean_name = clean_filename(file)
+    clean_base = clean_name.split('.')[0]
+    
+    if file_size > max_file_size:
+        compresingInfo = infos.createCompresing(file,file_size,max_file_size)
+        bot.editMessageText(message,compresingInfo)
+        # <-- CAMBIO: Usar clean_base para el ZIP
+        zipname = f"{clean_base}_{createID()}"
+        mult_file = zipfile.MultiFile(zipname,max_file_size)
+        zip = zipfile.ZipFile(mult_file,  mode='w', compression=zipfile.ZIP_DEFLATED)
+        zip.write(file)
+        zip.close()
+        mult_file.close()
+        client = processUploadFiles(file,file_size,mult_file.files,update,bot,message,jdb=jdb)
+        try:
+            os.unlink(file)
+        except:pass
+        file_upload_count = len(mult_file.files)
+    else:
+        client = processUploadFiles(file,file_size,[file],update,bot,message,jdb=jdb)
+        file_upload_count = 1
+    
+    visible_evidname = ''
+    files = []
+    if client:
+        # <-- CAMBIO: Usar clean_base
+        original_evidname = clean_base
+        visible_evidname = original_evidname
+        internal_evidname = f"{original_evidname}{USER_EVIDENCE_MARKER}{username}"
         
-        visible_evidname = ''
-        files = []
-        if client:
-            original_evidname = str(file).split('.')[0]
-            visible_evidname = original_evidname
-            internal_evidname = f"{original_evidname}{USER_EVIDENCE_MARKER}{username}"
-            
-            txtname = visible_evidname + '.txt'
-            try:
-                proxy = ProxyCloud.parse(getUser['proxy'])
-                moodle_client = MoodleClient(getUser['moodle_user'],
-                                             getUser['moodle_password'],
-                                             getUser['moodle_host'],
-                                             getUser['moodle_repo_id'],
-                                             proxy=proxy)
-                if moodle_client.login():
-                    evidences = moodle_client.getEvidences()
-                    
-                    evidence_index = -1
-                    for idx, ev in enumerate(evidences):
-                        if ev['name'] == internal_evidname:
-                            files = ev['files']
-                            for i in range(len(files)):
-                                url = files[i]['directurl']
-                                if '?forcedownload=1' in url:
-                                    url = url.replace('?forcedownload=1', '')
-                                elif '&forcedownload=1' in url:
-                                    url = url.replace('&forcedownload=1', '')
-                                if '&token=' in url and '?' not in url:
-                                    url = url.replace('&token=', '?token=', 1)
-                                files[i]['directurl'] = url
-                            evidence_index = idx
-                            break
-                    
-                    moodle_client.logout()
-                    
-                    findex = evidence_index if evidence_index != -1 else len(evidences) - 1
-            except Exception as e:
-                print(f"Error obteniendo índice de evidencia: {e}")
-                findex = 0
-            
-            bot.deleteMessage(message.chat.id,message.message_id)
-            finishInfo = infos.createFinishUploading(file,file_size,max_file_size,file_upload_count,file_upload_count,findex)
-            filesInfo = infos.createFileMsg(file,files)
-            bot.sendMessage(message.chat.id,finishInfo+'\n'+filesInfo,parse_mode='html')
-            
-            filename_clean = os.path.basename(file)
-            memory_stats.log_upload(
-                username=username,
-                filename=filename_clean,
-                file_size=file_size,
-                moodle_host=getUser['moodle_host']
-            )
-            
-            if len(files)>0:
-                txtname = str(file).split('/')[-1].split('.')[0] + '.txt'
-                sendTxt(txtname,files,update,bot)
-        else:
-            bot.editMessageText(message,'➥ Error en la página ✗')
-    finally:
-        # <-- LIMPIEZA GARANTIZADA: Siempre elimina el archivo original y el ZIP
-        if os.path.exists(file):
-            try:
-                os.unlink(file)
-            except:
-                pass
-        if zipname and os.path.exists(zipname):
-            try:
-                os.unlink(zipname)
-            except:
-                pass
+        txtname = visible_evidname + '.txt'
+        try:
+            proxy = ProxyCloud.parse(getUser['proxy'])
+            moodle_client = MoodleClient(getUser['moodle_user'],
+                                         getUser['moodle_password'],
+                                         getUser['moodle_host'],
+                                         getUser['moodle_repo_id'],
+                                         proxy=proxy)
+            if moodle_client.login():
+                evidences = moodle_client.getEvidences()
+                
+                evidence_index = -1
+                for idx, ev in enumerate(evidences):
+                    if ev['name'] == internal_evidname:
+                        files = ev['files']
+                        for i in range(len(files)):
+                            url = files[i]['directurl']
+                            if '?forcedownload=1' in url:
+                                url = url.replace('?forcedownload=1', '')
+                            elif '&forcedownload=1' in url:
+                                url = url.replace('&forcedownload=1', '')
+                            if '&token=' in url and '?' not in url:
+                                url = url.replace('&token=', '?token=', 1)
+                            files[i]['directurl'] = url
+                        evidence_index = idx
+                        break
+                
+                moodle_client.logout()
+                
+                findex = evidence_index if evidence_index != -1 else len(evidences) - 1
+        except Exception as e:
+            print(f"Error obteniendo índice de evidencia: {e}")
+            findex = 0
+        
+        bot.deleteMessage(message.chat.id,message.message_id)
+        finishInfo = infos.createFinishUploading(file,file_size,max_file_size,file_upload_count,file_upload_count,findex)
+        filesInfo = infos.createFileMsg(file,files)
+        bot.sendMessage(message.chat.id,finishInfo+'\n'+filesInfo,parse_mode='html')
+        
+        filename_clean = os.path.basename(file)
+        memory_stats.log_upload(
+            username=username,
+            filename=filename_clean,
+            file_size=file_size,
+            moodle_host=getUser['moodle_host']
+        )
+        
+        if len(files)>0:
+            # <-- CAMBIO: Usar clean_base
+            txtname = f"{clean_base}.txt"
+            sendTxt(txtname,files,update,bot)
+    else:
+        bot.editMessageText(message,'➥ Error en la página ✗')
 
-# =============================================
-# CAMBIO 3: ddl VERSIÓN ORIGINAL (sin /tmp) con limpieza
-# =============================================
 def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
     downloader = Downloader()
-    file = None
-    try:
-        # <-- VERSIÓN ORIGINAL: descarga en el directorio actual (./)
-        file = downloader.download_url(url, progressfunc=downloadFile, args=(bot, message, thread))
-        if not downloader.stoping:
-            if file:
-                processFile(update,bot,message,file,jdb=jdb)
-            else:
-                try:
-                    bot.editMessageText(message,'➥ Error en la descarga ✗')
-                except:
-                    bot.editMessageText(message,'➥ Error en la descarga ✗')
-    finally:
-        # <-- LIMPIEZA GARANTIZADA: Elimina el archivo si quedó en el directorio actual
-        if file and os.path.exists(file):
+    file = downloader.download_url(url,progressfunc=downloadFile,args=(bot,message,thread))
+    if not downloader.stoping:
+        if file:
+            processFile(update,bot,message,file,jdb=jdb)
+        else:
             try:
-                os.unlink(file)
+                bot.editMessageText(message,'➥ Error en la descarga ✗')
             except:
-                pass
+                bot.editMessageText(message,'➥ Error en la descarga ✗')
 
-# =============================================
-# CAMBIO 4: sendTxt con limpieza garantizada (sin /tmp)
-# =============================================
 def sendTxt(name,files,update,bot):
-    # <-- SIN /tmp: TXT en el directorio actual
-    txtname = name
-    try:
-        txt = open(txtname,'w')
+    txt = open(name,'w')
+    
+    for i, f in enumerate(files):
+        url = f['directurl']
         
-        for i, f in enumerate(files):
-            url = f['directurl']
-            
-            if '?forcedownload=1' in url:
-                url = url.replace('?forcedownload=1', '')
-            elif '&forcedownload=1' in url:
-                url = url.replace('&forcedownload=1', '')
-            
-            if '&token=' in url and '?' not in url:
-                url = url.replace('&token=', '?token=', 1)
-            
-            txt.write(url)
-            
-            if i < len(files) - 1:
-                txt.write('\n\n')
+        if '?forcedownload=1' in url:
+            url = url.replace('?forcedownload=1', '')
+        elif '&forcedownload=1' in url:
+            url = url.replace('&forcedownload=1', '')
         
-        txt.close()
-        bot.sendFile(update.message.chat.id, txtname)
-    finally:
-        # <-- LIMPIEZA GARANTIZADA: Siempre elimina el TXT
-        if os.path.exists(txtname):
-            try:
-                os.unlink(txtname)
-            except:
-                pass
+        if '&token=' in url and '?' not in url:
+            url = url.replace('&token=', '?token=', 1)
+        
+        txt.write(url)
+        
+        if i < len(files) - 1:
+            txt.write('\n\n')
+    
+    txt.close()
+    bot.sendFile(update.message.chat.id,name)
+    os.unlink(name)
 
 def initialize_database(jdb):
     expanded_users = expand_user_groups()
@@ -926,7 +903,7 @@ def show_updated_cloud(bot, message, cloud_idx):
     """Muestra la lista actualizada de una nube después de eliminar"""
     try:
         # Obtener datos actualizados
-        admin_evidence_manager.refresh_data(force=True)
+        admin_evidence_manager.refresh_data(force=True)  # Forzar refresco después de eliminar
         cloud_names = list(admin_evidence_manager.clouds_dict.keys())
         
         # Verificar que el índice sea válido
@@ -954,8 +931,8 @@ def show_updated_cloud(bot, message, cloud_idx):
 ━━━━━━━━━━━━━━━━━━━
             """
             bot.editMessageText(message, empty_msg)
-            time.sleep(1.5)
-            show_updated_all_clouds(bot, message)
+            time.sleep(1.5)  # Breve pausa para que el usuario vea el mensaje
+            show_updated_all_clouds(bot, message)  # MOSTRAR TODAS LAS NUBES
             return
         
         short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
@@ -1116,7 +1093,7 @@ def show_loading_progress(bot, message, step, total_steps=3):
     bot.editMessageText(message, f"{msg} {bar}")
 
 # ==============================
-# FUNCIÓN PRINCIPAL ONMESSAGE
+# FUNCIÓN PRINCIPAL ONMESSAGE CORREGIDA
 # ==============================
 
 def onmessage(update,bot:ObigramClient):
@@ -1167,7 +1144,7 @@ def onmessage(update,bot:ObigramClient):
         thread.store('msg',message)
 
         # ============================================
-        # COMANDO /start
+        # COMANDO /start MEJORADO
         # ============================================
         if '/start' in msgText:
             if username == ADMIN_USERNAME:
@@ -1233,7 +1210,7 @@ def onmessage(update,bot:ObigramClient):
             return
         
         # ============================================
-        # COMANDOS DE ADMINISTRADOR
+        # COMANDOS DE ADMINISTRADOR (SOLO SI ES ADMIN)
         # ============================================
         if username == ADMIN_USERNAME:
             # COMANDO /admin
@@ -1315,6 +1292,7 @@ Aún no se ha realizado ninguna acción en el bot.
                         show_loading_progress(bot, message, 2, 3)
                         
                         if total_evidences == 0:
+                            # Mensaje cuando no hay evidencias
                             empty_msg = f"""
 👑 TODAS LAS NUBES
 ━━━━━━━━━━━━━━━━━━━
@@ -1398,6 +1376,7 @@ Aún no se ha realizado ninguna acción en el bot.
                             bot.editMessageText(message, '❌ Formato incorrecto. Use: /adm_cloud_0')
                             return
                         
+                        # Refrescar datos primero (con caché)
                         admin_evidence_manager.refresh_data()
                         
                         if cloud_idx < 0 or cloud_idx >= len(admin_evidence_manager.clouds_dict):
@@ -1556,26 +1535,20 @@ Aún no se ha realizado ninguna acción en el bot.
                                 if not safe_name:
                                     safe_name = f"evidencia_{cloud_idx}_{evid_idx}"
                                 
-                                # <-- SIN /tmp: TXT en directorio actual
                                 txtname = f"{safe_name}.txt"
-                                try:
-                                    txt = open(txtname, 'w')
-                                    
-                                    for i, f in enumerate(files):
-                                        url = f['directurl']
-                                        txt.write(url)
-                                        if i < len(files) - 1:
-                                            txt.write('\n\n')
-                                    
-                                    txt.close()
-                                    bot.sendFile(update.message.chat.id, txtname)
-                                    bot.editMessageText(message, f'✅ TXT enviado: {clean_name[:50]}')
-                                finally:
-                                    if os.path.exists(txtname):
-                                        try:
-                                            os.unlink(txtname)
-                                        except:
-                                            pass
+                                txt = open(txtname, 'w')
+                                
+                                for i, f in enumerate(files):
+                                    url = f['directurl']
+                                    txt.write(url)
+                                    if i < len(files) - 1:
+                                        txt.write('\n\n')
+                                
+                                txt.close()
+                                bot.sendFile(update.message.chat.id, txtname)
+                                os.unlink(txtname)
+                                
+                                bot.editMessageText(message, f'✅ TXT enviado: {clean_name[:50]}')
                             else:
                                 bot.editMessageText(message, '❌ No se encontró la evidencia')
                         else:
@@ -1585,7 +1558,7 @@ Aún no se ha realizado ninguna acción en el bot.
                         bot.editMessageText(message, f'❌ Error: {str(e)}')
                     return
                 
-                # /adm_delete_X_Y
+                # /adm_delete_X_Y - ¡CORRECCIÓN PRINCIPAL!
                 elif '/adm_delete_' in msgText:
                     try:
                         params = extract_two_params_simple(msgText, '/adm_delete_')
@@ -1597,6 +1570,7 @@ Aún no se ha realizado ninguna acción en el bot.
                         
                         bot.editMessageText(message, '🔍 Verificando datos...')
                         
+                        # Obtener datos actuales
                         admin_evidence_manager.refresh_data()
                         cloud_names = list(admin_evidence_manager.clouds_dict.keys())
                         
@@ -1619,6 +1593,7 @@ Aún no se ha realizado ninguna acción en el bot.
                         
                         evidence = evidences[evid_idx]
                         
+                        # Limpiar nombre para mostrar
                         ev_name = evidence['evidence_name']
                         clean_name = ev_name
                         for user in evidence['group_users']:
@@ -1631,20 +1606,24 @@ Aún no se ha realizado ninguna acción en el bot.
                         
                         bot.editMessageText(message, f'🗑️ Eliminando evidencia: {clean_name[:50]}...')
                         
+                        # Eliminar
                         success, ev_name, files_count = delete_evidence_from_cloud(
                             evidence['cloud_config'], 
                             evidence['evidence_data']
                         )
                         
                         if success:
+                            # Refrescar datos
                             admin_evidence_manager.refresh_data(force=True)
                             
+                            # Obtener datos actualizados
                             cloud_names = list(admin_evidence_manager.clouds_dict.keys())
                             
                             if cloud_idx < len(cloud_names):
                                 current_evidences = admin_evidence_manager.clouds_dict.get(cloud_names[cloud_idx], [])
                                 
                                 if current_evidences:
+                                    # Si aún hay evidencias, mostrar esta nube actualizada
                                     result_msg = f"""
 ✅ ELIMINACIÓN EXITOSA
 ━━━━━━━━━━━━━━━━━━━
@@ -1661,6 +1640,7 @@ Aún no se ha realizado ninguna acción en el bot.
                                     time.sleep(1)
                                     show_updated_cloud(bot, message, cloud_idx)
                                 else:
+                                    # Si NO hay evidencias, mostrar todas las nubes
                                     result_msg = f"""
 ✅ ELIMINACIÓN COMPLETA
 ━━━━━━━━━━━━━━━━━━━
@@ -1673,8 +1653,9 @@ Aún no se ha realizado ninguna acción en el bot.
                                     """
                                     bot.editMessageText(message, result_msg)
                                     time.sleep(1)
-                                    show_updated_all_clouds(bot, message)
+                                    show_updated_all_clouds(bot, message)  # MOSTRAR TODAS LAS NUBES
                             else:
+                                # Si por alguna razón la nube ya no está en la lista
                                 show_updated_all_clouds(bot, message)
                         else:
                             bot.editMessageText(message, f'❌ Error al eliminar: {clean_name}')
@@ -1950,10 +1931,10 @@ Aún no se ha realizado ninguna acción en el bot.
                     return
         
         # ============================================
-        # COMANDOS REGULARES DE USUARIO
+        # COMANDOS REGULARES DE USUARIO (PARA TODOS, INCLUYENDO ADMIN)
         # ============================================
         
-        # COMANDO /mystats
+        # COMANDO /mystats (para todos)
         if '/mystats' in msgText:
             user_stats = memory_stats.get_user_stats(username)
             if user_stats:
@@ -1993,7 +1974,7 @@ Aún no se ha realizado ninguna acción en el bot.
             bot.editMessageText(message, stats_msg)
             return
         
-        # COMANDO /files
+        # COMANDO /files (para todos)
         elif '/files' == msgText:
             proxy = ProxyCloud.parse(user_info['proxy'])
             client = MoodleClient(user_info['moodle_user'],
@@ -2035,7 +2016,7 @@ Aún no se ha realizado ninguna acción en el bot.
             else:
                 bot.editMessageText(message,'➲ Error y Causas🧐\n1-Revise su Cuenta\n2-Servidor Deshabilitado: '+client.path)
                 
-        # COMANDO /txt_X
+        # COMANDO /txt_X (para todos)
         elif '/txt_' in msgText:
             try:
                 findex = int(str(msgText).split('_')[1])
@@ -2067,8 +2048,7 @@ Aún no se ha realizado ninguna acción en el bot.
                     evindex = visible_list[findex]['original']
                     clean_name = visible_list[findex]['clean_name']
                     
-                    # <-- SIN /tmp: TXT en el directorio actual
-                    txtname = f"{clean_name}.txt"
+                    txtname = clean_name + '.txt'
                     
                     sendTxt(txtname, evindex['files'], update, bot)
                     
@@ -2082,7 +2062,7 @@ Aún no se ha realizado ninguna acción en el bot.
                 bot.editMessageText(message, f'❌ Error: {str(e)}')
                 print(f"Error en /txt_: {e}")
              
-        # COMANDO /del_X
+        # COMANDO /del_X (para todos)
         elif '/del_' in msgText:
             try:
                 findex = int(str(msgText).split('_')[1])
@@ -2165,7 +2145,7 @@ Aún no se ha realizado ninguna acción en el bot.
                 bot.editMessageText(message, f'❌ Error: {str(e)}')
                 print(f"Error en /del_: {e}")
                 
-        # COMANDO /delall
+        # COMANDO /delall (para todos)
         elif '/delall' in msgText:
             try:
                 proxy = ProxyCloud.parse(user_info['proxy'])
@@ -2227,7 +2207,7 @@ Aún no se ha realizado ninguna acción en el bot.
                 bot.editMessageText(message, f'❌ Error: {str(e)}')
                 print(f"Error en /delall: {e}")
                 
-        # PROCESAR ENLACES HTTP
+        # PROCESAR ENLACES HTTP (para todos)
         elif 'http' in msgText:
             url = msgText
             
