@@ -50,7 +50,7 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "XD,Satoru_2115,jc041228,SchnauzerMinnie": {
+    "XD,Satoru_2115": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.uo.edu.cu/",
         "moodle_repo_id": 4,
@@ -61,13 +61,13 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "VanNeiFertio,XD,gatitoo_miauu": {
+    "VanNeiFertio,XD,gatitoo_miauu,jc041228,SchnauzerMinnie": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.ucf.edu.cu/",
         "moodle_repo_id": 4,
         "moodle_user": "eliel2216",
         "moodle_password": "Et543210.",
-        "zips": 49,
+        "zips": 50,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
