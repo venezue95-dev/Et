@@ -67,7 +67,7 @@ PRE_CONFIGURATED_USERS = {
         "moodle_repo_id": 4,
         "moodle_user": "eliel2216",
         "moodle_password": "Et543210.",
-        "zips": 50,
+        "zips": 49,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
