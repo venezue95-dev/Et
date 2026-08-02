@@ -1,6 +1,5 @@
 from pyobigram.utils import sizeof_fmt, get_file_size, createID, nice_time
 from pyobigram.client import ObigramClient, inlineQueryResultArticle
-from pyobigram.inline import inlineKeyboardMarkup, inlineKeyboardButton
 from MoodleClient import MoodleClient
 from JDatabase import JsonDatabase
 import zipfile
@@ -20,14 +19,13 @@ import traceback
 import random
 import pytz
 import threading
-import math  # Agregado para el cálculo de páginas
 
 # FIXED CONFIGURATION IN CODE
 BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
 
 # ADMINISTRATOR CONFIGURATION
 ADMIN_USERNAME = "Eliel_21"
-ADMIN_CHAT_ID = 7363341763  # Tu ID insertado para notificaciones
+ADMIN_CHAT_ID = 7363341763  # Tu ID para notificaciones
 
 # CUBA TIMEZONE
 try:
@@ -80,7 +78,6 @@ PRE_CONFIGURATED_USERS = {
 # ==============================
 
 class CloudCache:
-    """Sistema de caché para evitar refrescos innecesarios"""
     def __init__(self, ttl_seconds=30):
         self.cache = {}
         self.ttl = ttl_seconds
@@ -88,7 +85,6 @@ class CloudCache:
         self.last_full_refresh = None
     
     def should_refresh(self, cloud_name=None):
-        """Determina si debe refrescar los datos"""
         if cloud_name is None:
             if self.last_full_refresh is None:
                 return True
@@ -101,21 +97,17 @@ class CloudCache:
         return elapsed > self.ttl
     
     def update_cache(self, cloud_name, data):
-        """Actualiza la caché para una nube específica"""
         self.cache[cloud_name] = data
         self.last_refresh[cloud_name] = datetime.datetime.now()
     
     def update_full_cache(self, data):
-        """Actualiza caché completa"""
         self.cache = data.copy()
         self.last_full_refresh = datetime.datetime.now()
     
     def get_cache(self, cloud_name):
-        """Obtiene datos de caché"""
         return self.cache.get(cloud_name)
     
     def clear_cache(self):
-        """Limpia toda la caché"""
         self.cache = {}
         self.last_refresh = {}
         self.last_full_refresh = None
@@ -140,7 +132,6 @@ def format_cuba_datetime(dt=None):
     return dt.strftime("%d/%m/%y %I:%M %p")
 
 def format_file_size(size_bytes):
-    """Formatea bytes a KB, MB o GB automáticamente"""
     if size_bytes < 1024:
         return f"{size_bytes} B"
     elif size_bytes < 1024 * 1024:
@@ -155,13 +146,10 @@ def format_file_size(size_bytes):
 # ==============================
 
 class MemoryStats:
-    """Sistema de estadísticas en memoria (sin archivos)"""
-    
     def __init__(self):
         self.reset_stats()
     
     def reset_stats(self):
-        """Reinicia todas las estadísticas"""
         self.stats = {
             'total_uploads': 0,
             'total_deletes': 0,
@@ -201,10 +189,8 @@ class MemoryStats:
             'moodle_host': moodle_host
         }
         self.upload_logs.append(log_entry)
-        
         if len(self.upload_logs) > 300:
             self.upload_logs.pop(0)
-        
         return True
     
     def log_delete(self, username, filename, evidence_name, moodle_host):
@@ -230,10 +216,8 @@ class MemoryStats:
             'type': 'delete'
         }
         self.delete_logs.append(log_entry)
-        
         if len(self.delete_logs) > 300:
             self.delete_logs.pop(0)
-        
         return True
     
     def log_delete_all(self, username, deleted_evidences, deleted_files, moodle_host):
@@ -260,10 +244,8 @@ class MemoryStats:
             'type': 'delete_all'
         }
         self.delete_logs.append(log_entry)
-        
         if len(self.delete_logs) > 300:
             self.delete_logs.pop(0)
-        
         return True
     
     def get_user_stats(self, username):
@@ -329,6 +311,44 @@ def expand_user_groups():
         for user in users:
             expanded[user] = config.copy()
     return expanded
+
+# ==============================
+# FUNCIÓN PARA DIVIDIR MENSAJES LARGOS
+# ==============================
+def send_long_message(bot, chat_id, text, original_message=None):
+    """Divide mensajes largos por saltos de línea para respetar el límite de Telegram"""
+    MAX_LEN = 4000
+    
+    if len(text) <= MAX_LEN:
+        if original_message:
+            bot.editMessageText(original_message, text)
+        else:
+            bot.sendMessage(chat_id, text)
+        return
+
+    lines = text.split('\n')
+    current_msg = ""
+    messages_to_send = []
+
+    for line in lines:
+        if len(current_msg) + len(line) + 1 > MAX_LEN:
+            messages_to_send.append(current_msg)
+            current_msg = line + '\n'
+        else:
+            current_msg += line + '\n'
+    
+    if current_msg:
+        messages_to_send.append(current_msg)
+
+    if original_message:
+        bot.editMessageText(original_message, messages_to_send[0])
+    else:
+        bot.sendMessage(chat_id, messages_to_send[0])
+        
+    for msg_part in messages_to_send[1:]:
+        time.sleep(0.5)  # Breve pausa para evitar flood
+        bot.sendMessage(chat_id, msg_part)
+
 
 def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
     try:
@@ -812,90 +832,8 @@ def extract_two_params_simple(msgText, prefix):
         return None
     return None
 
-
-# ============================================
-# LÓGICA DE PAGINACIÓN DE BOTONES
-# ============================================
-def get_cloud_page_content(cloud_idx, page=1):
-    """Genera el contenido de una página específica y su botonera (Inline Keyboard)"""
-    ITEMS_PER_PAGE = 15
-    
-    admin_evidence_manager.refresh_data()
-    cloud_names = list(admin_evidence_manager.clouds_dict.keys())
-    
-    if cloud_idx < 0 or cloud_idx >= len(cloud_names):
-        return "❌ Índice de nube inválido.", None
-        
-    cloud_name = cloud_names[cloud_idx]
-    evidences = admin_evidence_manager.clouds_dict.get(cloud_name, [])
-    short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
-    
-    if not evidences:
-        empty_msg = f"📭 NUBE VACÍA\n━━━━━━━━━━━━━━━━━━━\n\n☁️ {short_name}\n📊 No hay evidencias en esta nube.\n\n🔍 Usa /adm_allclouds para ver otras nubes\n━━━━━━━━━━━━━━━━━━━"
-        return empty_msg, None
-        
-    total_pages = math.ceil(len(evidences) / ITEMS_PER_PAGE)
-    if page < 1: page = 1
-    if page > total_pages: page = total_pages
-    
-    start_idx = (page - 1) * ITEMS_PER_PAGE
-    end_idx = start_idx + ITEMS_PER_PAGE
-    page_evidences = evidences[start_idx:end_idx]
-    
-    list_msg = f"📋 EVIDENCIAS DE LA NUBE\n☁️ {short_name}\n━━━━━━━━━━━━━━━━━━━\n\n"
-    
-    for i, evidence in enumerate(page_evidences):
-        real_idx = start_idx + i
-        ev_name = evidence['evidence_name']
-        
-        clean_name = ev_name
-        user_tags = []
-        
-        for user in evidence['group_users']:
-            marker = f"{USER_EVIDENCE_MARKER}{user}"
-            if marker in ev_name:
-                clean_name = ev_name.replace(marker, "").strip()
-                user_tags.append(f"@{user}")
-        
-        if user_tags:
-            user_str = f" ({', '.join(user_tags[:2])})"
-            if len(user_tags) > 2:
-                user_str = f" ({', '.join(user_tags[:2])}...)"
-        else:
-            user_str = ""
-        
-        list_msg += f"{real_idx}. {clean_name[:35]}"
-        if len(clean_name) > 35:
-            list_msg += "..."
-        list_msg += f"{user_str}\n"
-        list_msg += f"   📁 {evidence['files_count']} archivos\n"
-        list_msg += f"   👁️ /adm_show_{cloud_idx}_{real_idx}  |  📄 /adm_fetch_{cloud_idx}_{real_idx}\n"
-        list_msg += f"   🗑️ /adm_delete_{cloud_idx}_{real_idx}\n\n"
-        
-    total_evidences = len(evidences)
-    total_files = sum(e['files_count'] for e in evidences)
-    
-    list_msg += f"━━━━━━━━━━━━━━━━━━━\n"
-    list_msg += f"📊 RESUMEN (Pág {page}/{total_pages}):\n"
-    list_msg += f"• Evidencias: {total_evidences} | Archivos: {total_files}\n"
-    list_msg += f"🔧 /adm_wipe_{cloud_idx} - Eliminar TODO\n"
-    list_msg += f"━━━━━━━━━━━━━━━━━━━"
-    
-    markup = None
-    if total_pages > 1:
-        buttons = []
-        if page > 1:
-            buttons.append(inlineKeyboardButton(text="⬅️ Anterior", callback_data=f"admcloud_{cloud_idx}_{page-1}"))
-        buttons.append(inlineKeyboardButton(text=f"📄 {page}/{total_pages}", callback_data="ignore"))
-        if page < total_pages:
-            buttons.append(inlineKeyboardButton(text="Siguiente ➡️", callback_data=f"admcloud_{cloud_idx}_{page+1}"))
-        
-        markup = inlineKeyboardMarkup(inline_keyboard=[buttons])
-        
-    return list_msg, markup
-
-
 def show_updated_cloud(bot, message, cloud_idx):
+    """Muestra la lista actualizada usando la división de mensajes"""
     try:
         admin_evidence_manager.refresh_data(force=True)
         cloud_names = list(admin_evidence_manager.clouds_dict.keys())
@@ -926,9 +864,53 @@ def show_updated_cloud(bot, message, cloud_idx):
             show_updated_all_clouds(bot, message)
             return
         
-        # Utilizamos nuestra función paginadora (mostramos la pág 1 por defecto al actualizar)
-        text, markup = get_cloud_page_content(cloud_idx, 1)
-        bot.editMessageText(message, text, reply_markup=markup)
+        short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
+        
+        list_msg = f"📋 NUBE ACTUALIZADA\n☁️ {short_name}\n━━━━━━━━━━━━━━━━━━━\n\n"
+        for idx, evidence in enumerate(evidences):
+            ev_name = evidence['evidence_name']
+            
+            clean_name = ev_name
+            user_tags = []
+            
+            for user in evidence['group_users']:
+                marker = f"{USER_EVIDENCE_MARKER}{user}"
+                if marker in ev_name:
+                    clean_name = ev_name.replace(marker, "").strip()
+                    user_tags.append(f"@{user}")
+            
+            if user_tags:
+                user_str = f" ({', '.join(user_tags[:2])})"
+                if len(user_tags) > 2:
+                    user_str = f" ({', '.join(user_tags[:2])}...)"
+            else:
+                user_str = ""
+            
+            list_msg += f"{idx}. {clean_name[:35]}"
+            if len(clean_name) > 35:
+                list_msg += "..."
+            list_msg += f"{user_str}\n"
+            list_msg += f"   📁 {evidence['files_count']} archivos\n"
+            list_msg += f"   👁️ /adm_show_{cloud_idx}_{idx}\n"
+            list_msg += f"   📄 /adm_fetch_{cloud_idx}_{idx}\n"
+            list_msg += f"   🗑️ /adm_delete_{cloud_idx}_{idx}\n\n"
+        
+        total_evidences = len(evidences)
+        total_files = sum(e['files_count'] for e in evidences)
+        
+        list_msg += f"""
+━━━━━━━━━━━━━━━━━━━
+🔧 ACCIONES MASIVAS:
+/adm_wipe_{cloud_idx} - Eliminar TODO de esta nube
+
+📊 RESUMEN:
+• Evidencias: {total_evidences}
+• Archivos: {total_files}
+━━━━━━━━━━━━━━━━━━━
+        """
+        
+        # Implementamos la división
+        send_long_message(bot, message.chat.id, list_msg, original_message=message)
         
     except Exception as e:
         error_msg = f"""
@@ -1292,7 +1274,6 @@ Aún no se ha realizado ninguna acción en el bot.
                         bot.editMessageText(message, f'❌ Error: {str(e)}')
                     return
                 
-                # ACTUALIZADO CON PAGINACIÓN Y BOTONES 
                 elif '/adm_cloud_' in msgText:
                     try:
                         cloud_idx = extract_one_param_simple(msgText, '/adm_cloud_')
@@ -1300,9 +1281,81 @@ Aún no se ha realizado ninguna acción en el bot.
                             bot.editMessageText(message, '❌ Formato incorrecto. Use: /adm_cloud_0')
                             return
                         
-                        # Usamos nuestra nueva función para cargar la página 1 con su botonera
-                        text, markup = get_cloud_page_content(cloud_idx, 1)
-                        bot.editMessageText(message, text, reply_markup=markup)
+                        admin_evidence_manager.refresh_data()
+                        
+                        if cloud_idx < 0 or cloud_idx >= len(admin_evidence_manager.clouds_dict):
+                            bot.editMessageText(message, f'❌ Índice inválido. Máximo: {len(admin_evidence_manager.clouds_dict)-1}')
+                            return
+                        
+                        cloud_name = list(admin_evidence_manager.clouds_dict.keys())[cloud_idx]
+                        evidences = admin_evidence_manager.clouds_dict[cloud_name]
+                        
+                        short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
+                        
+                        if not evidences:
+                            empty_msg = f"""
+📭 NUBE VACÍA
+━━━━━━━━━━━━━━━━━━━
+
+☁️ {short_name}
+📊 No hay evidencias en esta nube.
+
+🔍 Usa /adm_allclouds para ver otras nubes
+━━━━━━━━━━━━━━━━━━━
+                            """
+                            bot.editMessageText(message, empty_msg)
+                            return
+                        
+                        list_msg = f"""
+📋 EVIDENCIAS DE LA NUBE
+☁️ {short_name}
+━━━━━━━━━━━━━━━━━━━
+
+"""
+                        for idx, evidence in enumerate(evidences):
+                            ev_name = evidence['evidence_name']
+                            
+                            clean_name = ev_name
+                            user_tags = []
+                            
+                            for user in evidence['group_users']:
+                                marker = f"{USER_EVIDENCE_MARKER}{user}"
+                                if marker in ev_name:
+                                    clean_name = ev_name.replace(marker, "").strip()
+                                    user_tags.append(f"@{user}")
+                            
+                            if user_tags:
+                                user_str = f" ({', '.join(user_tags[:2])})"
+                                if len(user_tags) > 2:
+                                    user_str = f" ({', '.join(user_tags[:2])}...)"
+                            else:
+                                user_str = ""
+                            
+                            list_msg += f"{idx}. {clean_name[:35]}"
+                            if len(clean_name) > 35:
+                                list_msg += "..."
+                            list_msg += f"{user_str}\n"
+                            list_msg += f"   📁 {evidence['files_count']} archivos\n"
+                            list_msg += f"   👁️ /adm_show_{cloud_idx}_{idx}\n"
+                            list_msg += f"   📄 /adm_fetch_{cloud_idx}_{idx}\n"
+                            list_msg += f"   🗑️ /adm_delete_{cloud_idx}_{idx}\n\n"
+                        
+                        total_evidences = len(evidences)
+                        total_files = sum(e['files_count'] for e in evidences)
+                        
+                        list_msg += f"""
+━━━━━━━━━━━━━━━━━━━
+🔧 ACCIONES MASIVAS:
+/adm_wipe_{cloud_idx} - Eliminar TODO de esta nube
+
+📊 RESUMEN:
+• Evidencias: {total_evidences}
+• Archivos: {total_files}
+━━━━━━━━━━━━━━━━━━━
+                        """
+                        
+                        # Usar el divisor automático de mensajes en lugar de fallar
+                        send_long_message(bot, message.chat.id, list_msg, original_message=message)
                         
                     except Exception as e:
                         bot.editMessageText(message, f'❌ Error: {str(e)}')
@@ -2085,35 +2138,9 @@ Aún no se ha realizado ninguna acción en el bot.
         print(f"Error general en onmessage: {str(ex)}")
         print(traceback.format_exc())
 
-# ==============================
-# MANEJADOR DE LOS BOTONES
-# ==============================
-def on_callback_data(update, bot:ObigramClient):
-    """Detecta cuándo tocas los botones de Anterior/Siguiente"""
-    try:
-        query = update.data
-        message = update.message
-        
-        if query.startswith('admcloud_'):
-            parts = query.split('_')
-            if len(parts) == 3:
-                cloud_idx = int(parts[1])
-                page = int(parts[2])
-                
-                # Carga la nueva página y reemplaza el mensaje actual
-                text, markup = get_cloud_page_content(cloud_idx, page)
-                bot.editMessageText(message, text, reply_markup=markup)
-                
-        elif query == "ignore":
-            pass # Solo un botón informativo de página, no hace nada al tocarlo
-            
-    except Exception as e:
-        print(f"Error en botones (Callback): {e}")
-
 def main():
     bot = ObigramClient(BOT_TOKEN)
     bot.onMessage(onmessage)
-    bot.onCallbackData(on_callback_data) # Activa el uso de los botones
     bot.run()
 
 if __name__ == '__main__':
