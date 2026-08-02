@@ -56,7 +56,7 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "thu,gatitoo_miauu,Satoru_2115,jc041228,SchnauzerMinnie": {
+    "thu,Satoru_2115": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.uo.edu.cu/",
         "moodle_repo_id": 4,
@@ -67,10 +67,10 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "VanNeiFertio,XD": {
+    "gatitoo_miauu,VanNeiFertio,XD,SchnauzerMinnie,jc041228": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.ucf.edu.cu/",
-        "moodle_repo_id": 5,
+        "moodle_repo_id": 4,
         "moodle_user": "eliel2216",
         "moodle_password": "Et543210.",
         "zips": 49,
@@ -2258,25 +2258,23 @@ Aún no se ha realizado ninguna acción en el bot.
         elif 'http' in msgText:
             url = msgText
             
-            # --- 1. PRE-VERIFICACIÓN DE LA NUBE MOODLE ---
+            # --- 1. VERIFICACIÓN SIMPLE DE MOODLE (SIN PROXY) ---
             bot.editMessageText(message, '🔍 Verificando estado de la nube...')
             try:
-                proxy = ProxyCloud.parse(user_info['proxy'])
-                check_client = MoodleClient(user_info['moodle_user'],
-                                            user_info['moodle_password'],
-                                            user_info['moodle_host'],
-                                            user_info['moodle_repo_id'],
-                                            proxy=proxy)
-                loged = check_client.login()
-                if not loged:
-                    bot.editMessageText(message, '❌ La nube Moodle está caída o las credenciales fallaron.\nDescarga abortada para ahorrar datos.')
+                # Se envía una petición web normal al host de Moodle configurado para el usuario
+                host = user_info['moodle_host']
+                resp = requests.get(host, timeout=10) # 10 segundos de espera máximo
+                
+                # Si el código de respuesta no es 200 (OK), asumimos que la nube tiene problemas
+                if resp.status_code != 200:
+                    bot.editMessageText(message, f'❌ La nube Moodle parece estar inactiva (Código {resp.status_code}).\nDescarga abortada.')
                     return
-                check_client.logout()
-            except Exception as e:
-                bot.editMessageText(message, f'❌ Error al contactar la nube: Moodle inactivo.\nDescarga cancelada.')
+            except requests.exceptions.RequestException as e:
+                # Si hay error de conexión (timeout, no route, etc.)
+                bot.editMessageText(message, '❌ Error de conexión con la Moodle.\nDescarga cancelada para ahorrar datos.')
                 return
             
-            bot.editMessageText(message, '✅ Nube activa. Iniciando proceso...')
+            bot.editMessageText(message, '✅ Nube en línea. Iniciando proceso...')
             
             funny_message_sent = None
             file_size = 0
