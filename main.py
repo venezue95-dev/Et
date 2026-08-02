@@ -1,5 +1,4 @@
 from pyobigram.utils import sizeof_fmt,get_file_size,createID,nice_time
-from pyobigram.utils import sizeof_fmt, get_file_size, createID, nice_time
 from pyobigram.client import ObigramClient, inlineQueryResultArticle
 from MoodleClient import MoodleClient
 from JDatabase import JsonDatabase
@@ -2257,24 +2256,6 @@ Aún no se ha realizado ninguna acción en el bot.
         # PROCESAR ENLACES HTTP (para todos)
         elif 'http' in msgText:
             url = msgText
-            
-            # --- 1. VERIFICACIÓN SIMPLE DE MOODLE (SIN PROXY) ---
-            bot.editMessageText(message, '🔍 Verificando estado de la nube...')
-            try:
-                # Se envía una petición web normal al host de Moodle configurado para el usuario
-                host = user_info['moodle_host']
-                resp = requests.get(host, timeout=10) # 10 segundos de espera máximo
-                
-                # Si el código de respuesta no es 200 (OK), asumimos que la nube tiene problemas
-                if resp.status_code != 200:
-                    bot.editMessageText(message, f'❌ La nube Moodle parece estar inactiva (Código {resp.status_code}).\nDescarga abortada.')
-                    return
-            except requests.exceptions.RequestException as e:
-                # Si hay error de conexión (timeout, no route, etc.)
-                bot.editMessageText(message, '❌ Error de conexión con la Moodle.\nDescarga cancelada para ahorrar datos.')
-                return
-            
-            bot.editMessageText(message, '✅ Nube en línea. Iniciando proceso...')
             
             funny_message_sent = None
             file_size = 0
