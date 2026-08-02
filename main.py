@@ -1,4 +1,5 @@
 from pyobigram.utils import sizeof_fmt,get_file_size,createID,nice_time
+from pyobigram.utils import sizeof_fmt, get_file_size, createID, nice_time
 from pyobigram.client import ObigramClient, inlineQueryResultArticle
 from MoodleClient import MoodleClient
 from JDatabase import JsonDatabase
@@ -55,7 +56,7 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "thu,Satoru_2115": {
+    "thu,gatitoo_miauu,Satoru_2115,jc041228,SchnauzerMinnie": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.uo.edu.cu/",
         "moodle_repo_id": 4,
@@ -66,7 +67,7 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "gatitoo_miauu,VanNeiFertio,XD,SchnauzerMinnie,jc041228": {
+    "VanNeiFertio,XD": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.ucf.edu.cu/",
         "moodle_repo_id": 5,
@@ -2256,6 +2257,26 @@ Aún no se ha realizado ninguna acción en el bot.
         # PROCESAR ENLACES HTTP (para todos)
         elif 'http' in msgText:
             url = msgText
+            
+            # --- 1. PRE-VERIFICACIÓN DE LA NUBE MOODLE ---
+            bot.editMessageText(message, '🔍 Verificando estado de la nube...')
+            try:
+                proxy = ProxyCloud.parse(user_info['proxy'])
+                check_client = MoodleClient(user_info['moodle_user'],
+                                            user_info['moodle_password'],
+                                            user_info['moodle_host'],
+                                            user_info['moodle_repo_id'],
+                                            proxy=proxy)
+                loged = check_client.login()
+                if not loged:
+                    bot.editMessageText(message, '❌ La nube Moodle está caída o las credenciales fallaron.\nDescarga abortada para ahorrar datos.')
+                    return
+                check_client.logout()
+            except Exception as e:
+                bot.editMessageText(message, f'❌ Error al contactar la nube: Moodle inactivo.\nDescarga cancelada.')
+                return
+            
+            bot.editMessageText(message, '✅ Nube activa. Iniciando proceso...')
             
             funny_message_sent = None
             file_size = 0
