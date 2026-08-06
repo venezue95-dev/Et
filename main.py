@@ -1346,21 +1346,46 @@ def onmessage(update,bot:ObigramClient):
         if username == ADMIN_USERNAME:
             if msgText.startswith('/ban '):
                 target = msgText.replace('/ban ', '').replace('@', '').strip()
-                # Verificar si el usuario existe antes de banear
+                
+                # Validación de seguridad: No se puede banear al administrador
+                if target == ADMIN_USERNAME:
+                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> No es posible banear al usuario administrador (@{ADMIN_USERNAME}).', parse_mode='html')
+                    return
+                
+                # Verificar existencia del usuario
                 if target not in expanded_users and jdb.get_user(target) is None:
                     bot.editMessageText(message, f'❌ El usuario @{target} no existe en la base de datos ni en los grupos preconfigurados.')
                     return
+                
+                # Verificar si ya está baneado
+                if target in BANNED_USERS:
+                    bot.editMessageText(message, f'ℹ️ El usuario @{target} ya se encuentra baneado en el sistema.')
+                    return
+                
                 BANNED_USERS.add(target)
-                bot.editMessageText(message, f'🚫 El usuario @{target} ha sido baneado.')
+                bot.editMessageText(message, f'🚫 El usuario @{target} ha sido baneado exitosamente.')
                 return
                 
             elif msgText.startswith('/unban '):
                 target = msgText.replace('/unban ', '').replace('@', '').strip()
+                
+                # Validación de seguridad: No aplica para el administrador
+                if target == ADMIN_USERNAME:
+                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> El usuario administrador (@{ADMIN_USERNAME}) no puede ser objetivo de este comando.', parse_mode='html')
+                    return
+                
+                # Verificar existencia del usuario
                 if target not in expanded_users and jdb.get_user(target) is None:
                     bot.editMessageText(message, f'❌ El usuario @{target} no existe en el sistema.')
                     return
+                
+                # Verificar si realmente estaba baneado
+                if target not in BANNED_USERS:
+                    bot.editMessageText(message, f'ℹ️ El usuario @{target} no está baneado actualmente.')
+                    return
+                
                 BANNED_USERS.discard(target)
-                bot.editMessageText(message, f'✅ El usuario @{target} ha sido desbaneado.')
+                bot.editMessageText(message, f'✅ El usuario @{target} ha sido desbaneado exitosamente.')
                 return
                 
             elif msgText.startswith('/mantenimiento'):
@@ -1490,6 +1515,8 @@ Aún no se ha realizado ninguna acción en el bot.
 🚀 COMANDOS RÁPIDOS:
 /procesos - Ver procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
+/ban @usuario - Banear usuario 🚫
+/unban @usuario - Desbanear usuario ✅
 
 📈 COMANDOS DE ESTADÍSTICAS:
 /adm_logs - Ver últimos logs
