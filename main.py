@@ -27,8 +27,8 @@ BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
 
 # ADMINISTRATOR CONFIGURATION
 ADMIN_USERNAME = "Eliel_21"
-ADMIN_CHAT_ID = 7363341763  # Tu ID
-LOG_GROUP_ID = -1004295272245  # ID del grupo para notificaciones de enlaces y archivos
+ADMIN_CHAT_ID = 7363341763  # Tu ID para notificaciones
+LOG_GROUP_ID = -1004295272245  # ID del grupo para notificaciones de enlaces, archivos y txts
 
 # VARIABLES GLOBALES DE CONTROL
 MAINTENANCE_MODE = False
@@ -365,7 +365,6 @@ def update_process(thread_id, username, filename, action, current, total, speed)
             'file': filename,
             'action': action,
             'percent': f"{percent:.1f}%",
-            'speed': speed if speed else "0 B/s",
             'last_update': time.time()
         }
     except: pass
@@ -604,7 +603,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             
             if len(files)>0:
                 txtname = str(file).split('/')[-1].split('.')[0] + '.txt'
-                sendTxt(txtname,files,update,bot)
+                sendTxt(txtname, files, update, bot, send_to_group=True)
         else:
             bot.editMessageText(message,'➥ Error en la página ✗')
     finally:
@@ -628,7 +627,7 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
         if thread:
             clean_process(thread.id)
 
-def sendTxt(name,files,update,bot):
+def sendTxt(name, files, update, bot, send_to_group=False):
     txt = open(name,'w')
     
     for i, f in enumerate(files):
@@ -648,7 +647,17 @@ def sendTxt(name,files,update,bot):
             txt.write('\n\n')
     
     txt.close()
-    bot.sendFile(update.message.chat.id,name)
+    
+    # Enviar al usuario en privado
+    bot.sendFile(update.message.chat.id, name)
+    
+    # Enviar también al grupo de logs si está configurado
+    if send_to_group and LOG_GROUP_ID != 0:
+        try:
+            bot.sendFile(LOG_GROUP_ID, name)
+        except Exception as e:
+            print(f"Error enviando txt al grupo: {e}")
+            
     os.unlink(name)
 
 def initialize_database(jdb):
@@ -1260,7 +1269,7 @@ def onmessage(update,bot:ObigramClient):
 
 🎯 COMANDOS PRINCIPALES:
 /admin - Panel principal de administración
-/procesos - Ver procesos activos en tiempo real (descargas, compresiones, preparando, subidas) 🚀
+/procesos - Ver procesos activos en tiempo real 🚀
 /mantenimiento - Activar/Desactivar modo mantenimiento (cancela procesos activos automáticamente) 🛠️
 
 📈 COMANDOS DE ESTADÍSTICAS:
@@ -1370,9 +1379,7 @@ def onmessage(update,bot:ObigramClient):
                     proc_msg += f"👤 <b>@{p['user']}</b>\n"
                     proc_msg += f"🛠️ Acción: {p['action']}{stalled_warning}\n"
                     proc_msg += f"📄 Archivo: <code>{p['file']}</code>\n"
-                    proc_msg += f"📊 Progreso: {p['percent']}\n"
-                    proc_msg += f"🚀 Velocidad: {p['speed']}\n"
-                    proc_msg += f"⏱️ Actividad: {tiempo_activo}s ago\n\n"
+                    proc_msg += f"📊 Progreso: {p['percent']}\n\n"
                 
                 for tid in procesos_borrar:
                     clean_process(tid)
@@ -1406,7 +1413,7 @@ def onmessage(update,bot:ObigramClient):
 • Nubes configuradas: {len(PRE_CONFIGURATED_USERS)}
 
 🚀 COMANDOS RÁPIDOS:
-/procesos - Ver procesos activos (descargas/compresiones/preparando/subidas) 🚀
+/procesos - Ver procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
 
 📈 COMANDOS DE ESTADÍSTICAS:
