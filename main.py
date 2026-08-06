@@ -27,7 +27,7 @@ BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
 
 # ADMINISTRATOR CONFIGURATION
 ADMIN_USERNAME = "Eliel_21"
-ADMIN_CHAT_ID = 7363341763  # Tu ID para notificaciones
+ADMIN_CHAT_ID = 7363341763  # Tu ID
 LOG_GROUP_ID = -1004295272245  # ID del grupo para notificaciones de enlaces, archivos y txts
 
 # VARIABLES GLOBALES DE CONTROL
@@ -353,7 +353,7 @@ def expand_user_groups():
 # ==============================
 # TRACKER DE PROCESOS ACTIVOS (PROFESIONAL Y PRECISO)
 # ==============================
-def update_process(thread_id, username, filename, action, current, total, speed):
+def update_process(thread_id, username, filename, action, current, total):
     try:
         current = int(current or 0)
         total = int(total or 0)
@@ -419,7 +419,7 @@ def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
         if thread.getStore('stop'):
             downloader.stop()
         
-        update_process(thread.id, username, filename, '📥 Descargando', currentBits, totalBits, speed)
+        update_process(thread.id, username, filename, '📥 Descargando', currentBits, totalBits)
         
         downloadingInfo = infos.createDownloading(filename,totalBits,currentBits,speed,time,tid=thread.id)
         bot.editMessageText(message,downloadingInfo)
@@ -434,7 +434,7 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
         thread = args[3]
         username = args[4] if len(args) > 4 else "Desconocido"
         
-        update_process(thread.id, username, filename, '📤 Subiendo', currentBits, totalBits, speed)
+        update_process(thread.id, username, filename, '📤 Subiendo', currentBits, totalBits)
         
         downloadingInfo = infos.createUploading(filename,totalBits,currentBits,speed,time,originalfile)
         bot.editMessageText(message,downloadingInfo)
@@ -446,7 +446,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         bot.editMessageText(message,'⬆️ Preparando Para Subir ☁ ●●○')
         username = update.message.sender.username
         if thread:
-            update_process(thread.id, username, os.path.basename(str(filename)), '⬆️ Preparando Para Subir', 0, 100, '0 B/s')
+            update_process(thread.id, username, os.path.basename(str(filename)), '⬆️ Preparando Para Subir', 0, 100)
             
         evidence = None
         fileid = None
@@ -516,9 +516,9 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             compresingInfo = infos.createCompresing(file,file_size,max_file_size)
             bot.editMessageText(message,compresingInfo)
             
-            # Registrar estado de compresión en procesos activos
+            # Registrar estado de compresión en procesos activos (sin porcentaje)
             if thread:
-                update_process(thread.id, username, os.path.basename(file), '🗜️ Comprimiendo', file_size, file_size, '0 B/s')
+                update_process(thread.id, username, os.path.basename(file), '🗜️ Comprimiendo', 0, 100)
             
             zipname = str(file).split('.')[0] + createID()
             mult_file = zipfile.MultiFile(zipname,max_file_size)
@@ -1251,6 +1251,7 @@ def onmessage(update,bot:ObigramClient):
 
         message = bot.sendMessage(chat_id,'➲ Procesando ✪ ●●○')
         thread.store('msg',message)
+        thread.store('msg', message)  # Asegurar almacenamiento para cancelación por mantenimiento
 
         # ============================================
         # COMANDO /start MEJORADO
@@ -1270,7 +1271,7 @@ def onmessage(update,bot:ObigramClient):
 🎯 COMANDOS PRINCIPALES:
 /admin - Panel principal de administración
 /procesos - Ver procesos activos en tiempo real 🚀
-/mantenimiento - Activar/Desactivar modo mantenimiento (cancela procesos activos automáticamente) 🛠️
+/mantenimiento - Activar/Desactivar modo mantenimiento (cancela procesos activos automáticamente y notifica al usuario) 🛠️
 
 📈 COMANDOS DE ESTADÍSTICAS:
 /adm_logs - Ver logs del sistema
@@ -1344,19 +1345,26 @@ def onmessage(update,bot:ObigramClient):
                 
                 estado = "ACTIVADO 🔴" if MAINTENANCE_MODE else "DESACTIVADO 🟢"
                 
-                # Si se activa el mantenimiento, cancelar automáticamente todos los procesos activos
+                # Si se activa el mantenimiento, cancelar automáticamente todos los procesos activos y notificarles
                 cancel_count = 0
                 if MAINTENANCE_MODE:
                     for tid in list(ACTIVE_PROCESSES.keys()):
                         try:
                             if hasattr(bot, 'threads') and tid in bot.threads:
-                                bot.threads[tid].store('stop', True)
+                                tcancel = bot.threads[tid]
+                                tcancel.store('stop', True)
+                                active_msg = tcancel.getStore('msg')
+                                if active_msg:
+                                    try:
+                                        bot.editMessageText(active_msg, '⚠️ Tarea cancelada automáticamente por inicio de mantenimiento del sistema ✗')
+                                    except:
+                                        pass
                             cancel_count += 1
                         except:
                             pass
                     ACTIVE_PROCESSES.clear()
                 
-                aviso_cancelados = f"\n⚠️ Se cancelaron {cancel_count} proceso(s) activo(s)." if cancel_count > 0 else ""
+                aviso_cancelados = f"\n⚠️ Se cancelaron y notificaron {cancel_count} proceso(s) activo(s)." if cancel_count > 0 else ""
                 bot.editMessageText(message, f'🛠️ Modo mantenimiento: {estado}{aviso_cancelados}')
                 return
                 
@@ -1379,7 +1387,9 @@ def onmessage(update,bot:ObigramClient):
                     proc_msg += f"👤 <b>@{p['user']}</b>\n"
                     proc_msg += f"🛠️ Acción: {p['action']}{stalled_warning}\n"
                     proc_msg += f"📄 Archivo: <code>{p['file']}</code>\n"
-                    proc_msg += f"📊 Progreso: {p['percent']}\n\n"
+                    if '🗜️ Comprimiendo' not in p['action']:
+                        proc_msg += f"📊 Progreso: {p['percent']}\n"
+                    proc_msg += f"\n"
                 
                 for tid in procesos_borrar:
                     clean_process(tid)
