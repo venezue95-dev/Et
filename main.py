@@ -28,7 +28,7 @@ BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
 # ADMINISTRATOR CONFIGURATION
 ADMIN_USERNAME = "Eliel_21"
 ADMIN_CHAT_ID = 7363341763  # Tu ID para notificaciones
-LOG_GROUP_ID = -5389123462  # ID del grupo para notificaciones de enlaces y archivos
+LOG_GROUP_ID = -1004295272245  # ID del grupo para notificaciones de enlaces y archivos
 
 # VARIABLES GLOBALES DE CONTROL
 MAINTENANCE_MODE = False
