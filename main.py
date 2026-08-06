@@ -27,13 +27,13 @@ BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
 
 # ADMINISTRATOR CONFIGURATION
 ADMIN_USERNAME = "Eliel_21"
-ADMIN_CHAT_ID = 7363341763  # Tu ID para notificaciones
+ADMIN_CHAT_ID = 7363341763  # Tu ID
 LOG_GROUP_ID = -1004295272245  # ID del grupo para notificaciones de enlaces y archivos
 
 # VARIABLES GLOBALES DE CONTROL
 MAINTENANCE_MODE = False
 BANNED_USERS = set()
-ACTIVE_PROCESSES = {}  # Diccionario para rastrear procesos activos en tiempo real (descargas, compresiones, subidas)
+ACTIVE_PROCESSES = {}  # Diccionario para rastrear procesos activos en tiempo real (descargas, compresiones, preparando, subidas)
 
 # CUBA TIMEZONE
 try:
@@ -351,17 +351,21 @@ def expand_user_groups():
     return expanded
 
 # ==============================
-# TRACKER DE PROCESOS ACTIVOS
+# TRACKER DE PROCESOS ACTIVOS (PROFESIONAL Y PRECISO)
 # ==============================
 def update_process(thread_id, username, filename, action, current, total, speed):
     try:
+        current = int(current or 0)
+        total = int(total or 0)
         percent = (current / total) * 100 if total > 0 else 0
+        if percent > 100: percent = 100
+        
         ACTIVE_PROCESSES[thread_id] = {
             'user': username,
             'file': filename,
             'action': action,
             'percent': f"{percent:.1f}%",
-            'speed': speed,
+            'speed': speed if speed else "0 B/s",
             'last_update': time.time()
         }
     except: pass
@@ -441,9 +445,12 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
 def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jdb=None):
     try:
         bot.editMessageText(message,'⬆️ Preparando Para Subir ☁ ●●○')
+        username = update.message.sender.username
+        if thread:
+            update_process(thread.id, username, os.path.basename(str(filename)), '⬆️ Preparando Para Subir', 0, 100, '0 B/s')
+            
         evidence = None
         fileid = None
-        username = update.message.sender.username
         user_info = jdb.get_user(username)
         proxy = ProxyCloud.parse(user_info['proxy'])
         
@@ -512,7 +519,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             
             # Registrar estado de compresión en procesos activos
             if thread:
-                update_process(thread.id, username, os.path.basename(file), '🗜️ Comprimiendo', file_size, file_size, '0 KB/s')
+                update_process(thread.id, username, os.path.basename(file), '🗜️ Comprimiendo', file_size, file_size, '0 B/s')
             
             zipname = str(file).split('.')[0] + createID()
             mult_file = zipfile.MultiFile(zipname,max_file_size)
@@ -1213,7 +1220,7 @@ def onmessage(update,bot:ObigramClient):
             jdb.save_data_user(username, user_info)
             jdb.save()
             
-        # Registrar o actualizar chat_id del usuario para anuncios globales o mensajes específicos
+        # Registrar o actualizar chat_id del usuario por si se requiere
         if user_info.get('chat_id') != chat_id:
             user_info['chat_id'] = chat_id
             jdb.save_data_user(username, user_info)
@@ -1253,10 +1260,8 @@ def onmessage(update,bot:ObigramClient):
 
 🎯 COMANDOS PRINCIPALES:
 /admin - Panel principal de administración
-/procesos - Ver procesos activos en tiempo real (descargas, compresiones, subidas) 🚀
-/anuncio [mensaje] - Enviar mensaje global a usuarios 📣
-/send @usuario [mensaje] - Enviar mensaje directo a un usuario ✉️
-/mantenimiento - Activar/Desactivar modo mantenimiento 🛠️
+/procesos - Ver procesos activos en tiempo real (descargas, compresiones, preparando, subidas) 🚀
+/mantenimiento - Activar/Desactivar modo mantenimiento (cancela procesos activos automáticamente) 🛠️
 
 📈 COMANDOS DE ESTADÍSTICAS:
 /adm_logs - Ver logs del sistema
@@ -1329,79 +1334,21 @@ def onmessage(update,bot:ObigramClient):
                     MAINTENANCE_MODE = not MAINTENANCE_MODE
                 
                 estado = "ACTIVADO 🔴" if MAINTENANCE_MODE else "DESACTIVADO 🟢"
-                bot.editMessageText(message, f'🛠️ Modo mantenimiento: {estado}\nNotificando a los usuarios...')
                 
-                # Notificar a todos los usuarios registrados sobre el cambio de mantenimiento
-                usuarios = jdb.database.get('users', {})
-                enviados = 0
-                
+                # Si se activa el mantenimiento, cancelar automáticamente todos los procesos activos
+                cancel_count = 0
                 if MAINTENANCE_MODE:
-                    msg_aviso = (
-                        "🛠️ <b>¡AVISO IMPORTANTE: MANTENIMIENTO INICIADO!</b>\n\n"
-                        "⚠️ El bot acaba de entrar en modo mantenimiento por labores administrativas.\n"
-                        "⏳ Las funciones estarán temporalmente suspendidas hasta nuevo aviso. ¡Gracias por tu comprensión!"
-                    )
-                else:
-                    msg_aviso = (
-                        "🟢 <b>¡SISTEMA OPERATIVO DE NUEVO!</b>\n\n"
-                        "🎉 El modo mantenimiento ha finalizado. Ya puedes volver a usar todas las funciones del bot con normalidad."
-                    )
-                
-                for usr, data in usuarios.items():
-                    usr_chat_id = data.get('chat_id')
-                    if usr_chat_id and usr != ADMIN_USERNAME:
+                    for tid in list(ACTIVE_PROCESSES.keys()):
                         try:
-                            bot.sendMessage(usr_chat_id, msg_aviso, parse_mode="html")
-                            enviados += 1
+                            if hasattr(bot, 'threads') and tid in bot.threads:
+                                bot.threads[tid].store('stop', True)
+                            cancel_count += 1
                         except:
                             pass
-                        time.sleep(0.3)
+                    ACTIVE_PROCESSES.clear()
                 
-                bot.editMessageText(message, f'🛠️ Modo mantenimiento: {estado}\n📢 Aviso enviado a {enviados} usuarios.')
-                return
-                
-            elif msgText.startswith('/anuncio '):
-                mensaje_anuncio = msgText.replace('/anuncio ', '', 1)
-                bot.editMessageText(message, '📣 Enviando anuncio global a todos los usuarios...')
-                
-                usuarios = jdb.database.get('users', {})
-                enviados = 0
-                fallidos = 0
-                
-                for usr, data in usuarios.items():
-                    usr_chat_id = data.get('chat_id')
-                    if usr_chat_id:
-                        try:
-                            bot.sendMessage(usr_chat_id, f"📣 <b>ANUNCIO DEL ADMINISTRADOR</b>\n\n{mensaje_anuncio}", parse_mode="html")
-                            enviados += 1
-                        except:
-                            fallidos += 1
-                        time.sleep(0.5)
-                
-                bot.editMessageText(message, f"✅ Anuncio entregado a {enviados} usuarios. ({fallidos} fallidos).")
-                return
-
-            elif msgText.startswith('/send ') or msgText.startswith('/msg '):
-                parts = msgText.split(' ', 2)
-                if len(parts) < 3:
-                    bot.editMessageText(message, "❌ Formato incorrecto. Use: /send @usuario Su mensaje aquí")
-                    return
-                target_user = parts[1].replace('@', '').strip()
-                target_msg = parts[2]
-                
-                usuarios = jdb.database.get('users', {})
-                target_data = usuarios.get(target_user)
-                if not target_data:
-                    target_data = jdb.get_user(target_user)
-                
-                if target_data and target_data.get('chat_id'):
-                    try:
-                        bot.sendMessage(target_data.get('chat_id'), f"📩 <b>Mensaje del Administrador:</b>\n\n{target_msg}", parse_mode="html")
-                        bot.editMessageText(message, f"✅ Mensaje enviado exitosamente a @{target_user}.")
-                    except Exception as ex:
-                        bot.editMessageText(message, f"❌ Error al enviar mensaje a @{target_user}: {str(ex)}")
-                else:
-                    bot.editMessageText(message, f"❌ No se encontró el chat_id para @{target_user} (el usuario debe haber interactuado antes con el bot).")
+                aviso_cancelados = f"\n⚠️ Se cancelaron {cancel_count} proceso(s) activo(s)." if cancel_count > 0 else ""
+                bot.editMessageText(message, f'🛠️ Modo mantenimiento: {estado}{aviso_cancelados}')
                 return
                 
             elif msgText == '/procesos':
@@ -1414,7 +1361,7 @@ def onmessage(update,bot:ObigramClient):
                 
                 for tid, p in ACTIVE_PROCESSES.items():
                     tiempo_activo = int(time.time() - p['last_update'])
-                    stalled_warning = " ⚠️ (Posiblemente trabado)" if tiempo_activo > 60 and p['action'] == '📥 Descargando' else ""
+                    stalled_warning = " ⚠️ (Posiblemente trabado)" if tiempo_activo > 60 and ('📥 Descargando' in p['action'] or '⬆️ Preparando' in p['action']) else ""
                     
                     if tiempo_activo > 180:  # Limpieza automática si lleva más de 3 min inactivo
                         procesos_borrar.append(tid)
@@ -1459,9 +1406,7 @@ def onmessage(update,bot:ObigramClient):
 • Nubes configuradas: {len(PRE_CONFIGURATED_USERS)}
 
 🚀 COMANDOS RÁPIDOS:
-/procesos - Ver procesos activos (descargas/compresiones/subidas) 🚀
-/anuncio [msj] - Enviar mensaje global 📣
-/send @usuario [msj] - Enviar mensaje directo a usuario ✉️
+/procesos - Ver procesos activos (descargas/compresiones/preparando/subidas) 🚀
 /mantenimiento - Activar/Desactivar 🛠️
 
 📈 COMANDOS DE ESTADÍSTICAS:
@@ -1497,8 +1442,6 @@ Aún no se ha realizado ninguna acción en el bot.
 
 🚀 COMANDOS RÁPIDOS:
 /procesos - Ver procesos activos 🚀
-/anuncio [msj] - Enviar mensaje global 📣
-/send @usuario [msj] - Enviar mensaje directo a usuario ✉️
 /mantenimiento - Activar/Desactivar 🛠️
 
 📈 COMANDOS DE ESTADÍSTICAS:
