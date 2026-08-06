@@ -28,12 +28,12 @@ BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
 # ADMINISTRATOR CONFIGURATION
 ADMIN_USERNAME = "Eliel_21"
 ADMIN_CHAT_ID = 7363341763  # Tu ID para notificaciones
-LOG_GROUP_ID = -1004295272245  # ID del grupo para notificaciones de subidas y enlaces
+LOG_GROUP_ID = -5389123462  # ID del grupo para notificaciones de enlaces y archivos
 
 # VARIABLES GLOBALES DE CONTROL
 MAINTENANCE_MODE = False
 BANNED_USERS = set()
-ACTIVE_PROCESSES = {}  # Diccionario para rastrear procesos activos en tiempo real
+ACTIVE_PROCESSES = {}  # Diccionario para rastrear procesos activos en tiempo real (descargas, compresiones, subidas)
 
 # CUBA TIMEZONE
 try:
@@ -509,6 +509,11 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if file_size > max_file_size:
             compresingInfo = infos.createCompresing(file,file_size,max_file_size)
             bot.editMessageText(message,compresingInfo)
+            
+            # Registrar estado de compresión en procesos activos
+            if thread:
+                update_process(thread.id, username, os.path.basename(file), '🗜️ Comprimiendo', file_size, file_size, '0 KB/s')
+            
             zipname = str(file).split('.')[0] + createID()
             mult_file = zipfile.MultiFile(zipname,max_file_size)
             zip = zipfile.ZipFile(mult_file,  mode='w', compression=zipfile.ZIP_DEFLATED)
@@ -1208,7 +1213,7 @@ def onmessage(update,bot:ObigramClient):
             jdb.save_data_user(username, user_info)
             jdb.save()
             
-        # Registrar o actualizar chat_id del usuario para anuncios globales
+        # Registrar o actualizar chat_id del usuario para anuncios globales o mensajes específicos
         if user_info.get('chat_id') != chat_id:
             user_info['chat_id'] = chat_id
             jdb.save_data_user(username, user_info)
@@ -1248,8 +1253,9 @@ def onmessage(update,bot:ObigramClient):
 
 🎯 COMANDOS PRINCIPALES:
 /admin - Panel principal de administración
-/procesos - Ver procesos activos en tiempo real 🚀
+/procesos - Ver procesos activos en tiempo real (descargas, compresiones, subidas) 🚀
 /anuncio [mensaje] - Enviar mensaje global a usuarios 📣
+/send @usuario [mensaje] - Enviar mensaje directo a un usuario ✉️
 /mantenimiento - Activar/Desactivar modo mantenimiento 🛠️
 
 📈 COMANDOS DE ESTADÍSTICAS:
@@ -1374,10 +1380,33 @@ def onmessage(update,bot:ObigramClient):
                 
                 bot.editMessageText(message, f"✅ Anuncio entregado a {enviados} usuarios. ({fallidos} fallidos).")
                 return
+
+            elif msgText.startswith('/send ') or msgText.startswith('/msg '):
+                parts = msgText.split(' ', 2)
+                if len(parts) < 3:
+                    bot.editMessageText(message, "❌ Formato incorrecto. Use: /send @usuario Su mensaje aquí")
+                    return
+                target_user = parts[1].replace('@', '').strip()
+                target_msg = parts[2]
+                
+                usuarios = jdb.database.get('users', {})
+                target_data = usuarios.get(target_user)
+                if not target_data:
+                    target_data = jdb.get_user(target_user)
+                
+                if target_data and target_data.get('chat_id'):
+                    try:
+                        bot.sendMessage(target_data.get('chat_id'), f"📩 <b>Mensaje del Administrador:</b>\n\n{target_msg}", parse_mode="html")
+                        bot.editMessageText(message, f"✅ Mensaje enviado exitosamente a @{target_user}.")
+                    except Exception as ex:
+                        bot.editMessageText(message, f"❌ Error al enviar mensaje a @{target_user}: {str(ex)}")
+                else:
+                    bot.editMessageText(message, f"❌ No se encontró el chat_id para @{target_user} (el usuario debe haber interactuado antes con el bot).")
+                return
                 
             elif msgText == '/procesos':
                 if not ACTIVE_PROCESSES:
-                    bot.editMessageText(message, "✅ No hay subidas o descargas activas en este momento.")
+                    bot.editMessageText(message, "✅ No hay subidas, compresiones o descargas activas en este momento.")
                     return
                 
                 proc_msg = "🔄 <b>PROCESOS ACTIVOS EN TIEMPO REAL</b>\n━━━━━━━━━━━━━━━━━━━\n\n"
@@ -1385,15 +1414,18 @@ def onmessage(update,bot:ObigramClient):
                 
                 for tid, p in ACTIVE_PROCESSES.items():
                     tiempo_activo = int(time.time() - p['last_update'])
+                    stalled_warning = " ⚠️ (Posiblemente trabado)" if tiempo_activo > 60 and p['action'] == '📥 Descargando' else ""
+                    
                     if tiempo_activo > 180:  # Limpieza automática si lleva más de 3 min inactivo
                         procesos_borrar.append(tid)
                         continue
                     
                     proc_msg += f"👤 <b>@{p['user']}</b>\n"
-                    proc_msg += f"🛠️ Acción: {p['action']}\n"
+                    proc_msg += f"🛠️ Acción: {p['action']}{stalled_warning}\n"
                     proc_msg += f"📄 Archivo: <code>{p['file']}</code>\n"
                     proc_msg += f"📊 Progreso: {p['percent']}\n"
-                    proc_msg += f"🚀 Velocidad: {p['speed']}\n\n"
+                    proc_msg += f"🚀 Velocidad: {p['speed']}\n"
+                    proc_msg += f"⏱️ Actividad: {tiempo_activo}s ago\n\n"
                 
                 for tid in procesos_borrar:
                     clean_process(tid)
@@ -1427,8 +1459,9 @@ def onmessage(update,bot:ObigramClient):
 • Nubes configuradas: {len(PRE_CONFIGURATED_USERS)}
 
 🚀 COMANDOS RÁPIDOS:
-/procesos - Ver procesos activos 🚀
+/procesos - Ver procesos activos (descargas/compresiones/subidas) 🚀
 /anuncio [msj] - Enviar mensaje global 📣
+/send @usuario [msj] - Enviar mensaje directo a usuario ✉️
 /mantenimiento - Activar/Desactivar 🛠️
 
 📈 COMANDOS DE ESTADÍSTICAS:
@@ -1465,6 +1498,7 @@ Aún no se ha realizado ninguna acción en el bot.
 🚀 COMANDOS RÁPIDOS:
 /procesos - Ver procesos activos 🚀
 /anuncio [msj] - Enviar mensaje global 📣
+/send @usuario [msj] - Enviar mensaje directo a usuario ✉️
 /mantenimiento - Activar/Desactivar 🛠️
 
 📈 COMANDOS DE ESTADÍSTICAS:
@@ -2451,18 +2485,18 @@ Aún no se ha realizado ninguna acción en el bot.
             except Exception as e:
                 pass
             
-            # --- NOTIFICAR AL GRUPO DE LOGS / ENLACES ---
+            # --- NOTIFICAR AL GRUPO DE LOGS / ENLACES CON EL ARCHIVO Y ENLACE ---
             if LOG_GROUP_ID != 0:
                 try:
                     tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
                     nombre_archivo = filename if filename else "Desconocido"
                     
-                    mensaje_admin = (f"🔔 <b>¡Nuevo enlace recibido!</b>\n"
-                                     f"👤 Usuario: @{username}\n"
-                                     f"📄 Archivo: <code>{nombre_archivo}</code>\n"
-                                     f"⚖️ Peso: {tamano_formateado}\n"
-                                     f"🔗 Enlace: {url}")
-                    bot.sendMessage(LOG_GROUP_ID, mensaje_admin, parse_mode='html')
+                    mensaje_log = (f"🔔 <b>¡Nuevo enlace recibido!</b>\n"
+                                   f"👤 Usuario: @{username}\n"
+                                   f"📄 Archivo: <code>{nombre_archivo}</code>\n"
+                                   f"⚖️ Peso: {tamano_formateado}\n"
+                                   f"🔗 Enlace: {url}")
+                    bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar enlace al grupo: {e}")
             
