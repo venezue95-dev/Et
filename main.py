@@ -1270,6 +1270,7 @@ def onmessage(update,bot:ObigramClient):
 
         message = bot.sendMessage(chat_id,'➲ Procesando ✪ ●●○')
         thread.store('msg',message)
+        thread.store('msg', message)  # Asegurar almacenamiento para cancelación por mantenimiento
 
         # ============================================
         # COMANDO /start MEJORADO
@@ -1346,8 +1347,7 @@ def onmessage(update,bot:ObigramClient):
             if msgText.startswith('/ban '):
                 target = msgText.replace('/ban ', '').replace('@', '').strip()
                 # Verificar si el usuario existe antes de banear
-                users_db = jdb.database.get('users', {})
-                if target not in expanded_users and target not in users_db:
+                if target not in expanded_users and jdb.get_user(target) is None:
                     bot.editMessageText(message, f'❌ El usuario @{target} no existe en la base de datos ni en los grupos preconfigurados.')
                     return
                 BANNED_USERS.add(target)
@@ -1356,8 +1356,7 @@ def onmessage(update,bot:ObigramClient):
                 
             elif msgText.startswith('/unban '):
                 target = msgText.replace('/unban ', '').replace('@', '').strip()
-                users_db = jdb.database.get('users', {})
-                if target not in expanded_users and target not in users_db:
+                if target not in expanded_users and jdb.get_user(target) is None:
                     bot.editMessageText(message, f'❌ El usuario @{target} no existe en el sistema.')
                     return
                 BANNED_USERS.discard(target)
@@ -1416,7 +1415,7 @@ def onmessage(update,bot:ObigramClient):
                     proc_msg += f"👤 <b>@{p['user']}</b>\n"
                     proc_msg += f"🛠️ Acción: {p['action']}{stalled_warning}\n"
                     proc_msg += f"📄 Archivo: <code>{p['file']}</code>\n"
-                    if '🗜️ Comprimiendo' not in p['action']:
+                    if '🗜️ Comprimiendo' not in p['action'] and '⬆️ Preparando' not in p['action']:
                         proc_msg += f"📊 Progreso: {p['percent']}\n"
                     proc_msg += f"\n"
                 
