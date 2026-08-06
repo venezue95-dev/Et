@@ -27,7 +27,7 @@ BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
 
 # ADMINISTRATOR CONFIGURATION
 ADMIN_USERNAME = "Eliel_21"
-ADMIN_CHAT_ID = 7363341763  # Tu ID
+ADMIN_CHAT_ID = 7363341763  # Tu ID para notificaciones
 LOG_GROUP_ID = -1004295272245  # ID del grupo para notificaciones de enlaces, archivos y txts
 
 # VARIABLES GLOBALES DE CONTROL
@@ -418,13 +418,14 @@ def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
         username = args[3] if len(args) > 3 else "Desconocido"
         if thread.getStore('stop'):
             downloader.stop()
+            raise Exception("Tarea detenida por mantenimiento o cancelación")
         
         update_process(thread.id, username, filename, '📥 Descargando', currentBits, totalBits)
         
         downloadingInfo = infos.createDownloading(filename,totalBits,currentBits,speed,time,tid=thread.id)
         bot.editMessageText(message,downloadingInfo)
-    except Exception as ex: print(str(ex))
-    pass
+    except Exception as ex: 
+        raise ex
 
 def uploadFile(filename,currentBits,totalBits,speed,time,args):
     try:
@@ -434,18 +435,23 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
         thread = args[3]
         username = args[4] if len(args) > 4 else "Desconocido"
         
+        if thread and thread.getStore('stop'):
+            raise Exception("Tarea detenida por mantenimiento o cancelación")
+        
         update_process(thread.id, username, filename, '📤 Subiendo', currentBits, totalBits)
         
         downloadingInfo = infos.createUploading(filename,totalBits,currentBits,speed,time,originalfile)
         bot.editMessageText(message,downloadingInfo)
-    except Exception as ex: print(str(ex))
-    pass
+    except Exception as ex: 
+        raise ex
 
 def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jdb=None):
     try:
         bot.editMessageText(message,'⬆️ Preparando Para Subir ☁ ●●○')
         username = update.message.sender.username
         if thread:
+            if thread.getStore('stop'):
+                raise Exception("Tarea detenida por mantenimiento o cancelación")
             update_process(thread.id, username, os.path.basename(str(filename)), '⬆️ Preparando Para Subir', 0, 100)
             
         evidence = None
@@ -478,6 +484,8 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 originalfile = filename
             draftlist = []
             for f in files:
+                if thread and thread.getStore('stop'):
+                    raise Exception("Tarea detenida por mantenimiento o cancelación")
                 f_size = get_file_size(f)
                 resp = None
                 iter = 0
@@ -485,6 +493,8 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 if user_info['tokenize']!=0:
                    tokenize = True
                 while resp is None:
+                    if thread and thread.getStore('stop'):
+                        raise Exception("Tarea detenida por mantenimiento o cancelación")
                     fileid,resp = client.upload_file(f,evidence,fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
                     draftlist.append(resp)
                     iter += 1
@@ -504,6 +514,9 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
 
 def processFile(update,bot,message,file,thread=None,jdb=None):
     try:
+        if thread and thread.getStore('stop'):
+            raise Exception("Tarea detenida por mantenimiento o cancelación")
+            
         file_size = get_file_size(file)
         getUser = jdb.get_user(update.message.sender.username)
         max_file_size = 1024 * 1024 * getUser['zips']
@@ -518,6 +531,8 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             
             # Registrar estado de compresión en procesos activos (sin porcentaje)
             if thread:
+                if thread.getStore('stop'):
+                    raise Exception("Tarea detenida por mantenimiento o cancelación")
                 update_process(thread.id, username, os.path.basename(file), '🗜️ Comprimiendo', 0, 100)
             
             zipname = str(file).split('.')[0] + createID()
@@ -606,6 +621,8 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 sendTxt(txtname, files, update, bot, send_to_group=True)
         else:
             bot.editMessageText(message,'➥ Error en la página ✗')
+    except Exception as ex:
+        print(f"Proceso detenido o error: {ex}")
     finally:
         if thread:
             clean_process(thread.id)
@@ -623,6 +640,8 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                     bot.editMessageText(message,'➥ Error en la descarga ✗')
                 except:
                     bot.editMessageText(message,'➥ Error en la descarga ✗')
+    except Exception as ex:
+        print(f"Error en ddl: {ex}")
     finally:
         if thread:
             clean_process(thread.id)
@@ -1251,7 +1270,6 @@ def onmessage(update,bot:ObigramClient):
 
         message = bot.sendMessage(chat_id,'➲ Procesando ✪ ●●○')
         thread.store('msg',message)
-        thread.store('msg', message)  # Asegurar almacenamiento para cancelación por mantenimiento
 
         # ============================================
         # COMANDO /start MEJORADO
@@ -1272,6 +1290,8 @@ def onmessage(update,bot:ObigramClient):
 /admin - Panel principal de administración
 /procesos - Ver procesos activos en tiempo real 🚀
 /mantenimiento - Activar/Desactivar modo mantenimiento (cancela procesos activos automáticamente y notifica al usuario) 🛠️
+/ban @usuario - Banear a un usuario existente 🚫
+/unban @usuario - Desbanear a un usuario existente ✅
 
 📈 COMANDOS DE ESTADÍSTICAS:
 /adm_logs - Ver logs del sistema
@@ -1325,12 +1345,21 @@ def onmessage(update,bot:ObigramClient):
         if username == ADMIN_USERNAME:
             if msgText.startswith('/ban '):
                 target = msgText.replace('/ban ', '').replace('@', '').strip()
+                # Verificar si el usuario existe antes de banear
+                users_db = jdb.database.get('users', {})
+                if target not in expanded_users and target not in users_db:
+                    bot.editMessageText(message, f'❌ El usuario @{target} no existe en la base de datos ni en los grupos preconfigurados.')
+                    return
                 BANNED_USERS.add(target)
                 bot.editMessageText(message, f'🚫 El usuario @{target} ha sido baneado.')
                 return
                 
             elif msgText.startswith('/unban '):
                 target = msgText.replace('/unban ', '').replace('@', '').strip()
+                users_db = jdb.database.get('users', {})
+                if target not in expanded_users and target not in users_db:
+                    bot.editMessageText(message, f'❌ El usuario @{target} no existe en el sistema.')
+                    return
                 BANNED_USERS.discard(target)
                 bot.editMessageText(message, f'✅ El usuario @{target} ha sido desbaneado.')
                 return
@@ -1345,7 +1374,7 @@ def onmessage(update,bot:ObigramClient):
                 
                 estado = "ACTIVADO 🔴" if MAINTENANCE_MODE else "DESACTIVADO 🟢"
                 
-                # Si se activa el mantenimiento, cancelar automáticamente todos los procesos activos y notificarles
+                # Si se activa el mantenimiento, forzar interrupción inmediata de procesos activos
                 cancel_count = 0
                 if MAINTENANCE_MODE:
                     for tid in list(ACTIVE_PROCESSES.keys()):
@@ -1425,6 +1454,8 @@ def onmessage(update,bot:ObigramClient):
 🚀 COMANDOS RÁPIDOS:
 /procesos - Ver procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
+/ban @usuario - Banear usuario 🚫
+/unban @usuario - Desbanear usuario ✅
 
 📈 COMANDOS DE ESTADÍSTICAS:
 /adm_logs - Ver últimos logs
