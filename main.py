@@ -71,7 +71,7 @@ PRE_CONFIGURATED_USERS = {
     "VanNeiFertio,XD,SchnauzerMinnie,jc041228": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.ucf.edu.cu/",
-        "moodle_repo_id": 4,
+        "moodle_repo_id": 3,
         "moodle_user": "eliel2216",
         "moodle_password": "Et543210.",
         "zips": 49,
