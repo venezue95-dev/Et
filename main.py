@@ -85,7 +85,7 @@ PRE_CONFIGURATED_USERS = {
         "moodle_repo_id": 3,
         "moodle_user": "Claudia.btabares@estudiantes.instec.uh.cu",
         "moodle_password": "cbt260706*TM",
-        "zips": 511,
+        "zips": 99,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
