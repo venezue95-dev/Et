@@ -68,13 +68,24 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "gatitoo_miauu,VanNeiFertio,XD,SchnauzerMinnie,jc041228": {
+    "VanNeiFertio,XD,SchnauzerMinnie,jc041228": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.ucf.edu.cu/",
         "moodle_repo_id": 4,
         "moodle_user": "eliel2216",
         "moodle_password": "Et543210.",
         "zips": 49,
+        "uploadtype": "evidence",
+        "proxy": "",
+        "tokenize": 0
+    },
+    "gatitoo_miauu,usuario2": {
+        "cloudtype": "moodle",
+        "moodle_host": "https://cursos.fundacion.uh.cu/",
+        "moodle_repo_id": 4,
+        "moodle_user": "Claudia.btabares@estudiantes.instec.uh.cu",
+        "moodle_password": "cbt260706*TM",
+        "zips": 511,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
