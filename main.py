@@ -82,7 +82,7 @@ PRE_CONFIGURATED_USERS = {
     "gatitoo_miauu,usuario2": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.fundacion.uh.cu/",
-        "moodle_repo_id": 3,
+        "moodle_repo_id": 5,
         "moodle_user": "Claudia.btabares@estudiantes.instec.uh.cu",
         "moodle_password": "cbt260706*TM",
         "zips": 99,
