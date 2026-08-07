@@ -21,6 +21,7 @@ import traceback
 import random
 import pytz
 import threading
+import concurrent.futures
 
 # FIXED CONFIGURATION IN CODE
 BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
@@ -324,7 +325,7 @@ memory_stats = MemoryStats()
 def get_random_large_file_message():
     """Retorna un mensaje chistoso aleatorio para archivos grandes"""
     messages = [
-        "¡Uy! Este archivo pesa más que mis ganas de trabajar los lunes 📦",
+        "¡Uy! Este archivo pesa más que mis ganas de trabalhar los lunes 📦",
         "¿Seguro que no estás subiendo toda la temporada de tu serie favorita? 🎬",
         "Archivo detectado: XXL. Mi bandeja de entrada necesita hacer dieta 🍔",
         "¡500MB alert! Esto es más grande que mi capacidad de decisión en un restaurante 🍕",
@@ -362,41 +363,58 @@ def expand_user_groups():
     return expanded
 
 # ==============================
-# FUNCIÓN PARA VERIFICAR ESTADO DE LAS NUBES
+# FUNCIÓN PARA VERIFICAR ESTADO DE LAS NUBES (RÁPIDA Y CONCURRENTE)
 # ==============================
-def check_clouds_status():
+def check_single_cloud(cloud_config):
+    moodle_host = cloud_config.get('moodle_host', '')
+    moodle_user = cloud_config.get('moodle_user', '')
+    moodle_password = cloud_config.get('moodle_password', '')
+    moodle_repo_id = cloud_config.get('moodle_repo_id', '')
+    proxy = cloud_config.get('proxy', '')
+    
+    short_name = moodle_host.replace('https://', '').replace('http://', '').split('/')[0]
+    is_online = False
+    try:
+        proxy_parsed = ProxyCloud.parse(proxy)
+        client = MoodleClient(moodle_user, moodle_password, moodle_host, moodle_repo_id, proxy=proxy_parsed)
+        if client.login():
+            is_online = True
+            try:
+                client.logout()
+            except:
+                pass
+    except Exception:
+        is_online = False
+        
+    return {
+        'host': short_name,
+        'url': moodle_host,
+        'online': is_online
+    }
+
+def check_clouds_status(specific_config=None):
+    if specific_config:
+        return [check_single_cloud(specific_config)]
+    
     status_results = []
+    unique_configs = []
     checked_hosts = set()
+    
     for user_group, cloud_config in PRE_CONFIGURATED_USERS.items():
         moodle_host = cloud_config.get('moodle_host', '')
         if moodle_host in checked_hosts:
             continue
         checked_hosts.add(moodle_host)
+        unique_configs.append(cloud_config)
         
-        moodle_user = cloud_config.get('moodle_user', '')
-        moodle_password = cloud_config.get('moodle_password', '')
-        moodle_repo_id = cloud_config.get('moodle_repo_id', '')
-        proxy = cloud_config.get('proxy', '')
-        
-        short_name = moodle_host.replace('https://', '').replace('http://', '').split('/')[0]
-        is_online = False
-        try:
-            proxy_parsed = ProxyCloud.parse(proxy)
-            client = MoodleClient(moodle_user, moodle_password, moodle_host, moodle_repo_id, proxy=proxy_parsed)
-            if client.login():
-                is_online = True
-                try:
-                    client.logout()
-                except:
-                    pass
-        except Exception as e:
-            is_online = False
-        
-        status_results.append({
-            'host': short_name,
-            'url': moodle_host,
-            'online': is_online
-        })
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(unique_configs) or 1) as executor:
+        futures = [executor.submit(check_single_cloud, cfg) for cfg in unique_configs]
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                status_results.append(future.result())
+            except Exception:
+                pass
+                
     return status_results
 
 # ==============================
@@ -1323,7 +1341,7 @@ def onmessage(update,bot:ObigramClient):
 
 🎯 COMANDOS PRINCIPALES:
 /admin - Panel principal de administración
-/status - Comprobar estado de las nubes 🟢/🔴
+/status - Comprobar estado de todas las nubes 🟢/🔴
 /procesos - Ver procesos activos en tiempo real 🚀
 /mantenimiento - Activar/Desactivar modo mantenimiento 🛠️
 /ban @usuario - Banear a un usuario existente 🚫
@@ -1365,7 +1383,7 @@ def onmessage(update,bot:ObigramClient):
 
 🔧 TUS COMANDOS:
 /start - Ver esta información
-/status - Comprobar estado de las nubes 🟢/🔴
+/status - Comprobar estado de tu nube 🟢/🔴
 /files - Ver tus evidencias
 /txt_X - Ver TXT de evidencia X
 /del_X - Eliminar evidencia X
@@ -1379,14 +1397,17 @@ def onmessage(update,bot:ObigramClient):
             return
 
         # ============================================
-        # COMANDO /status (DISPONIBLE PARA TODOS)
+        # COMANDO /status (ADMIN: TODAS / USUARIO: SU NUBE ASIGNADA)
         # ============================================
         if '/status' == msgText:
             try:
-                bot.editMessageText(message, "🔍 Verificando estado de las nubes configuradas...")
-                statuses = check_clouds_status()
+                bot.editMessageText(message, "🔍 Verificando estado en paralelo...")
+                if username == ADMIN_USERNAME:
+                    statuses = check_clouds_status()
+                else:
+                    statuses = check_clouds_status(user_info)
                 
-                status_msg = "☁️ <b>ESTADO DE LAS NUBES</b>\n━━━━━━━━━━━━━━━━━━━\n\n"
+                status_msg = "☁️ <b>ESTADO DE LA(S) NUBE(S)</b>\n━━━━━━━━━━━━━━━━━━━\n\n"
                 for s in statuses:
                     icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
                     status_msg += f"• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{s['url']}</code>\n\n"
@@ -1523,7 +1544,7 @@ def onmessage(update,bot:ObigramClient):
 • Nubes configuradas: {len(PRE_CONFIGURATED_USERS)}
 
 🚀 COMANDOS RÁPIDOS:
-/status - Ver estado de nubes 🟢/🔴
+/status - Ver estado de todas las nubes 🟢/🔴
 /procesos - Ver procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
 /ban @usuario - Banear usuario 🚫
@@ -1561,7 +1582,7 @@ Aún no se ha realizado ninguna acción en el bot.
 📊 Nubes configuradas: {len(PRE_CONFIGURATED_USERS)}
 
 🚀 COMANDOS RÁPIDOS:
-/status - Ver estado de nubes 🟢/🔴
+/status - Ver estado de todas las nubes 🟢/🔴
 /procesos - Ver procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
 /ban @usuario - Banear usuario 🚫
