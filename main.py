@@ -34,6 +34,7 @@ LOG_GROUP_ID = -1004295272245  # ID del grupo para notificaciones de enlaces, ar
 MAINTENANCE_MODE = False
 BANNED_USERS = set()
 ACTIVE_PROCESSES = {}  # Diccionario para rastrear procesos activos en tiempo real (descargas, compresiones, preparando, subidas)
+ACTIVE_STATUS_CHECKS = set()  # Conjunto para evitar múltiples verificaciones simultáneas de estado
 
 # CUBA TIMEZONE
 try:
@@ -1231,7 +1232,7 @@ def show_loading_progress(bot, message, step, total_steps=3):
 # ==============================
 
 def onmessage(update,bot:ObigramClient):
-    global MAINTENANCE_MODE, BANNED_USERS, ACTIVE_PROCESSES
+    global MAINTENANCE_MODE, BANNED_USERS, ACTIVE_PROCESSES, ACTIVE_STATUS_CHECKS
     try:
         thread = bot.this_thread
         username = update.message.sender.username
@@ -1371,9 +1372,14 @@ def onmessage(update,bot:ObigramClient):
             return
 
         # ============================================
-        # COMANDO /status (ADMIN: SECUENCIAL UNA A UNA / USUARIO: SU NUBE ASIGNADA)
+        # COMANDO /status (CON BLOQUEO DE DUPLICADOS)
         # ============================================
         if '/status' == msgText:
+            if username in ACTIVE_STATUS_CHECKS:
+                bot.editMessageText(message, "⏳ Ya hay una verificación de estado en curso. Por favor, espera a que termine.")
+                return
+            
+            ACTIVE_STATUS_CHECKS.add(username)
             try:
                 if username == ADMIN_USERNAME:
                     bot.editMessageText(message, "🔍 Verificando nubes una a una...")
@@ -1388,7 +1394,6 @@ def onmessage(update,bot:ObigramClient):
                     
                     total_clouds = len(unique_configs)
                     for idx, cfg in enumerate(unique_configs):
-                        # Comprueba una nube de forma secuencial
                         s = check_single_cloud(cfg)
                         icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
                         status_msg = f"☁️ <b>ESTADO DE LA NUBE ({idx+1}/{total_clouds})</b>\n━━━━━━━━━━━━━━━━━━━\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{s['url']}</code>\n\n━━━━━━━━━━━━━━━━━━━"
@@ -1406,6 +1411,8 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, status_msg, parse_mode='html')
             except Exception as e:
                 bot.editMessageText(message, f"❌ Error al comprobar el estado de la nube: {str(e)}")
+            finally:
+                ACTIVE_STATUS_CHECKS.discard(username)
             return
 
         # === COMANDOS EXCLUSIVOS ADMIN ===
