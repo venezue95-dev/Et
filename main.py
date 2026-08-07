@@ -325,7 +325,7 @@ memory_stats = MemoryStats()
 def get_random_large_file_message():
     """Retorna un mensaje chistoso aleatorio para archivos grandes"""
     messages = [
-        "¡Uy! Este archivo pesa más que mis ganas de trabalhar los lunes 📦",
+        "¡Uy! Este archivo pesa más que mis ganas de trabajar los lunes 📦",
         "¿Seguro que no estás subiendo toda la temporada de tu serie favorita? 🎬",
         "Archivo detectado: XXL. Mi bandeja de entrada necesita hacer dieta 🍔",
         "¡500MB alert! Esto es más grande que mi capacidad de decisión en un restaurante 🍕",
@@ -1397,25 +1397,30 @@ def onmessage(update,bot:ObigramClient):
             return
 
         # ============================================
-        # COMANDO /status (ADMIN: TODAS / USUARIO: SU NUBE ASIGNADA)
+        # COMANDO /status (ADMIN: TODAS UNA A UNA / USUARIO: SU NUBE ASIGNADA)
         # ============================================
         if '/status' == msgText:
             try:
-                bot.editMessageText(message, "🔍 Verificando estado en paralelo...")
                 if username == ADMIN_USERNAME:
+                    bot.editMessageText(message, "🔍 Verificando estado de las nubes una a una...")
                     statuses = check_clouds_status()
+                    for idx, s in enumerate(statuses):
+                        icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
+                        status_msg = f"☁️ <b>ESTADO DE LA NUBE ({idx+1}/{len(statuses)})</b>\n━━━━━━━━━━━━━━━━━━━\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{s['url']}</code>\n\n━━━━━━━━━━━━━━━━━━━"
+                        if idx == 0:
+                            bot.editMessageText(message, status_msg, parse_mode='html')
+                        else:
+                            time.sleep(0.4)
+                            bot.sendMessage(chat_id, status_msg, parse_mode='html')
                 else:
+                    bot.editMessageText(message, "🔍 Verificando estado de tu nube...")
                     statuses = check_clouds_status(user_info)
-                
-                status_msg = "☁️ <b>ESTADO DE LA(S) NUBE(S)</b>\n━━━━━━━━━━━━━━━━━━━\n\n"
-                for s in statuses:
+                    s = statuses[0]
                     icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
-                    status_msg += f"• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{s['url']}</code>\n\n"
-                
-                status_msg += "━━━━━━━━━━━━━━━━━━━\n🕒 Verificación completada"
-                bot.editMessageText(message, status_msg, parse_mode='html')
+                    status_msg = f"☁️ <b>ESTADO DE TU NUBE</b>\n━━━━━━━━━━━━━━━━━━━\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{s['url']}</code>\n\n━━━━━━━━━━━━━━━━━━━\n🕒 Verificación completada"
+                    bot.editMessageText(message, status_msg, parse_mode='html')
             except Exception as e:
-                bot.editMessageText(message, f"❌ Error al comprobar el estado de las nubes: {str(e)}")
+                bot.editMessageText(message, f"❌ Error al comprobar el estado de la nube: {str(e)}")
             return
 
         # === COMANDOS EXCLUSIVOS ADMIN ===
