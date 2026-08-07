@@ -21,7 +21,6 @@ import traceback
 import random
 import pytz
 import threading
-import concurrent.futures
 
 # FIXED CONFIGURATION IN CODE
 BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
@@ -363,7 +362,7 @@ def expand_user_groups():
     return expanded
 
 # ==============================
-# FUNCIÓN PARA VERIFICAR ESTADO DE LAS NUBES (RÁPIDA Y CONCURRENTE)
+# FUNCIÓN PARA VERIFICAR ESTADO DE UNA NUBE INDIVIDUAL
 # ==============================
 def check_single_cloud(cloud_config):
     moodle_host = cloud_config.get('moodle_host', '')
@@ -391,31 +390,6 @@ def check_single_cloud(cloud_config):
         'url': moodle_host,
         'online': is_online
     }
-
-def check_clouds_status(specific_config=None):
-    if specific_config:
-        return [check_single_cloud(specific_config)]
-    
-    status_results = []
-    unique_configs = []
-    checked_hosts = set()
-    
-    for user_group, cloud_config in PRE_CONFIGURATED_USERS.items():
-        moodle_host = cloud_config.get('moodle_host', '')
-        if moodle_host in checked_hosts:
-            continue
-        checked_hosts.add(moodle_host)
-        unique_configs.append(cloud_config)
-        
-    with concurrent.futures.ThreadPoolExecutor(max_workers=len(unique_configs) or 1) as executor:
-        futures = [executor.submit(check_single_cloud, cfg) for cfg in unique_configs]
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                status_results.append(future.result())
-            except Exception:
-                pass
-                
-    return status_results
 
 # ==============================
 # TRACKER DE PROCESOS ACTIVOS (PROFESIONAL Y PRECISO)
@@ -1397,16 +1371,28 @@ def onmessage(update,bot:ObigramClient):
             return
 
         # ============================================
-        # COMANDO /status (ADMIN: TODAS UNA A UNA / USUARIO: SU NUBE ASIGNADA)
+        # COMANDO /status (ADMIN: SECUENCIAL UNA A UNA / USUARIO: SU NUBE ASIGNADA)
         # ============================================
         if '/status' == msgText:
             try:
                 if username == ADMIN_USERNAME:
-                    bot.editMessageText(message, "🔍 Verificando estado de las nubes una a una...")
-                    statuses = check_clouds_status()
-                    for idx, s in enumerate(statuses):
+                    bot.editMessageText(message, "🔍 Verificando nubes una a una...")
+                    unique_configs = []
+                    checked_hosts = set()
+                    for user_group, cloud_config in PRE_CONFIGURATED_USERS.items():
+                        moodle_host = cloud_config.get('moodle_host', '')
+                        if moodle_host in checked_hosts:
+                            continue
+                        checked_hosts.add(moodle_host)
+                        unique_configs.append(cloud_config)
+                    
+                    total_clouds = len(unique_configs)
+                    for idx, cfg in enumerate(unique_configs):
+                        # Comprueba una nube de forma secuencial
+                        s = check_single_cloud(cfg)
                         icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
-                        status_msg = f"☁️ <b>ESTADO DE LA NUBE ({idx+1}/{len(statuses)})</b>\n━━━━━━━━━━━━━━━━━━━\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{s['url']}</code>\n\n━━━━━━━━━━━━━━━━━━━"
+                        status_msg = f"☁️ <b>ESTADO DE LA NUBE ({idx+1}/{total_clouds})</b>\n━━━━━━━━━━━━━━━━━━━\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{s['url']}</code>\n\n━━━━━━━━━━━━━━━━━━━"
+                        
                         if idx == 0:
                             bot.editMessageText(message, status_msg, parse_mode='html')
                         else:
@@ -1414,8 +1400,7 @@ def onmessage(update,bot:ObigramClient):
                             bot.sendMessage(chat_id, status_msg, parse_mode='html')
                 else:
                     bot.editMessageText(message, "🔍 Verificando estado de tu nube...")
-                    statuses = check_clouds_status(user_info)
-                    s = statuses[0]
+                    s = check_single_cloud(user_info)
                     icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
                     status_msg = f"☁️ <b>ESTADO DE TU NUBE</b>\n━━━━━━━━━━━━━━━━━━━\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{s['url']}</code>\n\n━━━━━━━━━━━━━━━━━━━\n🕒 Verificación completada"
                     bot.editMessageText(message, status_msg, parse_mode='html')
