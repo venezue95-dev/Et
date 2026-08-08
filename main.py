@@ -120,7 +120,7 @@ AVAILABLE_CLOUDS = [
 PRE_CONFIGURATED_USERS = {
     "Thali355,Eliel_21,Kev_inn10": AVAILABLE_CLOUDS[0],
     "thu,hola1": AVAILABLE_CLOUDS[1],
-    "VanNeiFertio,XD,SchnauzerMinnie,jc041228": AVAILABLE_CLOUDS[2],
+    "VanNeiFertio,XD,SchnauzerMinnie": AVAILABLE_CLOUDS[2],
     "hola,usuario2": AVAILABLE_CLOUDS[3],
     "gatitoo_miauu,usuario_nuevo2": AVAILABLE_CLOUDS[4],
     "Satoru_2115,usuario_nuevo4": AVAILABLE_CLOUDS[5]
@@ -1455,7 +1455,7 @@ def onmessage(update,bot:ObigramClient):
             return
 
         # ============================================
-        # COMANDO /status (CON BLOQUEO DE DUPLICADOS)
+        # COMANDO /status (SIMPLIFICADO Y SIN PREVIEWS)
         # ============================================
         if '/status' == msgText:
             if username in ACTIVE_STATUS_CHECKS:
@@ -1479,8 +1479,8 @@ def onmessage(update,bot:ObigramClient):
                     for idx, cfg in enumerate(unique_configs):
                         s = check_single_cloud(cfg)
                         icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
-                        clean_url = s['url'].replace('https://', '').replace('http://', '')
-                        status_msg = f"☁️ <b>ESTADO DE LA NUBE ({idx+1}/{total_clouds})</b>\n────────────────────────\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{clean_url}</code>\n\n────────────────────────"
+                        clean_url = s['url'].replace('https://', '').replace('http://', '').strip('/')
+                        status_msg = f"☁️ <code>{clean_url}</code>\nEstado: {icon}"
                         
                         if idx == 0:
                             bot.editMessageText(message, status_msg, parse_mode='html')
@@ -1491,8 +1491,8 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, "🔍 Verificando estado de tu nube...")
                     s = check_single_cloud(user_info)
                     icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
-                    clean_url = s['url'].replace('https://', '').replace('http://', '')
-                    status_msg = f"☁️ <b>ESTADO DE TU NUBE</b>\n────────────────────────\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{clean_url}</code>\n\n────────────────────────\n🕒 Verificación completada"
+                    clean_url = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
+                    status_msg = f"☁️ <code>{clean_url}</code>\nEstado: {icon}"
                     bot.editMessageText(message, status_msg, parse_mode='html')
             except Exception as e:
                 bot.editMessageText(message, f"❌ Error al comprobar el estado de la nube: {str(e)}")
