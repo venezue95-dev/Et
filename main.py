@@ -1480,7 +1480,7 @@ def onmessage(update,bot:ObigramClient):
                         s = check_single_cloud(cfg)
                         icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
                         clean_url = s['url'].replace('https://', '').replace('http://', '')
-                        status_msg = f"☁️ <b>ESTADO DE LA NUBE ({idx+1}/{total_clouds})</b>\n────────────────────────\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: {clean_url}\n\n────────────────────────"
+                        status_msg = f"☁️ <b>ESTADO DE LA NUBE ({idx+1}/{total_clouds})</b>\n────────────────────────\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{clean_url}</code>\n\n────────────────────────"
                         
                         if idx == 0:
                             bot.editMessageText(message, status_msg, parse_mode='html')
@@ -1492,7 +1492,7 @@ def onmessage(update,bot:ObigramClient):
                     s = check_single_cloud(user_info)
                     icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
                     clean_url = s['url'].replace('https://', '').replace('http://', '')
-                    status_msg = f"☁️ <b>ESTADO DE TU NUBE</b>\n────────────────────────\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: {clean_url}\n\n────────────────────────\n🕒 Verificación completada"
+                    status_msg = f"☁️ <b>ESTADO DE TU NUBE</b>\n────────────────────────\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{clean_url}</code>\n\n────────────────────────\n🕒 Verificación completada"
                     bot.editMessageText(message, status_msg, parse_mode='html')
             except Exception as e:
                 bot.editMessageText(message, f"❌ Error al comprobar el estado de la nube: {str(e)}")
