@@ -97,7 +97,7 @@ PRE_CONFIGURATED_USERS = {
         "moodle_repo_id": 5,
         "moodle_user": "bryan.fajardo",
         "moodle_password": "bfb.2023",
-        "zips": 499,
+        "zips": 19,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
