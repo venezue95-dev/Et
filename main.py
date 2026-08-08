@@ -1095,7 +1095,7 @@ def show_updated_cloud(bot, message, cloud_idx):
             short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
             empty_msg = f"""
 📭 NUBE VACÍA
-━━━━━━━
+────────────────────────
 
 ✅ ELIMINACIÓN COMPLETA
 ☁️ {short_name}
@@ -1103,7 +1103,7 @@ def show_updated_cloud(bot, message, cloud_idx):
 🎉 ¡Has eliminado todas las evidencias de esta nube!
 
 🔄 Regresando a todas las nubes...
-━━━━━━━
+────────────────────────
             """
             bot.editMessageText(message, empty_msg)
             time.sleep(1.5)
@@ -1115,7 +1115,7 @@ def show_updated_cloud(bot, message, cloud_idx):
         list_msg = f"""
 📋 NUBE ACTUALIZADA
 ☁️ {short_name}
-━━━━━━━
+────────────────────────
 
 """
         for idx, evidence in enumerate(evidences):
@@ -1149,14 +1149,14 @@ def show_updated_cloud(bot, message, cloud_idx):
         total_files = sum(e['files_count'] for e in evidences)
         
         list_msg += f"""
-━━━━━━━
+────────────────────────
 🔧 ACCIONES MASIVAS:
 /adm_wipe_{cloud_idx} - Eliminar TODO
 
 📊 RESUMEN:
 • Evidencias: {total_evidences}
 • Archivos: {total_files}
-━━━━━━━
+────────────────────────
         """
         
         send_long_message(bot, message.chat.id, list_msg, original_message=message)
@@ -1164,9 +1164,9 @@ def show_updated_cloud(bot, message, cloud_idx):
     except Exception as e:
         error_msg = f"""
 ❌ ERROR AL ACTUALIZAR
-━━━━━━━
+────────────────────────
 ⚠️ No se pudo mostrar la nube actualizada.
-━━━━━━━
+────────────────────────
         """
         bot.editMessageText(message, error_msg)
 
@@ -1185,12 +1185,12 @@ def show_updated_all_clouds(bot, message):
         if total_evidences == 0:
             empty_msg = f"""
 👑 TODAS LAS NUBES ACTUALIZADAS
-━━━━━━━
+────────────────────────
 📊 RESUMEN GENERAL:
 • Nubes: {total_clouds}
 • Evidencias totales: 0
 • Archivos totales: 0
-━━━━━━━
+────────────────────────
 ✅ Todas las nubes están vacías
             """
             bot.editMessageText(message, empty_msg)
@@ -1198,7 +1198,7 @@ def show_updated_all_clouds(bot, message):
         
         menu_msg = f"""
 👑 TODAS LAS NUBES ACTUALIZADAS
-━━━━━━━
+────────────────────────
 📊 RESUMEN GENERAL:
 • Nubes: {total_clouds}
 • Evidencias totales: {total_evidences}
@@ -1223,10 +1223,10 @@ def show_updated_all_clouds(bot, message):
         if total_evidences > 0:
             menu_msg += f"""
 
-━━━━━━━
+────────────────────────
 🔧 OPCIONES MASIVAS:
 /adm_nuke - ⚠️ Eliminar TODO
-━━━━━━━
+────────────────────────
         """
         
         bot.editMessageText(message, menu_msg)
@@ -1358,11 +1358,11 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, f"✅ <b>¡Nube cambiada exitosamente!</b>\n\n☁️ Nueva nube: <code>{short_name}</code>\n⚖️ Límite: <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
                     return
             
-            menu_msg = "☁️ <b>SELECCIONA TU NUEVA NUBE</b>\n━━━━━━━\n\n"
+            menu_msg = "☁️ <b>SELECCIONA TU NUEVA NUBE</b>\n────────────────────────\n\n"
             for i, c in enumerate(AVAILABLE_CLOUDS, 1):
                 short = c['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                 menu_msg += f"<b>{i}.</b> <code>{short}</code>\n   ⚖️ Límite: {c['zips']} MB\n\n"
-            menu_msg += "━━━━━━━\n💡 <b>Envía solo el número</b> (1 al 6)."
+            menu_msg += "────────────────────────\n💡 <b>Envía solo el número</b> (1 al 6)."
             
             CHANGING_CLOUD_USERS.add(username)
             bot.editMessageText(message, menu_msg, parse_mode='html')
@@ -1468,7 +1468,7 @@ def onmessage(update,bot:ObigramClient):
                     for idx, cfg in enumerate(unique_configs):
                         s = check_single_cloud(cfg)
                         icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
-                        status_msg = f"☁️ <b>ESTADO DE LA NUBE ({idx+1}/{total_clouds})</b>\n━━━━━━━\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{s['url']}</code>\n\n━━━━━━━"
+                        status_msg = f"☁️ <b>ESTADO DE LA NUBE ({idx+1}/{total_clouds})</b>\n────────────────────────\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{s['url']}</code>\n\n────────────────────────"
                         
                         if idx == 0:
                             bot.editMessageText(message, status_msg, parse_mode='html')
@@ -1479,7 +1479,7 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, "🔍 Verificando estado de tu nube...")
                     s = check_single_cloud(user_info)
                     icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
-                    status_msg = f"☁️ <b>ESTADO DE TU NUBE</b>\n━━━━━━━\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{s['url']}</code>\n\n━━━━━━━\n🕒 Verificación completada"
+                    status_msg = f"☁️ <b>ESTADO DE TU NUBE</b>\n────────────────────────\n\n• <b>{s['host']}</b>\n  Estado: {icon}\n  URL: <code>{s['url']}</code>\n\n────────────────────────\n🕒 Verificación completada"
                     bot.editMessageText(message, status_msg, parse_mode='html')
             except Exception as e:
                 bot.editMessageText(message, f"❌ Error al comprobar el estado de la nube: {str(e)}")
@@ -1564,7 +1564,7 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, "✅ No hay subidas, compresiones o descargas activas en este momento.")
                     return
                 
-                proc_msg = "🔄 <b>PROCESOS ACTIVOS EN TIEMPO REAL</b>\n━━━━━━━\n\n"
+                proc_msg = "🔄 <b>PROCESOS ACTIVOS EN TIEMPO REAL</b>\n────────────────────────\n\n"
                 procesos_borrar = []
                 
                 for tid, p in ACTIVE_PROCESSES.items():
@@ -1605,7 +1605,7 @@ def onmessage(update,bot:ObigramClient):
                     admin_msg = f"""
 👑 <b>PANEL DE ADMINISTRADOR</b>
 📅 {current_date}
-━━━━━━━
+────────────────────────
 📊 <b>ESTADÍSTICAS GLOBALES:</b>
 • Subidas totales: {stats['total_uploads']}
 • Eliminaciones totales: {stats['total_deletes']}
@@ -1638,14 +1638,14 @@ def onmessage(update,bot:ObigramClient):
 
 🔧 <b>OTROS:</b>
 /start - Información de usuario
-━━━━━━━
+────────────────────────
 🕐 Hora Cuba: {format_cuba_datetime()}
                     """
                 else:
                     admin_msg = f"""
 👑 <b>PANEL DE ADMINISTRADOR</b>
 📅 {current_date}
-━━━━━━━
+────────────────────────
 ⚠️ <b>NO HAY DATOS REGISTRADOS</b>
 Aún no se ha realizado ninguna acción en el bot.
 
@@ -1673,7 +1673,7 @@ Aún no se ha realizado ninguna acción en el bot.
 
 🔧 <b>OTROS:</b>
 /start - Información de usuario
-━━━━━━━
+────────────────────────
 🕐 Hora Cuba: {format_cuba_datetime()}
                     """
                 
@@ -1683,7 +1683,7 @@ Aún no se ha realizado ninguna acción en el bot.
             elif '/adm_' in msgText:
                 if msgText == '/adm_userclouds':
                     try:
-                        uclouds_msg = "☁️ <b>GESTIÓN DE NUBES Y USUARIOS</b>\n━━━━━━━\n\n"
+                        uclouds_msg = "☁️ <b>GESTIÓN DE NUBES Y USUARIOS</b>\n────────────────────────\n\n"
                         for idx, (user_group, config) in enumerate(PRE_CONFIGURATED_USERS.items(), 1):
                             host = config.get('moodle_host', 'Desconocido')
                             short = host.replace('https://', '').replace('http://', '').strip('/')
@@ -1696,7 +1696,7 @@ Aún no se ha realizado ninguna acción en el bot.
                             uclouds_msg += f"🌐 <b>Nube {idx}:</b> <code>{short}</code>\n"
                             uclouds_msg += f"⚖️ <b>Límite:</b> {zips} MB\n"
                             uclouds_msg += f"👤 <b>Usuarios:</b> {users_str}\n"
-                            uclouds_msg += f"━━━━━━━\n\n"
+                            uclouds_msg += f"────────────────────────\n\n"
                         
                         send_long_message(bot, chat_id, uclouds_msg, original_message=message, parse_mode='html')
                     except Exception as e:
@@ -1712,12 +1712,12 @@ Aún no se ha realizado ninguna acción en el bot.
                         if total_evidences == 0:
                             empty_msg = f"""
 👑 TODAS LAS NUBES
-━━━━━━━
+────────────────────────
 📊 RESUMEN GENERAL:
 • Nubes configuradas: {len(AVAILABLE_CLOUDS)}
 • Evidencias totales: 0
 • Archivos totales: 0
-━━━━━━━
+────────────────────────
 ✅ Todas las nubes están vacías
                             """
                             bot.editMessageText(message, empty_msg)
@@ -1732,7 +1732,7 @@ Aún no se ha realizado ninguna acción en el bot.
                         
                         menu_msg = f"""
 👑 GESTIÓN DE TODAS LAS NUBES
-━━━━━━━
+────────────────────────
 📊 RESUMEN GENERAL:
 • Nubes: {total_clouds}
 • Evidencias totales: {total_evidences}
@@ -1759,18 +1759,18 @@ Aún no se ha realizado ninguna acción en el bot.
                         if total_evidences > 0:
                             menu_msg += f"""
 
-━━━━━━━
+────────────────────────
 🔧 OPCIONES MASIVAS:
 /adm_nuke - ⚠️ Eliminar TODO
-━━━━━━━
+────────────────────────
 ℹ️ Usa /adm_cloud_X para ver evidencias
                             """
                         else:
                             menu_msg += f"""
 
-━━━━━━━
+────────────────────────
 ✅ Todas las nubes están vacías
-━━━━━━━
+────────────────────────
                             """
                         
                         bot.editMessageText(message, menu_msg)
@@ -1799,10 +1799,10 @@ Aún no se ha realizado ninguna acción en el bot.
                         if not evidences:
                             empty_msg = f"""
 📭 NUBE VACÍA
-━━━━━━━
+────────────────────────
 ☁️ {short_name}
 📊 No hay evidencias en esta nube.
-━━━━━━━
+────────────────────────
                             """
                             bot.editMessageText(message, empty_msg)
                             return
@@ -1810,7 +1810,7 @@ Aún no se ha realizado ninguna acción en el bot.
                         list_msg = f"""
 📋 EVIDENCIAS DE LA NUBE
 ☁️ {short_name}
-━━━━━━━
+────────────────────────
 
 """
                         for idx, evidence in enumerate(evidences):
@@ -1844,14 +1844,14 @@ Aún no se ha realizado ninguna acción en el bot.
                         total_files = sum(e['files_count'] for e in evidences)
                         
                         list_msg += f"""
-━━━━━━━
+────────────────────────
 🔧 ACCIÓN MASIVA:
 /adm_wipe_{cloud_idx} - Eliminar TODO
 
 📊 RESUMEN:
 • Evidencias: {total_evidences}
 • Archivos: {total_files}
-━━━━━━━
+────────────────────────
                         """
                         
                         send_long_message(bot, message.chat.id, list_msg, original_message=message)
@@ -1883,7 +1883,7 @@ Aún no se ha realizado ninguna acción en el bot.
                             
                             show_msg = f"""
 👁️ DETALLES DE EVIDENCIA
-━━━━━━━
+────────────────────────
 📝 Nombre: {clean_name}
 📁 Archivos: {evidence['files_count']}
 ☁️ Nube: {short_name}
@@ -1891,7 +1891,7 @@ Aún no se ha realizado ninguna acción en el bot.
 🔧 ACCIONES:
 📄 /adm_fetch_{cloud_idx}_{evid_idx} - TXT
 🗑️ /adm_delete_{cloud_idx}_{evid_idx} - Eliminar
-━━━━━━━
+────────────────────────
                             """
                             bot.editMessageText(message, show_msg)
                         else:
@@ -2001,11 +2001,11 @@ Aún no se ha realizado ninguna acción en el bot.
                                 if current_evidences:
                                     result_msg = f"""
 ✅ ELIMINACIÓN EXITOSA
-━━━━━━━
+────────────────────────
 🗑️ Evidencia: {clean_name[:50]}
 📁 Archivos eliminados: {files_count}
 ☁️ Nube: {short_name}
-━━━━━━━
+────────────────────────
                                     """
                                     bot.editMessageText(message, result_msg)
                                     time.sleep(1)
@@ -2013,10 +2013,10 @@ Aún no se ha realizado ninguna acción en el bot.
                                 else:
                                     result_msg = f"""
 ✅ ELIMINACIÓN COMPLETA
-━━━━━━━
+────────────────────────
 🗑️ Última evidencia eliminada
 📁 Archivos borrados: {files_count}
-━━━━━━━
+────────────────────────
                                     """
                                     bot.editMessageText(message, result_msg)
                                     time.sleep(1)
@@ -2062,11 +2062,11 @@ Aún no se ha realizado ninguna acción en el bot.
                                 admin_evidence_manager.refresh_data(force=True)
                                 result_msg = f"""
 💥 LIMPIEZA EXITOSA
-━━━━━━━
+────────────────────────
 ✅ Nube: {short_name}
 ✅ Evidencias: {deleted_count}
 ✅ Archivos: {total_files}
-━━━━━━━
+────────────────────────
                                 """
                                 bot.editMessageText(message, result_msg)
                                 time.sleep(1)
@@ -2111,10 +2111,10 @@ Aún no se ha realizado ninguna acción en el bot.
                         admin_evidence_manager.refresh_data(force=True)
                         final_msg = f"""
 💥 <b>ELIMINACIÓN MASIVA COMPLETADA</b>
-━━━━━━━
+────────────────────────
 📊 Evidencias: {deleted_total}
 📁 Archivos: {files_total}
-━━━━━━━
+────────────────────────
 """
                         for result in results:
                             final_msg += f"\n{result}"
@@ -2138,7 +2138,7 @@ Aún no se ha realizado ninguna acción en el bot.
                         uploads = memory_stats.get_recent_uploads(limit)
                         deletes = memory_stats.get_recent_deletes(limit)
                         
-                        logs_msg = "📋 <b>ÚLTIMOS LOGS</b>\n━━━━━━━\n\n"
+                        logs_msg = "📋 <b>ÚLTIMOS LOGS</b>\n────────────────────────\n\n"
                         if uploads:
                             logs_msg += "⬆️ <b>SUBIDAS:</b>\n"
                             for log in uploads:
@@ -2166,7 +2166,7 @@ Aún no se ha realizado ninguna acción en el bot.
                             bot.editMessageText(message, "⚠️ No hay usuarios registrados.")
                             return
                         
-                        users_msg = "👥 <b>ESTADÍSTICAS POR USUARIO</b>\n━━━━━━━\n\n"
+                        users_msg = "👥 <b>ESTADÍSTICAS POR USUARIO</b>\n────────────────────────\n\n"
                         for user, data in sorted(users.items(), key=lambda x: x[1]['uploads'], reverse=True):
                             total_size_formatted = format_file_size(data['total_size'])
                             users_msg += f"👤 <b>@{user}</b>\n   📤 Subidas: {data['uploads']}\n   🗑️ Eliminaciones: {data['deletes']}\n   💾 Espacio: {total_size_formatted}\n\n"
@@ -2185,7 +2185,7 @@ Aún no se ha realizado ninguna acción en el bot.
                             bot.editMessageText(message, "⚠️ No hay subidas registradas.")
                             return
                         
-                        uploads_msg = "📤 <b>ÚLTIMAS SUBIDAS</b>\n━━━━━━━\n\n"
+                        uploads_msg = "📤 <b>ÚLTIMAS SUBIDAS</b>\n────────────────────────\n\n"
                         for i, log in enumerate(uploads, 1):
                             uploads_msg += f"{i}. <code>{log['filename']}</code>\n   👤 @{log['username']} | 📏 {log['file_size_formatted']}\n\n"
                         bot.editMessageText(message, uploads_msg, parse_mode='html')
@@ -2200,7 +2200,7 @@ Aún no se ha realizado ninguna acción en el bot.
                             bot.editMessageText(message, "⚠️ No hay eliminaciones registradas.")
                             return
                         
-                        deletes_msg = "🗑️ <b>ÚLTIMAS ELIMINACIONES</b>\n━━━━━━━\n\n"
+                        deletes_msg = "🗑️ <b>ÚLTIMAS ELIMINACIONES</b>\n────────────────────────\n\n"
                         for i, log in enumerate(deletes, 1):
                             if log['type'] == 'delete_all':
                                 deletes_msg += f"{i}. ELIMINACIÓN MASIVA\n   👤 @{log['username']} ({log.get('deleted_evidences', 1)} ev.)\n\n"
@@ -2232,23 +2232,23 @@ Aún no se ha realizado ninguna acción en el bot.
                 total_size_formatted = format_file_size(user_stats['total_size'])
                 stats_msg = f"""
 📊 <b>TUS ESTADÍSTICAS</b>
-━━━━━━━
+────────────────────────
 👤 Usuario: @{username}
 📤 Subidas: {user_stats['uploads']}
 🗑️ Eliminaciones: {user_stats['deletes']}
 💾 Espacio usado: {total_size_formatted}
 📅 Última actividad: {user_stats['last_activity']}
-━━━━━━━
+────────────────────────
                 """
             else:
                 stats_msg = f"""
 📊 <b>TUS ESTADÍSTICAS</b>
-━━━━━━━
+────────────────────────
 👤 Usuario: @{username}
 📤 Subidas: 0
 🗑️ Eliminaciones: 0
 💾 Espacio usado: 0 B
-━━━━━━━
+────────────────────────
 ℹ️ Aún no tienes actividad registrada.
                 """
             bot.editMessageText(message, stats_msg, parse_mode='html')
@@ -2277,10 +2277,10 @@ Aún no se ha realizado ninguna acción en el bot.
                         })
                 
                 if len(visible_list) > 0:
-                    files_msg = "📁 <b>TUS EVIDENCIAS</b>\n━━━━━━━\n\n"
+                    files_msg = "📁 <b>TUS EVIDENCIAS</b>\n────────────────────────\n\n"
                     for idx, item in enumerate(visible_list):
                         files_msg += f"• {item['name']} [ {item['file_count']} ]\n  /txt_{idx} | /del_{idx}\n\n"
-                    files_msg += f"━━━━━━━\nTotal: {len(visible_list)} evidencia(s)"
+                    files_msg += f"────────────────────────\nTotal: {len(visible_list)} evidencia(s)"
                     bot.editMessageText(message, files_msg, parse_mode='html')
                 else:
                     bot.editMessageText(message, '📭 No hay evidencias disponibles')
@@ -2380,7 +2380,7 @@ Aún no se ha realizado ninguna acción en el bot.
                         moodle_host=user_info['moodle_host']
                     )
                     
-                    confirmation_msg = f"🗑️ <b>Evidencia eliminada:</b> {evidence_clean_name}\n📁 Archivos borrados: {file_count}\n━━━━━━━\n"
+                    confirmation_msg = f"🗑️ <b>Evidencia eliminada:</b> {evidence_clean_name}\n📁 Archivos borrados: {file_count}\n────────────────────────\n"
                     if len(updated_visible_list) > 0:
                         confirmation_msg += "📋 <b>Tus evidencias actualizadas:</b>\n\n"
                         for idx, item in enumerate(updated_visible_list):
@@ -2436,7 +2436,7 @@ Aún no se ha realizado ninguna acción en el bot.
                         moodle_host=user_info['moodle_host']
                     )
                     
-                    deletion_msg = f"🗑️ <b>ELIMINACIÓN MASIVA COMPLETADA</b>\n━━━━━━━\n• Evidencias eliminadas: {total_evidences}\n• Archivos borrados: {total_files}\n\n✅ ¡Todas tus evidencias han sido eliminadas!"
+                    deletion_msg = f"🗑️ <b>ELIMINACIÓN MASIVA COMPLETADA</b>\n────────────────────────\n• Evidencias eliminadas: {total_evidences}\n• Archivos borrados: {total_files}\n\n✅ ¡Todas tus evidencias han sido eliminadas!"
                     bot.editMessageText(message, deletion_msg, parse_mode='html')
                 else:
                     bot.editMessageText(message,'➲ Error y Causas🧐\n1-Revise su Cuenta\n2-Servidor Deshabilitado: '+client.path)
