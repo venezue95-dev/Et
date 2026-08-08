@@ -682,11 +682,12 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             # --- NOTIFICAR AL GRUPO DE LOGS SI EXISTE ---
             if LOG_GROUP_ID != 0:
                 try:
+                    clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     mensaje_log = (f"✅ <b>¡Subida Completada!</b>\n"
                                    f"👤 Usuario: @{username}\n"
                                    f"📄 Archivo: <code>{filename_clean}</code>\n"
                                    f"⚖️ Peso: {format_file_size(file_size)}\n"
-                                   f"☁️ Nube: {getUser['moodle_host']}")
+                                   f"☁️ Nube: <code>{clean_host}</code>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar subida al grupo: {e}")
@@ -1552,7 +1553,9 @@ def onmessage(update,bot:ObigramClient):
                 
                 cancel_count = 0
                 if MAINTENANCE_MODE:
-                    for tid in list(ACTIVE_PROCESSES.keys()):
+                    for tid, p in list(ACTIVE_PROCESSES.items()):
+                        if p.get('user') == ADMIN_USERNAME:
+                            continue
                         try:
                             if hasattr(bot, 'threads') and tid in bot.threads:
                                 tcancel = bot.threads[tid]
@@ -1563,12 +1566,12 @@ def onmessage(update,bot:ObigramClient):
                                         bot.editMessageText(active_msg, '⚠️ Tarea cancelada automáticamente por inicio de mantenimiento del sistema ✗')
                                     except:
                                         pass
+                            clean_process(tid)
                             cancel_count += 1
                         except:
                             pass
-                    ACTIVE_PROCESSES.clear()
                 
-                aviso_cancelados = f"\n⚠️ Se cancelaron y notificaron {cancel_count} proceso(s) activo(s)." if cancel_count > 0 else ""
+                aviso_cancelados = f"\n⚠️ Se cancelaron y notificaron {cancel_count} proceso(s) activo(s) (excepto administrador)." if cancel_count > 0 else ""
                 bot.editMessageText(message, f'🛠️ Modo mantenimiento: {estado}{aviso_cancelados}')
                 return
                 
@@ -1697,19 +1700,33 @@ Aún no se ha realizado ninguna acción en el bot.
                 if msgText == '/adm_userclouds':
                     try:
                         uclouds_msg = "☁️ <b>GESTIÓN DE NUBES Y USUARIOS</b>\n────────────────────────\n\n"
-                        for idx, (user_group, config) in enumerate(PRE_CONFIGURATED_USERS.items(), 1):
-                            host = config.get('moodle_host', 'Desconocido')
+                        
+                        # Obtener dinámicamente qué nube usa cada usuario desde la base de datos
+                        cloud_user_map = {}
+                        for u in expanded_users.keys():
+                            u_info = jdb.get_user(u)
+                            if u_info:
+                                host = u_info.get('moodle_host', '')
+                                zips = u_info.get('zips', '?')
+                            else:
+                                cfg = expanded_users.get(u, {})
+                                host = cfg.get('moodle_host', '')
+                                zips = cfg.get('zips', '?')
+                            
+                            key = (host, zips)
+                            if key not in cloud_user_map:
+                                cloud_user_map[key] = []
+                            cloud_user_map[key].append(u)
+                        
+                        idx = 1
+                        for (host, zips), users in cloud_user_map.items():
                             short = host.replace('https://', '').replace('http://', '').strip('/')
-                            zips = config.get('zips', '?')
-                            
-                            # Mostrar usuarios sin el símbolo @
-                            users_list = [u.strip().lstrip('@') for u in user_group.split(',')]
-                            users_str = ", ".join(users_list)
-                            
+                            users_str = ", ".join([u.lstrip('@') for u in users])
                             uclouds_msg += f"🌐 <b>Nube {idx}:</b> <code>{short}</code>\n"
                             uclouds_msg += f"⚖️ <b>Límite:</b> {zips} MB\n"
                             uclouds_msg += f"👤 <b>Usuarios:</b> {users_str}\n"
                             uclouds_msg += f"────────────────────────\n\n"
+                            idx += 1
                         
                         send_long_message(bot, chat_id, uclouds_msg, original_message=message, parse_mode='html')
                     except Exception as e:
@@ -2489,7 +2506,7 @@ Aún no se ha realizado ninguna acción en el bot.
             if LOG_GROUP_ID != 0:
                 try:
                     tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
-                    mensaje_log = (f"🔔 <b>¡Nuevo enlace recibido!</b>\n👤 Usuario: @{username}\n📄 Archivo: <code>{filename}</code>\n⚖️ Peso: {tamano_formateado}\n🔗 Enlace: {url}")
+                    mensaje_log = (f"🔔 <b>¡Nuevo enlace recibido!</b>\n👤 Usuario: @{username}\n📄 Archivo: <code>{filename}</code>\n⚖️ Peso: {tamano_formateado}\n🔗 Enlace: <code>{url}</code>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar enlace: {e}")
