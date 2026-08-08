@@ -1373,10 +1373,13 @@ def onmessage(update,bot:ObigramClient):
         # ============================================
         if '/start' in msgText:
             if username == ADMIN_USERNAME:
+                admin_current_cloud = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
                 start_msg = f"""
 👑 <b>USUARIO ADMINISTRADOR</b>
 
 👤 Usuario: @{username}
+☁️ Nube actual: <code>{admin_current_cloud}</code>
+⚖️ Límite: {user_info["zips"]} MB
 🔧 Rol: Administrador
 
 ⚠️ <b>NOTA IMPORTANTE:</b>
@@ -1415,8 +1418,6 @@ def onmessage(update,bot:ObigramClient):
 /del_X - Eliminar tu evidencia
 /delall - Eliminar tus evidencias
 /mystats - Tus estadísticas
-
-🔗 FileToLink: @fileeliellinkBot
                 """
             else:
                 current_cloud_short = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
@@ -1437,8 +1438,6 @@ def onmessage(update,bot:ObigramClient):
 /del_X - Eliminar evidencia X
 /delall - Eliminar tus evidencias
 /mystats - Ver tus estadísticas
-
-🔗 FileToLink: @fileeliellinkBot
                 """
             
             bot.editMessageText(message, start_msg, parse_mode='html')
@@ -1689,12 +1688,14 @@ Aún no se ha realizado ninguna acción en el bot.
                             host = config.get('moodle_host', 'Desconocido')
                             short = host.replace('https://', '').replace('http://', '').strip('/')
                             zips = config.get('zips', '?')
-                            users_list = [u.strip() for u in user_group.split(',')]
+                            
+                            # Mostrar usuarios sin el símbolo @
+                            users_list = [u.strip().lstrip('@') for u in user_group.split(',')]
                             users_str = ", ".join(users_list)
                             
                             uclouds_msg += f"🌐 <b>Nube {idx}:</b> <code>{short}</code>\n"
                             uclouds_msg += f"⚖️ <b>Límite:</b> {zips} MB\n"
-                            uclouds_msg += f"👤 <b>Usuarios:</b> <code>{users_str}</code>\n"
+                            uclouds_msg += f"👤 <b>Usuarios:</b> {users_str}\n"
                             uclouds_msg += f"━━━━━━━\n\n"
                         
                         send_long_message(bot, chat_id, uclouds_msg, original_message=message, parse_mode='html')
