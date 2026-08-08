@@ -1095,7 +1095,7 @@ def show_updated_cloud(bot, message, cloud_idx):
             short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
             empty_msg = f"""
 📭 NUBE VACÍA
-━━━━━━━━━━━━
+━━━━━━━
 
 ✅ ELIMINACIÓN COMPLETA
 ☁️ {short_name}
@@ -1103,7 +1103,7 @@ def show_updated_cloud(bot, message, cloud_idx):
 🎉 ¡Has eliminado todas las evidencias de esta nube!
 
 🔄 Regresando a todas las nubes...
-━━━━━━━━━━━━
+━━━━━━━
             """
             bot.editMessageText(message, empty_msg)
             time.sleep(1.5)
@@ -1115,7 +1115,7 @@ def show_updated_cloud(bot, message, cloud_idx):
         list_msg = f"""
 📋 NUBE ACTUALIZADA
 ☁️ {short_name}
-━━━━━━━━━━━━
+━━━━━━━
 
 """
         for idx, evidence in enumerate(evidences):
@@ -1149,14 +1149,14 @@ def show_updated_cloud(bot, message, cloud_idx):
         total_files = sum(e['files_count'] for e in evidences)
         
         list_msg += f"""
-━━━━━━━━━━━━
+━━━━━━━
 🔧 ACCIONES MASIVAS:
 /adm_wipe_{cloud_idx} - Eliminar TODO
 
 📊 RESUMEN:
 • Evidencias: {total_evidences}
 • Archivos: {total_files}
-━━━━━━━━━━━━
+━━━━━━━
         """
         
         send_long_message(bot, message.chat.id, list_msg, original_message=message)
@@ -1164,9 +1164,9 @@ def show_updated_cloud(bot, message, cloud_idx):
     except Exception as e:
         error_msg = f"""
 ❌ ERROR AL ACTUALIZAR
-━━━━━━━━━━━━
+━━━━━━━
 ⚠️ No se pudo mostrar la nube actualizada.
-━━━━━━━━━━━━
+━━━━━━━
         """
         bot.editMessageText(message, error_msg)
 
@@ -1185,12 +1185,12 @@ def show_updated_all_clouds(bot, message):
         if total_evidences == 0:
             empty_msg = f"""
 👑 TODAS LAS NUBES ACTUALIZADAS
-━━━━━━━━━━━━
+━━━━━━━
 📊 RESUMEN GENERAL:
 • Nubes: {total_clouds}
 • Evidencias totales: 0
 • Archivos totales: 0
-━━━━━━━━━━━━
+━━━━━━━
 ✅ Todas las nubes están vacías
             """
             bot.editMessageText(message, empty_msg)
@@ -1198,7 +1198,7 @@ def show_updated_all_clouds(bot, message):
         
         menu_msg = f"""
 👑 TODAS LAS NUBES ACTUALIZADAS
-━━━━━━━━━━━━
+━━━━━━━
 📊 RESUMEN GENERAL:
 • Nubes: {total_clouds}
 • Evidencias totales: {total_evidences}
@@ -1223,10 +1223,10 @@ def show_updated_all_clouds(bot, message):
         if total_evidences > 0:
             menu_msg += f"""
 
-━━━━━━━━━━━━
+━━━━━━━
 🔧 OPCIONES MASIVAS:
 /adm_nuke - ⚠️ Eliminar TODO
-━━━━━━━━━━━━
+━━━━━━━
         """
         
         bot.editMessageText(message, menu_msg)
@@ -1394,7 +1394,7 @@ def onmessage(update,bot:ObigramClient):
 📈 <b>ESTADÍSTICAS Y GESTIÓN:</b>
 /adm_logs - Logs del sistema
 /adm_users - Estadísticas por usuario
-/adm_userclouds - Ver nube actual de cada usuario ☁️
+/adm_userclouds - Ver nubes y usuarios ☁️
 /adm_uploads - Últimas subidas
 /adm_deletes - Últimas eliminaciones
 /adm_cleardata - Limpiar estadísticas
@@ -1623,7 +1623,7 @@ def onmessage(update,bot:ObigramClient):
 📈 <b>ESTADÍSTICAS Y USUARIOS:</b>
 /adm_logs - Ver últimos logs
 /adm_users - Estadísticas por usuario
-/adm_userclouds - Ver nube actual de cada usuario ☁️
+/adm_userclouds - Ver nubes y usuarios ☁️
 /adm_uploads - Últimas subidas
 /adm_deletes - Últimas eliminaciones
 /adm_cleardata - Limpiar todos los datos
@@ -1662,7 +1662,7 @@ Aún no se ha realizado ninguna acción en el bot.
 📈 <b>ESTADÍSTICAS Y USUARIOS:</b>
 /adm_logs - Ver últimos logs
 /adm_users - Estadísticas por usuario
-/adm_userclouds - Ver nube actual de cada usuario ☁️
+/adm_userclouds - Ver nubes y usuarios ☁️
 /adm_uploads - Últimas subidas
 /adm_deletes - Últimas eliminaciones
 
@@ -1684,19 +1684,22 @@ Aún no se ha realizado ninguna acción en el bot.
             elif '/adm_' in msgText:
                 if msgText == '/adm_userclouds':
                     try:
-                        uclouds_msg = "👥 <b>NUBE ACTUAL DE CADA USUARIO</b>\n━━━━━━━\n\n"
-                        for u in sorted(expanded_users.keys()):
-                            u_info = jdb.get_user(u)
-                            if u_info:
-                                host = u_info.get('moodle_host', 'Desconocido')
-                                short = host.replace('https://', '').replace('http://', '').strip('/')
-                                zips = u_info.get('zips', '?')
-                                uclouds_msg += f"👤 <b>@{u}</b>\n   ☁️ <code>{short}</code>\n   ⚖️ Límite: {zips} MB\n\n"
-                            else:
-                                uclouds_msg += f"👤 <b>@{u}</b>\n   ⚠️ Sin datos en BD\n\n"
+                        uclouds_msg = "☁️ <b>GESTIÓN DE NUBES Y USUARIOS</b>\n━━━━━━━\n\n"
+                        for idx, (user_group, config) in enumerate(PRE_CONFIGURATED_USERS.items(), 1):
+                            host = config.get('moodle_host', 'Desconocido')
+                            short = host.replace('https://', '').replace('http://', '').strip('/')
+                            zips = config.get('zips', '?')
+                            users_list = [u.strip() for u in user_group.split(',')]
+                            users_str = ", ".join(users_list)
+                            
+                            uclouds_msg += f"🌐 <b>Nube {idx}:</b> <code>{short}</code>\n"
+                            uclouds_msg += f"⚖️ <b>Límite:</b> {zips} MB\n"
+                            uclouds_msg += f"👤 <b>Usuarios:</b> <code>{users_str}</code>\n"
+                            uclouds_msg += f"━━━━━━━\n\n"
+                        
                         send_long_message(bot, chat_id, uclouds_msg, original_message=message, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'❌ Error al obtener nubes de usuarios: {str(e)}')
+                        bot.editMessageText(message, f'❌ Error al obtener nubes y usuarios: {str(e)}')
                     return
 
                 elif '/adm_allclouds' in msgText:
