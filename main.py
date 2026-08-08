@@ -27,7 +27,7 @@ BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
 
 # ADMINISTRATOR CONFIGURATION
 ADMIN_USERNAME = "Eliel_21"
-ADMIN_CHAT_ID = 7363341763  # Tu ID para notificaciones
+ADMIN_CHAT_ID = 7363341763  # Tu ID
 LOG_GROUP_ID = -1004295272245  # ID del grupo para notificaciones de enlaces, archivos y txts
 
 # VARIABLES GLOBALES DE CONTROL
@@ -58,7 +58,7 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "thu,Satoru_2115": {
+    "thu,hola1": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.uo.edu.cu/",
         "moodle_repo_id": 4,
@@ -80,13 +80,35 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "gatitoo_miauu,usuario2": {
+    "hola,usuario2": {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.fundacion.uh.cu/",
         "moodle_repo_id": 5,
         "moodle_user": "Claudia.btabares@estudiantes.instec.uh.cu",
         "moodle_password": "cbt260706*TM",
         "zips": 11,
+        "uploadtype": "evidence",
+        "proxy": "",
+        "tokenize": 0
+    },
+    "gatitoo_miauu,usuario_nuevo2": {
+        "cloudtype": "moodle",
+        "moodle_host": "https://eva.umcc.cu/posgrado/",
+        "moodle_repo_id": 5,
+        "moodle_user": "bryan.fajardo",
+        "moodle_password": "bfb.2023",
+        "zips": 499,
+        "uploadtype": "evidence",
+        "proxy": "",
+        "tokenize": 0
+    },
+    "Satoru_2115,usuario_nuevo4": {
+        "cloudtype": "moodle",
+        "moodle_host": "https://eva.umcc.cu/pregrado/",
+        "moodle_repo_id": 5,
+        "moodle_user": "bryan.fajardo",
+        "moodle_password": "bfb.2023",
+        "zips": 19,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
