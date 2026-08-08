@@ -405,7 +405,7 @@ def check_single_cloud(cloud_config):
     moodle_repo_id = cloud_config.get('moodle_repo_id', '')
     proxy = cloud_config.get('proxy', '')
     
-    short_name = moodle_host.replace('https://', '').replace('http://', '').split('/')[0]
+    short_name = moodle_host.replace('https://', '').replace('http://', '').strip('/')
     is_online = False
     try:
         proxy_parsed = ProxyCloud.parse(proxy)
@@ -1092,7 +1092,7 @@ def show_updated_cloud(bot, message, cloud_idx):
         evidences = admin_evidence_manager.clouds_dict.get(cloud_name, [])
         
         if not evidences:
-            short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
+            short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
             empty_msg = f"""
 📭 NUBE VACÍA
 ────────────────────────
@@ -1110,7 +1110,7 @@ def show_updated_cloud(bot, message, cloud_idx):
             show_updated_all_clouds(bot, message)
             return
         
-        short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
+        short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
         
         list_msg = f"""
 📋 NUBE ACTUALIZADA
@@ -1209,7 +1209,7 @@ def show_updated_all_clouds(bot, message):
         cloud_index = 0
         for cloud_name, evidences in admin_evidence_manager.clouds_dict.items():
             cloud_files = sum(ev['files_count'] for ev in evidences)
-            short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
+            short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
             
             menu_msg += f"\n\n{cloud_index}. {short_name}"
             menu_msg += f"\n   📁 {len(evidences)} evidencias, {cloud_files} archivos"
@@ -1754,9 +1754,9 @@ Aún no se ha realizado ninguna acción en el bot.
                         cloud_index = 0
                         for cloud_name, evidences in admin_evidence_manager.clouds_dict.items():
                             cloud_files = sum(ev['files_count'] for ev in evidences)
-                            short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
+                            short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
                             
-                            menu_msg += f"\n\n{cloud_index}. {short_name}"
+                            menu_msg += f"\n\n{cloud_index}. <code>{short_name}</code>"
                             menu_msg += f"\n   📁 {len(evidences)} evidencias, {cloud_files} archivos"
                             menu_msg += f"\n   🔍 /adm_cloud_{cloud_index}"
                             
@@ -1784,7 +1784,7 @@ Aún no se ha realizado ninguna acción en el bot.
 ────────────────────────
                             """
                         
-                        bot.editMessageText(message, menu_msg)
+                        bot.editMessageText(message, menu_msg, parse_mode='html')
                         
                     except Exception as e:
                         bot.editMessageText(message, f'❌ Error: {str(e)}')
@@ -1805,22 +1805,22 @@ Aún no se ha realizado ninguna acción en el bot.
                         
                         cloud_name = list(admin_evidence_manager.clouds_dict.keys())[cloud_idx]
                         evidences = admin_evidence_manager.clouds_dict[cloud_name]
-                        short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
+                        short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
                         
                         if not evidences:
                             empty_msg = f"""
 📭 NUBE VACÍA
 ────────────────────────
-☁️ {short_name}
+☁️ <code>{short_name}</code>
 📊 No hay evidencias en esta nube.
 ────────────────────────
                             """
-                            bot.editMessageText(message, empty_msg)
+                            bot.editMessageText(message, empty_msg, parse_mode='html')
                             return
                         
                         list_msg = f"""
 📋 EVIDENCIAS DE LA NUBE
-☁️ {short_name}
+☁️ <code>{short_name}</code>
 ────────────────────────
 
 """
@@ -1865,7 +1865,7 @@ Aún no se ha realizado ninguna acción en el bot.
 ────────────────────────
                         """
                         
-                        send_long_message(bot, message.chat.id, list_msg, original_message=message)
+                        send_long_message(bot, message.chat.id, list_msg, original_message=message, parse_mode='html')
                         
                     except Exception as e:
                         bot.editMessageText(message, f'❌ Error: {str(e)}')
@@ -1883,7 +1883,7 @@ Aún no se ha realizado ninguna acción en el bot.
                         if evidence:
                             ev_name = evidence['evidence_name']
                             cloud_name = evidence['cloud_name']
-                            short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
+                            short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
                             
                             clean_name = ev_name
                             for user in evidence['group_users']:
@@ -1897,14 +1897,14 @@ Aún no se ha realizado ninguna acción en el bot.
 ────────────────────────
 📝 Nombre: {clean_name}
 📁 Archivos: {evidence['files_count']}
-☁️ Nube: {short_name}
+☁️ Nube: <code>{short_name}</code>
 
 🔧 ACCIONES:
 📄 /adm_fetch_{cloud_idx}_{evid_idx} - TXT
 🗑️ /adm_delete_{cloud_idx}_{evid_idx} - Eliminar
 ────────────────────────
                             """
-                            bot.editMessageText(message, show_msg)
+                            bot.editMessageText(message, show_msg, parse_mode='html')
                         else:
                             bot.editMessageText(message, '❌ No se encontró la evidencia')
                     except Exception as e:
@@ -1995,7 +1995,7 @@ Aún no se ha realizado ninguna acción en el bot.
                                 clean_name = ev_name.replace(marker, "").strip()
                                 break
                         
-                        short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
+                        short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
                         bot.editMessageText(message, f'🗑️ Eliminando evidencia: {clean_name[:50]}...')
                         
                         success, ev_name, files_count = delete_evidence_from_cloud(
@@ -2015,10 +2015,10 @@ Aún no se ha realizado ninguna acción en el bot.
 ────────────────────────
 🗑️ Evidencia: {clean_name[:50]}
 📁 Archivos eliminados: {files_count}
-☁️ Nube: {short_name}
+☁️ Nube: <code>{short_name}</code>
 ────────────────────────
                                     """
-                                    bot.editMessageText(message, result_msg)
+                                    bot.editMessageText(message, result_msg, parse_mode='html')
                                     time.sleep(1)
                                     show_updated_cloud(bot, message, cloud_idx)
                                 else:
@@ -2029,7 +2029,7 @@ Aún no se ha realizado ninguna acción en el bot.
 📁 Archivos borrados: {files_count}
 ────────────────────────
                                     """
-                                    bot.editMessageText(message, result_msg)
+                                    bot.editMessageText(message, result_msg, parse_mode='html')
                                     time.sleep(1)
                                     show_updated_all_clouds(bot, message)
                             else:
@@ -2058,8 +2058,8 @@ Aún no se ha realizado ninguna acción en el bot.
                             bot.editMessageText(message, f'📭 La nube {cloud_idx} ya está vacía')
                             return
                         
-                        short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
-                        bot.editMessageText(message, f'💣 Limpiando nube {short_name}...')
+                        short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
+                        bot.editMessageText(message, f'💣 Limpiando nube <code>{short_name}</code>...', parse_mode='html')
                         
                         cloud_config = None
                         for cfg in AVAILABLE_CLOUDS:
@@ -2074,12 +2074,12 @@ Aún no se ha realizado ninguna acción en el bot.
                                 result_msg = f"""
 💥 LIMPIEZA EXITOSA
 ────────────────────────
-✅ Nube: {short_name}
+✅ Nube: <code>{short_name}</code>
 ✅ Evidencias: {deleted_count}
 ✅ Archivos: {total_files}
 ────────────────────────
                                 """
-                                bot.editMessageText(message, result_msg)
+                                bot.editMessageText(message, result_msg, parse_mode='html')
                                 time.sleep(1)
                                 show_updated_all_clouds(bot, message)
                             else:
@@ -2111,13 +2111,13 @@ Aún no se ha realizado ninguna acción en el bot.
                             
                             if cloud_config:
                                 success, deleted_count, total_files = delete_all_evidences_from_cloud(cloud_config)
-                                short_name = cloud_name.replace('https://', '').replace('http://', '').split('/')[0]
+                                short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
                                 if success:
                                     deleted_total += deleted_count
                                     files_total += total_files
-                                    results.append(f"✅ {short_name}: {deleted_count} ev., {total_files} arch.")
+                                    results.append(f"✅ <code>{short_name}</code>: {deleted_count} ev., {total_files} arch.")
                                 else:
-                                    results.append(f"❌ {short_name}: Error")
+                                    results.append(f"❌ <code>{short_name}</code>: Error")
                         
                         admin_evidence_manager.refresh_data(force=True)
                         final_msg = f"""
