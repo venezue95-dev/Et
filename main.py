@@ -97,7 +97,7 @@ PRE_CONFIGURATED_USERS = {
         "moodle_repo_id": 5,
         "moodle_user": "daniela.martinez",
         "moodle_password": "Zenia*07",
-        "zips": 99,
+        "zips": 109,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
