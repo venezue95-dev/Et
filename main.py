@@ -1328,13 +1328,19 @@ def onmessage(update,bot:ObigramClient):
                 num = int(msgText.strip())
                 if 1 <= num <= len(AVAILABLE_CLOUDS):
                     selected_cloud = AVAILABLE_CLOUDS[num - 1]
+                    short_name = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                    
+                    if user_info.get('moodle_host') == selected_cloud['moodle_host']:
+                        CHANGING_CLOUD_USERS.discard(username)
+                        bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ Nube actual: <code>{short_name}</code>\n⚖️ Límite: <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
+                        return
+                    
                     for key, val in selected_cloud.items():
                         user_info[key] = val
                     jdb.save_data_user(username, user_info)
                     jdb.save()
                     CHANGING_CLOUD_USERS.discard(username)
                     
-                    short_name = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     bot.editMessageText(message, f"✅ <b>¡Nube cambiada exitosamente!</b>\n\n☁️ Nueva nube: <code>{short_name}</code>\n⚖️ Límite: <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
                     return
                 else:
@@ -1350,11 +1356,16 @@ def onmessage(update,bot:ObigramClient):
                 num = int(clean_cmd)
                 if 1 <= num <= len(AVAILABLE_CLOUDS):
                     selected_cloud = AVAILABLE_CLOUDS[num - 1]
+                    short_name = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                    
+                    if user_info.get('moodle_host') == selected_cloud['moodle_host']:
+                        bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ Nube actual: <code>{short_name}</code>\n⚖️ Límite: <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
+                        return
+                    
                     for key, val in selected_cloud.items():
                         user_info[key] = val
                     jdb.save_data_user(username, user_info)
                     jdb.save()
-                    short_name = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     bot.editMessageText(message, f"✅ <b>¡Nube cambiada exitosamente!</b>\n\n☁️ Nueva nube: <code>{short_name}</code>\n⚖️ Límite: <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
                     return
             
