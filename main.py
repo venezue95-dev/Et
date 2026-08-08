@@ -35,6 +35,7 @@ MAINTENANCE_MODE = False
 BANNED_USERS = set()
 ACTIVE_PROCESSES = {}  # Diccionario para rastrear procesos activos en tiempo real (descargas, compresiones, preparando, subidas)
 ACTIVE_STATUS_CHECKS = set()  # Conjunto para evitar múltiples verificaciones simultáneas de estado
+CHANGING_CLOUD_USERS = set()  # Conjunto para usuarios que están en proceso de elegir nube con /cambiar
 
 # CUBA TIMEZONE
 try:
@@ -45,9 +46,9 @@ except:
 # SEPARATOR FOR USER EVIDENCES
 USER_EVIDENCE_MARKER = " "  # Space as separator
 
-# PRE-CONFIGURACIÓN DE USUARIOS
-PRE_CONFIGURATED_USERS = {
-    "Thali355,Eliel_21,Kev_inn10": {
+# LISTA DISPONIBLE DE NUBES (1 al 6)
+AVAILABLE_CLOUDS = [
+    {
         "cloudtype": "moodle",
         "moodle_host": "https://moodle.instec.cu/",
         "moodle_repo_id": 3,
@@ -58,7 +59,7 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "thu,hola1": {
+    {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.uo.edu.cu/",
         "moodle_repo_id": 4,
@@ -69,7 +70,7 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "VanNeiFertio,XD,SchnauzerMinnie,jc041228": {
+    {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.ucf.edu.cu/",
         "moodle_repo_id": 4,
@@ -80,7 +81,7 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "hola,usuario2": {
+    {
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.fundacion.uh.cu/",
         "moodle_repo_id": 5,
@@ -91,18 +92,18 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     },
-    "gatitoo_miauu,usuario_nuevo2": {
+    {
         "cloudtype": "moodle",
         "moodle_host": "https://eva.umcc.cu/posgrado/",
         "moodle_repo_id": 5,
         "moodle_user": "daniela.martinez",
         "moodle_password": "Zenia*07",
-        "zips": 109,
+        "zips": 99,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
     },
-    "Satoru_2115,usuario_nuevo4": {
+    {
         "cloudtype": "moodle",
         "moodle_host": "https://eva.umcc.cu/pregrado/",
         "moodle_repo_id": 5,
@@ -113,6 +114,16 @@ PRE_CONFIGURATED_USERS = {
         "proxy": "",
         "tokenize": 0
     }
+]
+
+# PRE-CONFIGURACIÓN DE USUARIOS
+PRE_CONFIGURATED_USERS = {
+    "Thali355,Eliel_21,Kev_inn10": AVAILABLE_CLOUDS[0],
+    "thu,hola1": AVAILABLE_CLOUDS[1],
+    "VanNeiFertio,XD,SchnauzerMinnie,jc041228": AVAILABLE_CLOUDS[2],
+    "hola,usuario2": AVAILABLE_CLOUDS[3],
+    "gatitoo_miauu,usuario_nuevo2": AVAILABLE_CLOUDS[4],
+    "Satoru_2115,usuario_nuevo4": AVAILABLE_CLOUDS[5]
 }
 
 # ==============================
@@ -1044,7 +1055,6 @@ def extract_one_param_simple(msgText, prefix):
     try:
         if prefix in msgText:
             parts = msgText.split('_')
-            # El índice depende del prefijo
             if prefix == '/adm_cloud_':
                 return int(parts[2]) if len(parts) > 2 else None
             elif prefix == '/adm_wipe_':
@@ -1060,10 +1070,9 @@ def extract_two_params_simple(msgText, prefix):
     try:
         if prefix in msgText:
             parts = msgText.split('_')
-            # Los comandos tienen formato: /adm_xxx_X_Y
             if len(parts) > 3:
-                param1 = int(parts[2])  # Primer número
-                param2 = int(parts[3])  # Segundo número
+                param1 = int(parts[2])
+                param2 = int(parts[3])
                 return [param1, param2]
     except (ValueError, IndexError):
         return None
@@ -1254,7 +1263,7 @@ def show_loading_progress(bot, message, step, total_steps=3):
 # ==============================
 
 def onmessage(update,bot:ObigramClient):
-    global MAINTENANCE_MODE, BANNED_USERS, ACTIVE_PROCESSES, ACTIVE_STATUS_CHECKS
+    global MAINTENANCE_MODE, BANNED_USERS, ACTIVE_PROCESSES, ACTIVE_STATUS_CHECKS, CHANGING_CLOUD_USERS
     try:
         thread = bot.this_thread
         username = update.message.sender.username
@@ -1322,6 +1331,56 @@ def onmessage(update,bot:ObigramClient):
         thread.store('msg',message)
 
         # ============================================
+        # FLUJO DE CAMBIO DE NUBE CON /cambiar Y NÚMERO
+        # ============================================
+        if username in CHANGING_CLOUD_USERS:
+            if msgText.strip().isdigit():
+                num = int(msgText.strip())
+                if 1 <= num <= len(AVAILABLE_CLOUDS):
+                    selected_cloud = AVAILABLE_CLOUDS[num - 1]
+                    for key, val in selected_cloud.items():
+                        user_info[key] = val
+                    jdb.save_data_user(username, user_info)
+                    jdb.save()
+                    CHANGING_CLOUD_USERS.discard(username)
+                    
+                    short_name = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                    bot.editMessageText(message, f"✅ <b>¡Nube cambiada exitosamente!</b>\n\n☁️ Nueva nube: <b>{short_name}</b>\n⚖️ Límite de tamaño por parte: <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
+                    return
+                else:
+                    bot.editMessageText(message, "❌ Número inválido. Por favor envía un número del 1 al 6 o usa /cancel_cloud.")
+                    CHANGING_CLOUD_USERS.discard(username)
+                    return
+            else:
+                CHANGING_CLOUD_USERS.discard(username)
+
+        if '/cambiar' in msgText:
+            # Soportar /cambiar 1 o /cambiar_1 directo si se envía
+            clean_cmd = msgText.replace('/cambiar_', ' ').replace('/cambiar', ' ').strip()
+            if clean_cmd.isdigit():
+                num = int(clean_cmd)
+                if 1 <= num <= len(AVAILABLE_CLOUDS):
+                    selected_cloud = AVAILABLE_CLOUDS[num - 1]
+                    for key, val in selected_cloud.items():
+                        user_info[key] = val
+                    jdb.save_data_user(username, user_info)
+                    jdb.save()
+                    short_name = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                    bot.editMessageText(message, f"✅ <b>¡Nube cambiada exitosamente!</b>\n\n☁️ Nueva nube: <b>{short_name}</b>\n⚖️ Límite de tamaño por parte: <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
+                    return
+            
+            # Mostrar menú interactivo y activar estado
+            menu_msg = "☁️ <b>SELECCIONA TU NUEVA NUBE</b>\n━━━━━━━━━━━━━━━━━━━\n\n"
+            for i, c in enumerate(AVAILABLE_CLOUDS, 1):
+                short = c['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                menu_msg += f"<b>{i}.</b> {short}\n   ⚖️ Límite: <code>{c['zips']} MB</code>\n\n"
+            menu_msg += "━━━━━━━━━━━━━━━━━━━\n💡 <b>Envía ahora solo el número</b> (del 1 al 6) correspondiente a la nube que deseas usar."
+            
+            CHANGING_CLOUD_USERS.add(username)
+            bot.editMessageText(message, menu_msg, parse_mode='html')
+            return
+
+        # ============================================
         # COMANDO /start MEJORADO
         # ============================================
         if '/start' in msgText:
@@ -1344,9 +1403,10 @@ def onmessage(update,bot:ObigramClient):
 /ban @usuario - Banear a un usuario existente 🚫
 /unban @usuario - Desbanear a un usuario existente ✅
 
-📈 COMANDOS DE ESTADÍSTICAS:
+📈 COMANDOS DE ESTADÍSTICAS Y GESTIÓN:
 /adm_logs - Ver logs del sistema
 /adm_users - Ver usuarios y estadísticas
+/adm_userclouds - Ver qué nube usa cada usuario ☁️
 /adm_uploads - Ver últimas subidas
 /adm_deletes - Ver últimas eliminaciones
 /adm_cleardata - Limpiar estadísticas
@@ -1361,6 +1421,7 @@ def onmessage(update,bot:ObigramClient):
 /adm_nuke - Eliminar TODO (peligro extremo)
 
 🔧 TUS COMANDOS PERSONALES:
+/cambiar - Cambiar de nube (1 al 6) 🔄
 /files - Ver tus evidencias personales
 /txt_X - Ver TXT de tu evidencia
 /del_X - Eliminar tu evidencia
@@ -1370,16 +1431,18 @@ def onmessage(update,bot:ObigramClient):
 🔗 FileToLink: @fileeliellinkBot
                 """
             else:
+                current_cloud_short = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
                 start_msg = f"""
 👤 USUARIO REGULAR
 
 👤 Usuario: @{username}
-☁️ Nube: Moodle
+☁️ Nube actual: {current_cloud_short}
+⚖️ Límite: {user_info["zips"]} MB
 📁 Evidence: Activado
-🔗 Host: {user_info["moodle_host"]}
 
 🔧 TUS COMANDOS:
 /start - Ver esta información
+/cambiar - Cambiar de nube (Elige del 1 al 6) 🔄
 /status - Comprobar estado de tu nube 🟢/🔴
 /files - Ver tus evidencias
 /txt_X - Ver TXT de evidencia X
@@ -1407,12 +1470,12 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, "🔍 Verificando nubes una a una...")
                     unique_configs = []
                     checked_hosts = set()
-                    for user_group, cloud_config in PRE_CONFIGURATED_USERS.items():
-                        moodle_host = cloud_config.get('moodle_host', '')
+                    for cfg in AVAILABLE_CLOUDS:
+                        moodle_host = cfg.get('moodle_host', '')
                         if moodle_host in checked_hosts:
                             continue
                         checked_hosts.add(moodle_host)
-                        unique_configs.append(cloud_config)
+                        unique_configs.append(cfg)
                     
                     total_clouds = len(unique_configs)
                     for idx, cfg in enumerate(unique_configs):
@@ -1543,7 +1606,7 @@ def onmessage(update,bot:ObigramClient):
 
         
         # ============================================
-        # COMANDOS DE ADMINISTRADOR
+        # COMANDOS DE ADMINISTRADOR (PANEL Y NUBES)
         # ============================================
         if username == ADMIN_USERNAME:
             if msgText == '/admin':
@@ -1560,7 +1623,7 @@ def onmessage(update,bot:ObigramClient):
 • Subidas totales: {stats['total_uploads']}
 • Eliminaciones totales: {stats['total_deletes']}
 • Espacio total subido: {total_size_formatted}
-• Nubes configuradas: {len(PRE_CONFIGURATED_USERS)}
+• Nubes configuradas: {len(AVAILABLE_CLOUDS)}
 
 🚀 COMANDOS RÁPIDOS:
 /status - Ver estado de todas las nubes 🟢/🔴
@@ -1569,14 +1632,15 @@ def onmessage(update,bot:ObigramClient):
 /ban @usuario - Banear usuario 🚫
 /unban @usuario - Desbanear usuario ✅
 
-📈 COMANDOS DE ESTADÍSTICAS:
+📈 ESTADÍSTICAS Y USUARIOS:
 /adm_logs - Ver últimos logs
 /adm_users - Ver estadísticas por usuario
+/adm_userclouds - Ver nube actual de cada usuario ☁️
 /adm_uploads - Ver últimas subidas
 /adm_deletes - Ver últimas eliminaciones
 /adm_cleardata - Limpiar todos los datos
 
-☁️ COMANDOS DE GESTIÓN DE NUBES:
+☁️ GESTIÓN DE NUBES:
 /adm_allclouds - Ver todas las nubes
 /adm_cloud_X - Ver nube específica
 /adm_show_X_Y - Ver detalles de evidencia
@@ -1598,7 +1662,7 @@ def onmessage(update,bot:ObigramClient):
 ⚠️ NO HAY DATOS REGISTRADOS
 Aún no se ha realizado ninguna acción en el bot.
 
-📊 Nubes configuradas: {len(PRE_CONFIGURATED_USERS)}
+📊 Nubes configuradas: {len(AVAILABLE_CLOUDS)}
 
 🚀 COMANDOS RÁPIDOS:
 /status - Ver estado de todas las nubes 🟢/🔴
@@ -1607,13 +1671,14 @@ Aún no se ha realizado ninguna acción en el bot.
 /ban @usuario - Banear usuario 🚫
 /unban @usuario - Desbanear usuario ✅
 
-📈 COMANDOS DE ESTADÍSTICAS:
+📈 ESTADÍSTICAS Y USUARIOS:
 /adm_logs - Ver últimos logs
 /adm_users - Ver estadísticas por usuario
+/adm_userclouds - Ver nube actual de cada usuario ☁️
 /adm_uploads - Ver últimas subidas
 /adm_deletes - Ver últimas eliminaciones
 
-☁️ COMANDOS DE GESTIÓN DE NUBES:
+☁️ GESTIÓN DE NUBES:
 /adm_allclouds - Ver todas las nubes
 /adm_cloud_X - Ver nube específica
 /adm_show_X_Y - Ver detalles de evidencia
@@ -1629,7 +1694,24 @@ Aún no se ha realizado ninguna acción en el bot.
                 return
             
             elif '/adm_' in msgText:
-                if '/adm_allclouds' in msgText:
+                if msgText == '/adm_userclouds':
+                    try:
+                        uclouds_msg = "👥 <b>NUBE ACTUAL DE CADA USUARIO</b>\n━━━━━━━━━━━━━━━━━━━\n\n"
+                        for u in sorted(expanded_users.keys()):
+                            u_info = jdb.get_user(u)
+                            if u_info:
+                                host = u_info.get('moodle_host', 'Desconocido')
+                                short = host.replace('https://', '').replace('http://', '').strip('/')
+                                zips = u_info.get('zips', '?')
+                                uclouds_msg += f"👤 <b>@{u}</b>\n   ☁️ {short}\n   ⚖️ Límite: {zips} MB\n\n"
+                            else:
+                                uclouds_msg += f"👤 <b>@{u}</b>\n   ⚠️ Sin datos en BD\n\n"
+                        send_long_message(bot, chat_id, uclouds_msg, original_message=message)
+                    except Exception as e:
+                        bot.editMessageText(message, f'❌ Error al obtener nubes de usuarios: {str(e)}')
+                    return
+
+                elif '/adm_allclouds' in msgText:
                     try:
                         show_loading_progress(bot, message, 1, 3)
                         total_evidences = admin_evidence_manager.refresh_data()
@@ -1641,7 +1723,7 @@ Aún no se ha realizado ninguna acción en el bot.
 ━━━━━━━━━━━━━━━━━━━
 
 📊 RESUMEN GENERAL:
-• Nubes configuradas: {len(PRE_CONFIGURATED_USERS)}
+• Nubes configuradas: {len(AVAILABLE_CLOUDS)}
 • Evidencias totales: 0
 • Archivos totales: 0
 
@@ -1998,9 +2080,9 @@ Aún no se ha realizado ninguna acción en el bot.
                         bot.editMessageText(message, f'💣 Limpiando nube {short_name}...')
                         
                         cloud_config = None
-                        for user_group, config in PRE_CONFIGURATED_USERS.items():
-                            if config.get('moodle_host') == cloud_name:
-                                cloud_config = config
+                        for cfg in AVAILABLE_CLOUDS:
+                            if cfg.get('moodle_host') == cloud_name:
+                                cloud_config = cfg
                                 break
                         
                         if cloud_config:
@@ -2043,9 +2125,9 @@ Aún no se ha realizado ninguna acción en el bot.
                         
                         for cloud_name, evidences in admin_evidence_manager.clouds_dict.items():
                             cloud_config = None
-                            for user_group, config in PRE_CONFIGURATED_USERS.items():
-                                if config.get('moodle_host') == cloud_name:
-                                    cloud_config = config
+                            for cfg in AVAILABLE_CLOUDS:
+                                if cfg.get('moodle_host') == cloud_name:
+                                    cloud_config = cfg
                                     break
                             
                             if cloud_config:
