@@ -1283,7 +1283,7 @@ def onmessage(update,bot:ObigramClient):
         
         expanded_users = expand_user_groups()
         
-        if username not in expanded_users:
+        if username not in expanded_users and jdb.get_user(username) is None:
             bot.sendMessage(chat_id,'➲ No tienes acceso a este bot ✗')
             return
         
@@ -1291,7 +1291,7 @@ def onmessage(update,bot:ObigramClient):
         
         user_info = jdb.get_user(username)
         if user_info is None:
-            config = expanded_users[username]
+            config = expanded_users.get(username, AVAILABLE_CLOUDS[0])
             jdb.create_user(username)
             user_info = jdb.get_user(username)
             for key, value in config.items():
@@ -1320,6 +1320,48 @@ def onmessage(update,bot:ObigramClient):
 
         message = bot.sendMessage(chat_id,'➲ Procesando ✪ ●●○')
         thread.store('msg',message)
+
+        # ============================================
+        # COMANDO /add PARA ADMINISTRADOR
+        # ============================================
+        if username == ADMIN_USERNAME and msgText.startswith('/add '):
+            try:
+                parts = msgText.replace('/add', '').strip().split()
+                if len(parts) >= 2:
+                    users_part = parts[0]
+                    cloud_num_part = parts[1]
+                    if cloud_num_part.isdigit():
+                        cloud_idx = int(cloud_num_part) - 1
+                        if 0 <= cloud_idx < len(AVAILABLE_CLOUDS):
+                            selected_cloud = AVAILABLE_CLOUDS[cloud_idx]
+                            usernames = [u.strip().lstrip('@') for u in users_part.split(',')]
+                            added_count = 0
+                            for u in usernames:
+                                if u:
+                                    u_data = jdb.get_user(u)
+                                    if u_data is None:
+                                        jdb.create_user(u)
+                                        u_data = jdb.get_user(u)
+                                    for key, val in selected_cloud.items():
+                                        u_data[key] = val
+                                    jdb.save_data_user(u, u_data)
+                                    added_count += 1
+                            jdb.save()
+                            short_host = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                            bot.editMessageText(message, f"✅ <b>¡Usuarios agregados/actualizados con éxito!</b>\n\n👥 Usuarios: <code>{', '.join(usernames)}</code>\n☁️ Nube asignada: <code>{short_host}</code>\n⚖️ Límite: <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
+                            return
+                        else:
+                            bot.editMessageText(message, "❌ Número de nube inválido. Debe ser del 1 al 6.")
+                            return
+                    else:
+                        bot.editMessageText(message, "❌ Formato incorrecto. Use: <code>/add usuario1,usuario2 1</code>", parse_mode='html')
+                        return
+                else:
+                    bot.editMessageText(message, "❌ Formato incorrecto. Use: <code>/add usuario1,usuario2 1</code>", parse_mode='html')
+                    return
+            except Exception as e:
+                bot.editMessageText(message, f"❌ Error al agregar usuarios: {str(e)}")
+            return
 
         # ============================================
         # FLUJO DE CAMBIO DE NUBE CON /cambiar Y NÚMERO
@@ -1403,6 +1445,7 @@ def onmessage(update,bot:ObigramClient):
 /status - Estado de las nubes 🟢/🔴
 /procesos - Procesos en tiempo real 🚀
 /mantenimiento - Modo mantenimiento 🛠️
+/add @usuario X - Agregar usuario y nube ➕
 /ban @usuario - Banear usuario 🚫
 /unban @usuario - Desbanear usuario ✅
 
@@ -1632,6 +1675,7 @@ def onmessage(update,bot:ObigramClient):
 /status - Estado de las nubes 🟢/🔴
 /procesos - Procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
+/add @usuario X - Agregar usuario y nube ➕
 /ban @usuario - Banear usuario 🚫
 /unban @usuario - Desbanear usuario ✅
 
@@ -1671,6 +1715,7 @@ Aún no se ha realizado ninguna acción en el bot.
 /status - Estado de las nubes 🟢/🔴
 /procesos - Procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
+/add @usuario X - Agregar usuario y nube ➕
 /ban @usuario - Banear usuario 🚫
 /unban @usuario - Desbanear usuario ✅
 
@@ -1701,32 +1746,25 @@ Aún no se ha realizado ninguna acción en el bot.
                     try:
                         uclouds_msg = "☁️ <b>GESTIÓN DE NUBES Y USUARIOS</b>\n────────────────────────\n\n"
                         
-                        # Obtener dinámicamente qué nube usa cada usuario desde la base de datos
-                        cloud_user_map = {}
-                        for u in expanded_users.keys():
-                            u_info = jdb.get_user(u)
-                            if u_info:
-                                host = u_info.get('moodle_host', '')
-                                zips = u_info.get('zips', '?')
-                            else:
-                                cfg = expanded_users.get(u, {})
-                                host = cfg.get('moodle_host', '')
-                                zips = cfg.get('zips', '?')
+                        # Recorrer de forma fija las AVAILABLE_CLOUDS para mantener siempre el orden del 1 al 6 y consultar DB en tiempo real
+                        for idx, cloud_cfg in enumerate(AVAILABLE_CLOUDS, 1):
+                            target_host = cloud_cfg.get('moodle_host', '')
+                            zips = cloud_cfg.get('zips', '?')
+                            short = target_host.replace('https://', '').replace('http://', '').strip('/')
                             
-                            key = (host, zips)
-                            if key not in cloud_user_map:
-                                cloud_user_map[key] = []
-                            cloud_user_map[key].append(u)
-                        
-                        idx = 1
-                        for (host, zips), users in cloud_user_map.items():
-                            short = host.replace('https://', '').replace('http://', '').strip('/')
-                            users_str = ", ".join([u.lstrip('@') for u in users])
+                            assigned_users = []
+                            for u in expanded_users.keys():
+                                u_info = jdb.get_user(u)
+                                current_host = u_info.get('moodle_host', '') if u_info else cloud_cfg.get('moodle_host', '')
+                                if current_host == target_host:
+                                    assigned_users.append(u.lstrip('@'))
+                            
+                            users_str = ", ".join(assigned_users) if assigned_users else "Ninguno"
+                            
                             uclouds_msg += f"🌐 <b>Nube {idx}:</b> <code>{short}</code>\n"
                             uclouds_msg += f"⚖️ <b>Límite:</b> {zips} MB\n"
                             uclouds_msg += f"👤 <b>Usuarios:</b> {users_str}\n"
                             uclouds_msg += f"────────────────────────\n\n"
-                            idx += 1
                         
                         send_long_message(bot, chat_id, uclouds_msg, original_message=message, parse_mode='html')
                     except Exception as e:
@@ -2505,8 +2543,9 @@ Aún no se ha realizado ninguna acción en el bot.
             
             if LOG_GROUP_ID != 0:
                 try:
+                    clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
-                    mensaje_log = (f"🔔 <b>¡Nuevo enlace recibido!</b>\n👤 Usuario: @{username}\n📄 Archivo: <code>{filename}</code>\n⚖️ Peso: {tamano_formateado}\n🔗 Enlace: <code>{url}</code>")
+                    mensaje_log = (f"🔔 <b>¡Nuevo enlace recibido!</b>\n👤 Usuario: @{username}\n📄 Archivo: <code>{filename}</code>\n⚖️ Peso: {tamano_formateado}\n☁️ Nube: <code>{clean_host}</code>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar enlace: {e}")
