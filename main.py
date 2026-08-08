@@ -1335,20 +1335,57 @@ def onmessage(update,bot:ObigramClient):
                         if 0 <= cloud_idx < len(AVAILABLE_CLOUDS):
                             selected_cloud = AVAILABLE_CLOUDS[cloud_idx]
                             usernames = [u.strip().lstrip('@') for u in users_part.split(',')]
-                            added_count = 0
+                            usernames = [u for u in usernames if u]
+                            
+                            if not usernames:
+                                bot.editMessageText(message, "❌ No se especificó ningún usuario válido.")
+                                return
+
+                            # 1. Verificar si alguno está baneado
+                            banned_found = [u for u in usernames if u in BANNED_USERS]
+                            if banned_found:
+                                is_plural_banned = len(banned_found) > 1
+                                banned_str = ", ".join([f"@{u}" for u in banned_found])
+                                if is_plural_banned:
+                                    bot.editMessageText(message, f"❌ Los usuarios {banned_str} están baneados y no se pueden agregar.")
+                                else:
+                                    bot.editMessageText(message, f"❌ El usuario {banned_str} está baneado y no se puede agregar.")
+                                return
+
+                            # 2. Verificar si ya tienen acceso
+                            already_has_access = []
                             for u in usernames:
-                                if u:
-                                    u_data = jdb.get_user(u)
-                                    if u_data is None:
-                                        jdb.create_user(u)
-                                        u_data = jdb.get_user(u)
-                                    for key, val in selected_cloud.items():
-                                        u_data[key] = val
-                                    jdb.save_data_user(u, u_data)
-                                    added_count += 1
+                                if u in expanded_users or jdb.get_user(u) is not None:
+                                    already_has_access.append(u)
+
+                            if already_has_access:
+                                is_plural_access = len(already_has_access) > 1
+                                access_str = ", ".join([f"@{u}" for u in already_has_access])
+                                if is_plural_access:
+                                    bot.editMessageText(message, f"❌ Los usuarios {access_str} ya tienen acceso al bot.")
+                                else:
+                                    bot.editMessageText(message, f"❌ El usuario {access_str} ya tiene acceso al bot.")
+                                return
+
+                            # 3. Agregar con singular o plural según corresponda
+                            is_plural_users = len(usernames) > 1
+                            for u in usernames:
+                                jdb.create_user(u)
+                                u_data = jdb.get_user(u)
+                                for key, val in selected_cloud.items():
+                                    u_data[key] = val
+                                jdb.save_data_user(u, u_data)
                             jdb.save()
+                            
                             short_host = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                            bot.editMessageText(message, f"✅ <b>¡Usuarios agregados/actualizados con éxito!</b>\n\n👥 Usuarios: <code>{', '.join(usernames)}</code>\n☁️ Nube asignada: <code>{short_host}</code>\n⚖️ Límite: <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
+                            users_str = ", ".join([f"@{u}" for u in usernames])
+                            
+                            if is_plural_users:
+                                msg_text = f"✅ <b>¡Usuarios agregados con éxito!</b>\n\n👥 Usuarios: <code>{users_str}</code>\n☁️ Nube asignada: <code>{short_host}</code>\n⚖️ Límite: <code>{selected_cloud['zips']} MB</code>"
+                            else:
+                                msg_text = f"✅ <b>¡Usuario agregado con éxito!</b>\n\n👤 Usuario: <code>{users_str}</code>\n☁️ Nube asignada: <code>{short_host}</code>\n⚖️ Límite: <code>{selected_cloud['zips']} MB</code>"
+                            
+                            bot.editMessageText(message, msg_text, parse_mode='html')
                             return
                         else:
                             bot.editMessageText(message, "❌ Número de nube inválido. Debe ser del 1 al 6.")
@@ -1445,9 +1482,9 @@ def onmessage(update,bot:ObigramClient):
 /status - Estado de las nubes 🟢/🔴
 /procesos - Procesos en tiempo real 🚀
 /mantenimiento - Modo mantenimiento 🛠️
-/add @usuario X - Agregar usuario y nube ➕
-/ban @usuario - Banear usuario 🚫
-/unban @usuario - Desbanear usuario ✅
+/add - Agregar usuario y nube ➕
+/ban - Banear usuario 🚫
+/unban - Desbanear usuario ✅
 
 📈 <b>ESTADÍSTICAS Y GESTIÓN:</b>
 /adm_logs - Logs del sistema
@@ -1675,9 +1712,9 @@ def onmessage(update,bot:ObigramClient):
 /status - Estado de las nubes 🟢/🔴
 /procesos - Procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
-/add @usuario X - Agregar usuario y nube ➕
-/ban @usuario - Banear usuario 🚫
-/unban @usuario - Desbanear usuario ✅
+/add - Agregar usuario y nube ➕
+/ban - Banear usuario 🚫
+/unban - Desbanear usuario ✅
 
 📈 <b>ESTADÍSTICAS Y USUARIOS:</b>
 /adm_logs - Ver últimos logs
@@ -1715,9 +1752,9 @@ Aún no se ha realizado ninguna acción en el bot.
 /status - Estado de las nubes 🟢/🔴
 /procesos - Procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
-/add @usuario X - Agregar usuario y nube ➕
-/ban @usuario - Banear usuario 🚫
-/unban @usuario - Desbanear usuario ✅
+/add - Agregar usuario y nube ➕
+/ban - Banear usuario 🚫
+/unban - Desbanear usuario ✅
 
 📈 <b>ESTADÍSTICAS Y USUARIOS:</b>
 /adm_logs - Ver últimos logs
