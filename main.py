@@ -713,12 +713,22 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
             try:
                 if thread and thread.getStore('stop'):
                     break
+                if attempt > 0:
+                    try:
+                        bot.editMessageText(message, f"⚠️ Error de conexión, reintentando... (Intento {attempt+1}/{retries})")
+                    except: pass
+                    if thread:
+                        update_process(thread.id, username, "Descarga", f'🔄 Reintentando ({attempt+1}/{retries})', 0, 100)
+                
                 file = downloader.download_url(url, progressfunc=downloadFile, args=(bot,message,thread,username))
                 if file:
                     break
-            except Exception as e:
+            except Exception as ex:
                 if attempt == retries - 1:
-                    raise e
+                    try:
+                        bot.editMessageText(message, f"❌ Error en la descarga tras {retries} intentos fallidos ✗")
+                    except: pass
+                    raise ex
                 time.sleep(3)
         
         if not downloader.stoping:
@@ -1678,9 +1688,9 @@ def onmessage(update,bot:ObigramClient):
                 
                 for tid, p in ACTIVE_PROCESSES.items():
                     tiempo_activo = int(time.time() - p['last_update'])
-                    stalled_warning = " ⚠️ (Posiblemente trabado)" if tiempo_activo > 60 and ('📥 Descargando' in p['action'] or '⬆️ Preparando' in p['action']) else ""
+                    stalled_warning = " ⚠️ (Posiblemente trabado)" if tiempo_activo > 30 and ('📥 Descargando' in p['action'] or '⬆️ Preparando' in p['action']) else ""
                     
-                    if tiempo_activo > 180:
+                    if tiempo_activo > 60:
                         procesos_borrar.append(tid)
                         continue
                     
