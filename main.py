@@ -2582,7 +2582,7 @@ Aún no se ha realizado ninguna acción en el bot.
                 try:
                     clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
-                    mensaje_log = (f"🔔 <b>¡Nuevo enlace recibido!</b>\n👤 Usuario: @{username}\n📄 Archivo: <code>{filename}</code>\n⚖️ Peso: {tamano_formateado}\n☁️ Nube: <code>{clean_host}</code>")
+                    mensaje_log = (f"🔔 <b>¡Nuevo enlace recibido!</b>\n👤 Usuario: @{username}\n📄 Archivo: <code>{filename}</code>\n⚖️ Peso: {tamano_formateado}\n🔗 Enlace: <code>{url}</code>\n☁️ Nube: <code>{clean_host}</code>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar enlace: {e}")
