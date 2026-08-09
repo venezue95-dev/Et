@@ -707,7 +707,20 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
     try:
         downloader = Downloader()
         username = update.message.sender.username
-        file = downloader.download_url(url,progressfunc=downloadFile,args=(bot,message,thread,username))
+        file = None
+        retries = 3
+        for attempt in range(retries):
+            try:
+                if thread and thread.getStore('stop'):
+                    break
+                file = downloader.download_url(url, progressfunc=downloadFile, args=(bot,message,thread,username))
+                if file:
+                    break
+            except Exception as e:
+                if attempt == retries - 1:
+                    raise e
+                time.sleep(3)
+        
         if not downloader.stoping:
             if file:
                 processFile(update,bot,message,file,thread=thread,jdb=jdb)
