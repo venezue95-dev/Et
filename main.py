@@ -784,19 +784,15 @@ def sendTxt(name, files, update, bot, send_to_group=False, user_info=None):
         if 'uclv.edu.cu' in host or 'fundacion.uh.cu' in host:
             m_user = user_info.get('moodle_user', '')
             m_pass = user_info.get('moodle_password', '')
-            extra_msg = f"\n\n⚠️ <b>Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n👤 Usuario: <code>{m_user}</code>\n🔑 Contraseña: <code>{m_pass}</code>"
+            extra_msg = f"⚠️ <b>Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n👤 Usuario: <code>{m_user}</code>\n🔑 Contraseña: <code>{m_pass}</code>"
 
-    # Enviar al usuario en privado
-    bot.sendFile(update.message.chat.id, name)
-    if extra_msg:
-        bot.sendMessage(update.message.chat.id, extra_msg, parse_mode='html')
+    # Enviar al usuario en privado con el texto como caption integrada
+    bot.sendFile(update.message.chat.id, name, caption=extra_msg, parse_mode='html')
     
-    # Enviar también al grupo de logs si está configurado
+    # Enviar también al grupo de logs si está configurado (con su caption integrada)
     if send_to_group and LOG_GROUP_ID != 0:
         try:
-            bot.sendFile(LOG_GROUP_ID, name)
-            if extra_msg:
-                bot.sendMessage(LOG_GROUP_ID, extra_msg, parse_mode='html')
+            bot.sendFile(LOG_GROUP_ID, name, caption=extra_msg, parse_mode='html')
         except Exception as e:
             print(f"Error enviando txt al grupo: {e}")
             
@@ -1461,6 +1457,11 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, "❌ No se especificó ningún usuario válido.")
                     return
                 
+                # Protección contra la eliminación del administrador
+                if ADMIN_USERNAME in usernames:
+                    bot.editMessageText(message, f"🛡️ <b>Acción denegada:</b> No es posible quitar al usuario administrador (@{ADMIN_USERNAME}).", parse_mode='html')
+                    return
+                
                 removed_users = []
                 not_found_users = []
                 
@@ -1505,6 +1506,118 @@ def onmessage(update,bot:ObigramClient):
                 return
             except Exception as e:
                 bot.editMessageText(message, f"❌ Error al quitar usuarios: {str(e)}")
+            return
+
+        # ============================================
+        # COMANDO /ban (MÚLTIPLES USUARIOS)
+        # ============================================
+        if username == ADMIN_USERNAME and msgText.startswith('/ban '):
+            try:
+                targets_part = msgText.replace('/ban', '').strip()
+                targets = [u.strip().lstrip('@') for u in targets_part.split(',')]
+                targets = [u for u in targets if u]
+                
+                if not targets:
+                    bot.editMessageText(message, "❌ No se especificó ningún usuario válido.")
+                    return
+                
+                if ADMIN_USERNAME in targets:
+                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> No es posible banear al usuario administrador (@{ADMIN_USERNAME}).', parse_mode='html')
+                    return
+                
+                success_targets = []
+                already_banned = []
+                not_found = []
+                
+                for target in targets:
+                    if target not in expanded_users and jdb.get_user(target) is None:
+                        not_found.append(target)
+                        continue
+                    if target in BANNED_USERS:
+                        already_banned.append(target)
+                        continue
+                    
+                    BANNED_USERS.add(target)
+                    success_targets.append(target)
+                
+                is_plural = len(success_targets) > 1
+                targets_str = ", ".join([f"@{u}" for u in success_targets])
+                
+                response_text = ""
+                if success_targets:
+                    if is_plural:
+                        response_text += f"🚫 <b>¡Usuarios baneados con éxito!</b>\n\n👥 Usuarios: <code>{targets_str}</code>"
+                    else:
+                        response_text += f"🚫 <b>¡Usuario baneado con éxito!</b>\n\n👤 Usuario: <code>{targets_str}</code>"
+                
+                if already_banned:
+                    ab_str = ", ".join([f"@{u}" for u in already_banned])
+                    response_text += f"\n\nℹ️ Ya se encontraban baneados: <code>{ab_str}</code>"
+                
+                if not_found:
+                    nf_str = ", ".join([f"@{u}" for u in not_found])
+                    response_text += f"\n\n❌ No existen en el sistema: <code>{nf_str}</code>"
+                
+                bot.editMessageText(message, response_text, parse_mode='html')
+                return
+            except Exception as e:
+                bot.editMessageText(message, f"❌ Error al banear usuarios: {str(e)}")
+            return
+
+        # ============================================
+        # COMANDO /unban (MÚLTIPLES USUARIOS)
+        # ============================================
+        if username == ADMIN_USERNAME and msgText.startswith('/unban '):
+            try:
+                targets_part = msgText.replace('/unban', '').strip()
+                targets = [u.strip().lstrip('@') for u in targets_part.split(',')]
+                targets = [u for u in targets if u]
+                
+                if not targets:
+                    bot.editMessageText(message, "❌ No se especificó ningún usuario válido.")
+                    return
+                
+                if ADMIN_USERNAME in targets:
+                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> El usuario administrador (@{ADMIN_USERNAME}) no puede ser objetivo de este comando.', parse_mode='html')
+                    return
+                
+                success_targets = []
+                not_banned = []
+                not_found = []
+                
+                for target in targets:
+                    if target not in expanded_users and jdb.get_user(target) is None:
+                        not_found.append(target)
+                        continue
+                    if target not in BANNED_USERS:
+                        not_banned.append(target)
+                        continue
+                    
+                    BANNED_USERS.discard(target)
+                    success_targets.append(target)
+                
+                is_plural = len(success_targets) > 1
+                targets_str = ", ".join([f"@{u}" for u in success_targets])
+                
+                response_text = ""
+                if success_targets:
+                    if is_plural:
+                        response_text += f"✅ <b>¡Usuarios desbaneados con éxito!</b>\n\n👥 Usuarios: <code>{targets_str}</code>"
+                    else:
+                        response_text += f"✅ <b>¡Usuario desbaneado con éxito!</b>\n\n👤 Usuario: <code>{targets_str}</code>"
+                
+                if not_banned:
+                    nb_str = ", ".join([f"@{u}" for u in not_banned])
+                    response_text += f"\n\nℹ️ No estaban baneados: <code>{nb_str}</code>"
+                
+                if not_found:
+                    nf_str = ", ".join([f"@{u}" for u in not_found])
+                    response_text += f"\n\n❌ No existen en el sistema: <code>{nf_str}</code>"
+                
+                bot.editMessageText(message, response_text, parse_mode='html')
+                return
+            except Exception as e:
+                bot.editMessageText(message, f"❌ Error al desbanear usuarios: {str(e)}")
             return
 
         # ============================================
@@ -1691,45 +1804,7 @@ def onmessage(update,bot:ObigramClient):
 
         # === COMANDOS EXCLUSIVOS ADMIN ===
         if username == ADMIN_USERNAME:
-            if msgText.startswith('/ban '):
-                target = msgText.replace('/ban ', '').replace('@', '').strip()
-                
-                if target == ADMIN_USERNAME:
-                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> No es posible banear al usuario administrador (@{ADMIN_USERNAME}).', parse_mode='html')
-                    return
-                
-                if target not in expanded_users and jdb.get_user(target) is None:
-                    bot.editMessageText(message, f'❌ El usuario @{target} no existe en la base de datos ni en los grupos preconfigurados.')
-                    return
-                
-                if target in BANNED_USERS:
-                    bot.editMessageText(message, f'ℹ️ El usuario @{target} ya se encuentra baneado en el sistema.')
-                    return
-                
-                BANNED_USERS.add(target)
-                bot.editMessageText(message, f'🚫 El usuario @{target} ha sido baneado exitosamente.')
-                return
-                
-            elif msgText.startswith('/unban '):
-                target = msgText.replace('/unban ', '').replace('@', '').strip()
-                
-                if target == ADMIN_USERNAME:
-                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> El usuario administrador (@{ADMIN_USERNAME}) no puede ser objetivo de este comando.', parse_mode='html')
-                    return
-                
-                if target not in expanded_users and jdb.get_user(target) is None:
-                    bot.editMessageText(message, f'❌ El usuario @{target} no existe en el sistema.')
-                    return
-                
-                if target not in BANNED_USERS:
-                    bot.editMessageText(message, f'ℹ️ El usuario @{target} no está baneado actualmente.')
-                    return
-                
-                BANNED_USERS.discard(target)
-                bot.editMessageText(message, f'✅ El usuario @{target} ha sido desbaneado exitosamente.')
-                return
-                
-            elif msgText.startswith('/mantenimiento'):
+            if msgText.startswith('/mantenimiento'):
                 if 'on' in msgText.lower():
                     MAINTENANCE_MODE = True
                 elif 'off' in msgText.lower():
