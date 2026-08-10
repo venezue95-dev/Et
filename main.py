@@ -814,7 +814,7 @@ def initialize_database(jdb):
     database_updated = False
     
     for username, config in expanded_users.items():
-        if username in REMOVED_USERS:
+        if username.lower() in REMOVED_USERS:
             continue
         existing_user = jdb.get_user(username)
         
@@ -1327,19 +1327,25 @@ def onmessage(update,bot:ObigramClient):
         expanded_users = expand_user_groups()
         
         # === CONTROL DE ACCESO (PRIMERO SE VALIDA EL ACCESO) ===
-        if username in REMOVED_USERS and username != ADMIN_USERNAME:
+        if username and username.lower() in {u.lower() for u in REMOVED_USERS}:
             bot.sendMessage(chat_id,'➲ No tienes acceso a este bot ✗')
             return
 
-        if username not in expanded_users and jdb.get_user(username) is None and username != ADMIN_USERNAME:
-            bot.sendMessage(chat_id,'➲ No tienes acceso a este bot ✗')
-            return
+        if username and username.lower() != ADMIN_USERNAME.lower():
+            is_valid = False
+            for u in expanded_users.keys():
+                if u.lower() == username.lower() and u.lower() not in {r.lower() for r in REMOVED_USERS}:
+                    is_valid = True
+                    break
+            if not is_valid and jdb.get_user(username) is None:
+                bot.sendMessage(chat_id,'➲ No tienes acceso a este bot ✗')
+                return
 
-        if username in BANNED_USERS and username != ADMIN_USERNAME:
+        if username and username.lower() in {b.lower() for b in BANNED_USERS} and username.lower() != ADMIN_USERNAME.lower():
             bot.sendMessage(chat_id, '🚫 Has sido baneado y no puedes usar este bot.')
             return
             
-        if MAINTENANCE_MODE and username != ADMIN_USERNAME:
+        if MAINTENANCE_MODE and username.lower() != ADMIN_USERNAME.lower():
             bot.sendMessage(chat_id, 
                 "🛠️ <b>¡Sistema en mantenimiento temporal!</b>\n\n"
                 "⚠️ El bot se encuentra actualmente bajo labores de optimización y mantenimiento.\n"
@@ -1351,7 +1357,13 @@ def onmessage(update,bot:ObigramClient):
         
         user_info = jdb.get_user(username)
         if user_info is None:
-            config = expanded_users.get(username, AVAILABLE_CLOUDS[0])
+            # Buscar en expanded de forma insensible a mayúsculas
+            matched_config = None
+            for u, cfg in expanded_users.items():
+                if u.lower() == username.lower():
+                    matched_config = cfg
+                    break
+            config = matched_config or AVAILABLE_CLOUDS[0]
             jdb.create_user(username)
             user_info = jdb.get_user(username)
             for key, value in config.items():
@@ -1384,7 +1396,7 @@ def onmessage(update,bot:ObigramClient):
         # ============================================
         # COMANDO /add PARA ADMINISTRADOR
         # ============================================
-        if username == ADMIN_USERNAME and msgText.startswith('/add '):
+        if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/add '):
             try:
                 parts = msgText.replace('/add', '').strip().split()
                 if len(parts) >= 2:
@@ -1402,12 +1414,12 @@ def onmessage(update,bot:ObigramClient):
                                 return
 
                             # Protección contra la adición del administrador
-                            if ADMIN_USERNAME in usernames:
+                            if any(u.lower() == ADMIN_USERNAME.lower() for u in usernames):
                                 bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> No es posible agregar al usuario administrador (@{ADMIN_USERNAME}).', parse_mode='html')
                                 return
 
                             # 1. Verificar si alguno está baneado
-                            banned_found = [u for u in usernames if u in BANNED_USERS]
+                            banned_found = [u for u in usernames if u.lower() in {b.lower() for b in BANNED_USERS}]
                             if banned_found:
                                 is_plural_banned = len(banned_found) > 1
                                 banned_str = ", ".join([f"@{u}" for u in banned_found])
@@ -1420,7 +1432,8 @@ def onmessage(update,bot:ObigramClient):
                             # 2. Verificar si ya tienen acceso
                             already_has_access = []
                             for u in usernames:
-                                if (u in expanded_users and u not in REMOVED_USERS) or jdb.get_user(u) is not None:
+                                is_in_exp = any(eu.lower() == u.lower() for eu in expanded_users.keys()) and not any(r.lower() == u.lower() for r in REMOVED_USERS)
+                                if is_in_exp or jdb.get_user(u) is not None:
                                     already_has_access.append(u)
 
                             if already_has_access:
@@ -1435,7 +1448,7 @@ def onmessage(update,bot:ObigramClient):
                             # 3. Agregar con singular o plural según corresponda
                             is_plural_users = len(usernames) > 1
                             for u in usernames:
-                                REMOVED_USERS.discard(u)  # Asegurar que se quite de removidos si existía
+                                REMOVED_USERS = {r for r in REMOVED_USERS if r.lower() != u.lower()}
                                 jdb.create_user(u)
                                 u_data = jdb.get_user(u)
                                 for key, val in selected_cloud.items():
@@ -1467,12 +1480,11 @@ def onmessage(update,bot:ObigramClient):
             return
 
         # ============================================
-        # COMANDO /quitar O /remove PARA ADMINISTRADOR
+        # COMANDO /remove PARA ADMINISTRADOR
         # ============================================
-        if username == ADMIN_USERNAME and (msgText.startswith('/quitar ') or msgText.startswith('/remove ')):
+        if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/remove '):
             try:
-                cmd_prefix = '/quitar ' if msgText.startswith('/quitar ') else '/remove '
-                users_part = msgText.replace(cmd_prefix, '').strip()
+                users_part = msgText.replace('/remove', '').strip()
                 usernames = [u.strip().lstrip('@') for u in users_part.split(',')]
                 usernames = [u for u in usernames if u]
                 
@@ -1481,7 +1493,7 @@ def onmessage(update,bot:ObigramClient):
                     return
                 
                 # Protección contra la eliminación del administrador
-                if ADMIN_USERNAME in usernames:
+                if any(u.lower() == ADMIN_USERNAME.lower() for u in usernames):
                     bot.editMessageText(message, f"🛡️ <b>Acción denegada:</b> No es posible quitar al usuario administrador (@{ADMIN_USERNAME}).", parse_mode='html')
                     return
                 
@@ -1490,9 +1502,12 @@ def onmessage(update,bot:ObigramClient):
                 
                 for u in usernames:
                     exists = False
-                    if u in expanded_users or jdb.get_user(u) is not None:
+                    is_in_exp = any(eu.lower() == u.lower() for eu in expanded_users.keys())
+                    if is_in_exp or jdb.get_user(u) is not None:
                         exists = True
-                        REMOVED_USERS.add(u)  # Añadir a removidos para bloquear la preconfiguración estática
+                        REMOVED_USERS.add(u.lower())
+                        if u.lower() in {b.lower() for b in BANNED_USERS}:
+                            BANNED_USERS = {b for b in BANNED_USERS if b.lower() != u.lower()}
                         try:
                             if hasattr(jdb, 'remove_user'):
                                 jdb.remove_user(u)
@@ -1535,7 +1550,7 @@ def onmessage(update,bot:ObigramClient):
         # ============================================
         # COMANDO /ban (MÚLTIPLES USUARIOS)
         # ============================================
-        if username == ADMIN_USERNAME and msgText.startswith('/ban '):
+        if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/ban '):
             try:
                 targets_part = msgText.replace('/ban', '').strip()
                 targets = [u.strip().lstrip('@') for u in targets_part.split(',')]
@@ -1545,7 +1560,7 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, "❌ No se especificó ningún usuario válido.")
                     return
                 
-                if ADMIN_USERNAME in targets:
+                if any(t.lower() == ADMIN_USERNAME.lower() for t in targets):
                     bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> No es posible banear al usuario administrador (@{ADMIN_USERNAME}).', parse_mode='html')
                     return
                 
@@ -1554,10 +1569,11 @@ def onmessage(update,bot:ObigramClient):
                 not_found = []
                 
                 for target in targets:
-                    if target not in expanded_users and jdb.get_user(target) is None:
+                    is_in_exp = any(eu.lower() == target.lower() for eu in expanded_users.keys()) and not any(r.lower() == target.lower() for r in REMOVED_USERS)
+                    if not is_in_exp and jdb.get_user(target) is None:
                         not_found.append(target)
                         continue
-                    if target in BANNED_USERS:
+                    if target.lower() in {b.lower() for b in BANNED_USERS}:
                         already_banned.append(target)
                         continue
                     
@@ -1591,7 +1607,7 @@ def onmessage(update,bot:ObigramClient):
         # ============================================
         # COMANDO /unban (MÚLTIPLES USUARIOS)
         # ============================================
-        if username == ADMIN_USERNAME and msgText.startswith('/unban '):
+        if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/unban '):
             try:
                 targets_part = msgText.replace('/unban', '').strip()
                 targets = [u.strip().lstrip('@') for u in targets_part.split(',')]
@@ -1601,7 +1617,7 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, "❌ No se especificó ningún usuario válido.")
                     return
                 
-                if ADMIN_USERNAME in targets:
+                if any(t.lower() == ADMIN_USERNAME.lower() for t in targets):
                     bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> El usuario administrador (@{ADMIN_USERNAME}) no puede ser objetivo de este comando.', parse_mode='html')
                     return
                 
@@ -1610,14 +1626,15 @@ def onmessage(update,bot:ObigramClient):
                 not_found = []
                 
                 for target in targets:
-                    if target not in expanded_users and jdb.get_user(target) is None:
+                    is_in_exp = any(eu.lower() == target.lower() for eu in expanded_users.keys())
+                    if not is_in_exp and jdb.get_user(target) is None:
                         not_found.append(target)
                         continue
-                    if target not in BANNED_USERS:
+                    if target.lower() not in {b.lower() for b in BANNED_USERS}:
                         not_banned.append(target)
                         continue
                     
-                    BANNED_USERS.discard(target)
+                    BANNED_USERS = {b for b in BANNED_USERS if b.lower() != target.lower()}
                     success_targets.append(target)
                 
                 is_plural = len(success_targets) > 1
@@ -1727,7 +1744,7 @@ def onmessage(update,bot:ObigramClient):
 /procesos - Procesos en tiempo real 🚀
 /mantenimiento - Modo mantenimiento 🛠️
 /add - Agregar usuario y nube ➕
-/quitar - Quitar usuario del bot ➖
+/remove - Quitar usuario del bot ➖
 /ban - Banear usuario 🚫
 /unban - Desbanear usuario ✅
 
@@ -1920,7 +1937,7 @@ def onmessage(update,bot:ObigramClient):
 /procesos - Procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
 /add - Agregar usuario y nube ➕
-/quitar - Quitar usuario del bot ➖
+/remove - Quitar usuario del bot ➖
 /ban - Banear usuario 🚫
 /unban - Desbanear usuario ✅
 
@@ -1961,7 +1978,7 @@ Aún no se ha realizado ninguna acción en el bot.
 /procesos - Procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
 /add - Agregar usuario y nube ➕
-/quitar - Quitar usuario del bot ➖
+/remove - Quitar usuario del bot ➖
 /ban - Banear usuario 🚫
 /unban - Desbanear usuario ✅
 
