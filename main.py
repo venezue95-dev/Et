@@ -706,7 +706,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             
             if len(files)>0:
                 txtname = str(file).split('/')[-1].split('.')[0] + '.txt'
-                sendTxt(txtname, files, update, bot, send_to_group=True)
+                sendTxt(txtname, files, update, bot, send_to_group=True, user_info=getUser)
         else:
             bot.editMessageText(message,'➥ Error en la página ✗')
     except Exception as ex:
@@ -757,7 +757,7 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
         if thread:
             clean_process(thread.id)
 
-def sendTxt(name, files, update, bot, send_to_group=False):
+def sendTxt(name, files, update, bot, send_to_group=False, user_info=None):
     txt = open(name,'w')
     
     for i, f in enumerate(files):
@@ -778,13 +778,25 @@ def sendTxt(name, files, update, bot, send_to_group=False):
     
     txt.close()
     
+    extra_msg = ""
+    if user_info:
+        host = user_info.get('moodle_host', '').lower()
+        if 'uclv.edu.cu' in host or 'fundacion.uh.cu' in host:
+            m_user = user_info.get('moodle_user', '')
+            m_pass = user_info.get('moodle_password', '')
+            extra_msg = f"\n\n⚠️ <b>Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n👤 Usuario: <code>{m_user}</code>\n🔑 Contraseña: <code>{m_pass}</code>"
+
     # Enviar al usuario en privado
     bot.sendFile(update.message.chat.id, name)
+    if extra_msg:
+        bot.sendMessage(update.message.chat.id, extra_msg, parse_mode='html')
     
     # Enviar también al grupo de logs si está configurado
     if send_to_group and LOG_GROUP_ID != 0:
         try:
             bot.sendFile(LOG_GROUP_ID, name)
+            if extra_msg:
+                bot.sendMessage(LOG_GROUP_ID, extra_msg, parse_mode='html')
         except Exception as e:
             print(f"Error enviando txt al grupo: {e}")
             
@@ -1299,7 +1311,17 @@ def onmessage(update,bot:ObigramClient):
         try: msgText = update.message.text
         except:pass
 
-        # === CONTROL DE ACCESO (MANTENIMIENTO Y BANEO) ===
+        jdb = JsonDatabase('database')
+        jdb.check_create()
+        jdb.load()
+        
+        expanded_users = expand_user_groups()
+        
+        # === CONTROL DE ACCESO (PRIMERO SE VALIDA EL ACCESO) ===
+        if username not in expanded_users and jdb.get_user(username) is None and username != ADMIN_USERNAME:
+            bot.sendMessage(chat_id,'➲ No tienes acceso a este bot ✗')
+            return
+
         if username in BANNED_USERS and username != ADMIN_USERNAME:
             bot.sendMessage(chat_id, '🚫 Has sido baneado y no puedes usar este bot.')
             return
@@ -1310,16 +1332,6 @@ def onmessage(update,bot:ObigramClient):
                 "⚠️ El bot se encuentra actualmente bajo labores de optimización y mantenimiento.\n"
                 "⏳ Por favor, intenta de nuevo más tarde. Disculpa las molestias ocasionadas.", 
                 parse_mode='html')
-            return
-
-        jdb = JsonDatabase('database')
-        jdb.check_create()
-        jdb.load()
-        
-        expanded_users = expand_user_groups()
-        
-        if username not in expanded_users and jdb.get_user(username) is None:
-            bot.sendMessage(chat_id,'➲ No tienes acceso a este bot ✗')
             return
         
         initialize_database(jdb)
@@ -1436,6 +1448,66 @@ def onmessage(update,bot:ObigramClient):
             return
 
         # ============================================
+        # COMANDO /quitar O /remove PARA ADMINISTRADOR
+        # ============================================
+        if username == ADMIN_USERNAME and (msgText.startswith('/quitar ') or msgText.startswith('/remove ')):
+            try:
+                cmd_prefix = '/quitar ' if msgText.startswith('/quitar ') else '/remove '
+                users_part = msgText.replace(cmd_prefix, '').strip()
+                usernames = [u.strip().lstrip('@') for u in users_part.split(',')]
+                usernames = [u for u in usernames if u]
+                
+                if not usernames:
+                    bot.editMessageText(message, "❌ No se especificó ningún usuario válido.")
+                    return
+                
+                removed_users = []
+                not_found_users = []
+                
+                for u in usernames:
+                    exists = False
+                    if jdb.get_user(u) is not None:
+                        exists = True
+                        try:
+                            if hasattr(jdb, 'remove_user'):
+                                jdb.remove_user(u)
+                            elif hasattr(jdb, 'delete_user'):
+                                jdb.delete_user(u)
+                            elif hasattr(jdb, 'data') and isinstance(jdb.data, dict) and u in jdb.data:
+                                del jdb.data[u]
+                            elif hasattr(jdb, 'users') and isinstance(jdb.users, dict) and u in jdb.users:
+                                del jdb.users[u]
+                        except Exception as e:
+                            print(f"Error deleting user from jdb: {e}")
+                    
+                    if exists:
+                        removed_users.append(u)
+                    else:
+                        not_found_users.append(u)
+                
+                jdb.save()
+                
+                is_plural = len(removed_users) > 1
+                users_str = ", ".join([f"@{u}" for u in removed_users])
+                
+                response_text = ""
+                if removed_users:
+                    if is_plural:
+                        response_text += f"✅ <b>¡Usuarios eliminados con éxito!</b>\n\n👥 Usuarios: <code>{users_str}</code>"
+                    else:
+                        response_text += f"✅ <b>¡Usuario eliminado con éxito!</b>\n\n👤 Usuario: <code>{users_str}</code>"
+                
+                if not_found_users:
+                    not_found_str = ", ".join([f"@{u}" for u in not_found_users])
+                    response_text += f"\n\n⚠️ No se encontraron en la base de datos: <code>{not_found_str}</code>"
+                
+                bot.editMessageText(message, response_text, parse_mode='html')
+                return
+            except Exception as e:
+                bot.editMessageText(message, f"❌ Error al quitar usuarios: {str(e)}")
+            return
+
+        # ============================================
         # FLUJO DE CAMBIO DE NUBE CON /cambiar Y NÚMERO
         # ============================================
         if username in CHANGING_CLOUD_USERS:
@@ -1518,6 +1590,7 @@ def onmessage(update,bot:ObigramClient):
 /procesos - Procesos en tiempo real 🚀
 /mantenimiento - Modo mantenimiento 🛠️
 /add - Agregar usuario y nube ➕
+/quitar - Quitar usuario del bot ➖
 /ban - Banear usuario 🚫
 /unban - Desbanear usuario ✅
 
@@ -1748,6 +1821,7 @@ def onmessage(update,bot:ObigramClient):
 /procesos - Procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
 /add - Agregar usuario y nube ➕
+/quitar - Quitar usuario del bot ➖
 /ban - Banear usuario 🚫
 /unban - Desbanear usuario ✅
 
@@ -1788,6 +1862,7 @@ Aún no se ha realizado ninguna acción en el bot.
 /procesos - Procesos activos 🚀
 /mantenimiento - Activar/Desactivar 🛠️
 /add - Agregar usuario y nube ➕
+/quitar - Quitar usuario del bot ➖
 /ban - Banear usuario 🚫
 /unban - Desbanear usuario ✅
 
@@ -2458,7 +2533,7 @@ Aún no se ha realizado ninguna acción en el bot.
                     evindex = visible_list[findex]['original']
                     clean_name = visible_list[findex]['clean_name']
                     txtname = clean_name + '.txt'
-                    sendTxt(txtname, evindex['files'], update, bot)
+                    sendTxt(txtname, evindex['files'], update, bot, user_info=user_info)
                     client.logout()
                     bot.editMessageText(message,'📄 TXT Aquí')
                 else:
