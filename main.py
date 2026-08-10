@@ -1439,7 +1439,9 @@ def onmessage(update,bot:ObigramClient):
                             # 2. Verificar si ya tienen acceso
                             already_has_access = []
                             for u in usernames:
-                                is_in_exp = any(eu.lower() == u.lower() for eu in expanded_users.keys()) and not any(r.lower() == u.lower() for r in REMOVED_USERS)
+                                if u.lower() in {r.lower() for r in REMOVED_USERS}:
+                                    continue
+                                is_in_exp = any(eu.lower() == u.lower() for eu in expanded_users.keys())
                                 if is_in_exp or jdb.get_user(u) is not None:
                                     already_has_access.append(u)
 
