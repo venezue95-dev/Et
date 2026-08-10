@@ -120,7 +120,7 @@ AVAILABLE_CLOUDS = [
         "moodle_repo_id": 5,
         "moodle_user": "lircarrasco",
         "moodle_password": "jarofo-234",
-        "zips": 100,
+        "zips": 99,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
@@ -527,14 +527,20 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
         
         update_process(thread.id, username, filename, '📤 Subiendo', currentBits, totalBits)
         
-        downloadingInfo = infos.createUploading(filename,totalBits,currentBits,speed,time,originalfile)
-        bot.editMessageText(message,downloadingInfo)
+        uploadingInfo = infos.createUploading(filename,totalBits,currentBits,speed,time,originalfile)
+        if thread:
+            uploadingInfo += f"\n\n/cancel_{thread.id}"
+        bot.editMessageText(message,uploadingInfo)
     except Exception as ex: 
         raise ex
 
 def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jdb=None):
     try:
-        bot.editMessageText(message,'⬆️ Preparando para subir ☁ ●●○')
+        prep_msg = '⬆️ Preparando para subir ☁ ●●○'
+        if thread:
+            prep_msg += f"\n\n/cancel_{thread.id}"
+        bot.editMessageText(message, prep_msg)
+        
         username = update.message.sender.username
         if thread:
             if thread.getStore('stop'):
@@ -614,6 +620,8 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         
         if file_size > max_file_size:
             compresingInfo = infos.createCompresing(file,file_size,max_file_size)
+            if thread:
+                compresingInfo += f"\n\n/cancel_{thread.id}"
             bot.editMessageText(message,compresingInfo)
             
             # Registrar estado de compresión en procesos activos (sin porcentaje)
@@ -688,7 +696,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 if 'uclv.edu.cu' in host or 'fundacion.uh.cu' in host:
                     m_user = getUser.get('moodle_user', '')
                     m_pass = getUser.get('moodle_password', '')
-                    extra_msg = f"⚠️ <b>Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n👤 Usuario: <code>{m_user}</code>\n🔑 Contraseña: <code>{m_pass}</code>\n"
+                    extra_msg = f"\n⚠️ <b>Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n👤 Usuario: <code>{m_user}</code>\n🔑 Contraseña: <code>{m_pass}</code>\n"
 
             bot.sendMessage(message.chat.id, finishInfo + '\n' + extra_msg + '\n' + filesInfo, parse_mode='html')
             
@@ -1847,7 +1855,7 @@ def onmessage(update,bot:ObigramClient):
                 
             elif msgText == '/procesos':
                 if not ACTIVE_PROCESSES:
-                    bot.editMessageText(message, "✅ No hay subidas, compresiones o descargas activas en este momento.")
+                    bot.editMessageText(message, "✅ No hay procesos activos en este momento.")
                     return
                 
                 proc_msg = "🔄 <b>Procesos activos en tiempo real</b>\n────────────────────────\n\n"
@@ -1861,8 +1869,7 @@ def onmessage(update,bot:ObigramClient):
                         procesos_borrar.append(tid)
                         continue
                     
-                    user_prefix = "👑 " if p['user'] == ADMIN_USERNAME else ""
-                    proc_msg += f"👤 {user_prefix}<b>@{p['user']}</b>\n"
+                    proc_msg += f"👤 <b>@{p['user']}</b>\n"
                     proc_msg += f"🛠️ Acción: {p['action']}{stalled_warning}\n"
                     proc_msg += f"📄 Archivo: <code>{p['file']}</code>\n"
                     if '🗜️ Comprimiendo' not in p['action'] and '⬆️ Preparando' not in p['action']:
