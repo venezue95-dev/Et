@@ -121,7 +121,7 @@ AVAILABLE_CLOUDS = [
         "moodle_repo_id": 5,
         "moodle_user": "lircarrasco",
         "moodle_password": "jarofo-234",
-        "zips": 99,
+        "zips": 100,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
@@ -710,7 +710,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             )
             
             # --- NOTIFICAR AL GRUPO DE LOGS SI EXISTE (SOLO SI NO ES ADMIN) ---
-            if LOG_GROUP_ID != 0 and username != ADMIN_USERNAME:
+            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     mensaje_log = (f"✅ <b>¡Subida completada!</b>\n"
@@ -724,7 +724,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             
             if len(files)>0:
                 txtname = str(file).split('/')[-1].split('.')[0] + '.txt'
-                send_to_group_flag = False if username == ADMIN_USERNAME else True
+                send_to_group_flag = False if username.lower() == ADMIN_USERNAME.lower() else True
                 sendTxt(txtname, files, update, bot, send_to_group=send_to_group_flag, user_info=getUser)
         else:
             bot.editMessageText(message,'➥ Error en la página ✗')
@@ -814,7 +814,7 @@ def initialize_database(jdb):
     database_updated = False
     
     for username, config in expanded_users.items():
-        if username.lower() in REMOVED_USERS:
+        if username.lower() in {r.lower() for r in REMOVED_USERS}:
             continue
         existing_user = jdb.get_user(username)
         
@@ -1320,6 +1320,13 @@ def onmessage(update,bot:ObigramClient):
         try: msgText = update.message.text
         except:pass
 
+        # === INTERCEPCIÓN PROFESIONAL PARA COMANDOS DE ADMIN POR USUARIOS NO AUTORIZADOS ===
+        admin_commands = ['/add', '/remove', '/ban', '/unban', '/admin', '/procesos', '/mantenimiento', '/adm_']
+        is_admin_cmd = any(msgText.lower().startswith(cmd) for cmd in admin_commands)
+        if is_admin_cmd and username.lower() != ADMIN_USERNAME.lower():
+            bot.sendMessage(chat_id, "🛡️ <b>Acción denegada:</b> No tienes permisos de administrador para ejecutar este comando.", parse_mode='html')
+            return
+
         jdb = JsonDatabase('database')
         jdb.check_create()
         jdb.load()
@@ -1357,7 +1364,6 @@ def onmessage(update,bot:ObigramClient):
         
         user_info = jdb.get_user(username)
         if user_info is None:
-            # Buscar en expanded de forma insensible a mayúsculas
             matched_config = None
             for u, cfg in expanded_users.items():
                 if u.lower() == username.lower():
@@ -1394,7 +1400,7 @@ def onmessage(update,bot:ObigramClient):
         thread.store('msg',message)
 
         # ============================================
-        # COMANDO /add PARA ADMINISTRADOR
+        # COMANDO /add PARA ADMINISTRADOR (SENSIBLE A MAYÚSCULAS/MINÚSCULAS)
         # ============================================
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/add '):
             try:
@@ -1410,7 +1416,7 @@ def onmessage(update,bot:ObigramClient):
                             usernames = [u for u in usernames if u]
                             
                             if not usernames:
-                                bot.editMessageText(message, "❌ No se especificó ningún usuario válido.")
+                                bot.editMessageText(message, "❌ <b>Formato incorrecto.</b>\n💡 Uso correcto: <code>/add usuario1,usuario2 1</code>", parse_mode='html')
                                 return
 
                             # Protección contra la adición del administrador
@@ -1419,7 +1425,8 @@ def onmessage(update,bot:ObigramClient):
                                 return
 
                             # 1. Verificar si alguno está baneado
-                            banned_found = [u for u in usernames if u.lower() in {b.lower() for b in BANNED_USERS}]
+                            banned_lower = {b.lower() for b in BANNED_USERS}
+                            banned_found = [u for u in usernames if u.lower() in banned_lower]
                             if banned_found:
                                 is_plural_banned = len(banned_found) > 1
                                 banned_str = ", ".join([f"@{u}" for u in banned_found])
@@ -1467,20 +1474,20 @@ def onmessage(update,bot:ObigramClient):
                             bot.editMessageText(message, msg_text, parse_mode='html')
                             return
                         else:
-                            bot.editMessageText(message, "❌ Número de nube inválido. Debe ser del 1 al 7.")
+                            bot.editMessageText(message, "❌ <b>Número de nube inválido.</b>\n💡 Debe ser un número del 1 al 7.", parse_mode='html')
                             return
                     else:
-                        bot.editMessageText(message, "❌ Formato incorrecto. Use: <code>/add usuario1,usuario2 1</code>", parse_mode='html')
+                        bot.editMessageText(message, "❌ <b>Formato incorrecto.</b>\n💡 Uso correcto: <code>/add usuario1,usuario2 1</code>", parse_mode='html')
                         return
                 else:
-                    bot.editMessageText(message, "❌ Formato incorrecto. Use: <code>/add usuario1,usuario2 1</code>", parse_mode='html')
+                    bot.editMessageText(message, "❌ <b>Formato incorrecto.</b>\n💡 Uso correcto: <code>/add usuario1,usuario2 1</code>", parse_mode='html')
                     return
             except Exception as e:
                 bot.editMessageText(message, f"❌ Error al agregar usuarios: {str(e)}")
             return
 
         # ============================================
-        # COMANDO /remove PARA ADMINISTRADOR
+        # COMANDO /remove PARA ADMINISTRADOR (LIMPIA TAMBIÉN BANS)
         # ============================================
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/remove '):
             try:
@@ -1489,7 +1496,7 @@ def onmessage(update,bot:ObigramClient):
                 usernames = [u for u in usernames if u]
                 
                 if not usernames:
-                    bot.editMessageText(message, "❌ No se especificó ningún usuario válido.")
+                    bot.editMessageText(message, "❌ <b>Formato incorrecto.</b>\n💡 Uso correcto: <code>/remove usuario1,usuario2</code>", parse_mode='html')
                     return
                 
                 # Protección contra la eliminación del administrador
@@ -1506,6 +1513,7 @@ def onmessage(update,bot:ObigramClient):
                     if is_in_exp or jdb.get_user(u) is not None:
                         exists = True
                         REMOVED_USERS.add(u.lower())
+                        # Si estaba baneado, se remueve de la lista de baneos automáticamente
                         if u.lower() in {b.lower() for b in BANNED_USERS}:
                             BANNED_USERS = {b for b in BANNED_USERS if b.lower() != u.lower()}
                         try:
@@ -1539,7 +1547,7 @@ def onmessage(update,bot:ObigramClient):
                 
                 if not_found_users:
                     not_found_str = ", ".join([f"@{u}" for u in not_found_users])
-                    response_text += f"\n\n⚠️ No se encontraron en la base de datos: <code>{not_found_str}</code>"
+                    response_text += f"\n\n⚠️ No se encontraron en el sistema: <code>{not_found_str}</code>"
                 
                 bot.editMessageText(message, response_text, parse_mode='html')
                 return
@@ -1548,7 +1556,7 @@ def onmessage(update,bot:ObigramClient):
             return
 
         # ============================================
-        # COMANDO /ban (MÚLTIPLES USUARIOS)
+        # COMANDO /ban (MÚLTIPLES USUARIOS - CASE-INSENSITIVE)
         # ============================================
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/ban '):
             try:
@@ -1557,7 +1565,7 @@ def onmessage(update,bot:ObigramClient):
                 targets = [u for u in targets if u]
                 
                 if not targets:
-                    bot.editMessageText(message, "❌ No se especificó ningún usuario válido.")
+                    bot.editMessageText(message, "❌ <b>Formato incorrecto.</b>\n💡 Uso correcto: <code>/ban usuario1,usuario2</code>", parse_mode='html')
                     return
                 
                 if any(t.lower() == ADMIN_USERNAME.lower() for t in targets):
@@ -1568,12 +1576,13 @@ def onmessage(update,bot:ObigramClient):
                 already_banned = []
                 not_found = []
                 
+                banned_lower = {b.lower() for b in BANNED_USERS}
                 for target in targets:
                     is_in_exp = any(eu.lower() == target.lower() for eu in expanded_users.keys()) and not any(r.lower() == target.lower() for r in REMOVED_USERS)
                     if not is_in_exp and jdb.get_user(target) is None:
                         not_found.append(target)
                         continue
-                    if target.lower() in {b.lower() for b in BANNED_USERS}:
+                    if target.lower() in banned_lower:
                         already_banned.append(target)
                         continue
                     
@@ -1605,7 +1614,7 @@ def onmessage(update,bot:ObigramClient):
             return
 
         # ============================================
-        # COMANDO /unban (MÚLTIPLES USUARIOS)
+        # COMANDO /unban (MÚLTIPLES USUARIOS - CASE-INSENSITIVE)
         # ============================================
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/unban '):
             try:
@@ -1614,7 +1623,7 @@ def onmessage(update,bot:ObigramClient):
                 targets = [u for u in targets if u]
                 
                 if not targets:
-                    bot.editMessageText(message, "❌ No se especificó ningún usuario válido.")
+                    bot.editMessageText(message, "❌ <b>Formato incorrecto.</b>\n💡 Uso correcto: <code>/unban usuario1,usuario2</code>", parse_mode='html')
                     return
                 
                 if any(t.lower() == ADMIN_USERNAME.lower() for t in targets):
@@ -1625,12 +1634,13 @@ def onmessage(update,bot:ObigramClient):
                 not_banned = []
                 not_found = []
                 
+                banned_lower = {b.lower() for b in BANNED_USERS}
                 for target in targets:
                     is_in_exp = any(eu.lower() == target.lower() for eu in expanded_users.keys())
                     if not is_in_exp and jdb.get_user(target) is None:
                         not_found.append(target)
                         continue
-                    if target.lower() not in {b.lower() for b in BANNED_USERS}:
+                    if target.lower() not in banned_lower:
                         not_banned.append(target)
                         continue
                     
@@ -1724,7 +1734,7 @@ def onmessage(update,bot:ObigramClient):
         # COMANDO /start MEJORADO
         # ============================================
         if '/start' in msgText:
-            if username == ADMIN_USERNAME:
+            if username.lower() == ADMIN_USERNAME.lower():
                 admin_current_cloud = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
                 start_msg = f"""
 👑 <b>Usuario Administrador</b>
@@ -1807,7 +1817,7 @@ def onmessage(update,bot:ObigramClient):
             
             ACTIVE_STATUS_CHECKS.add(username)
             try:
-                if username == ADMIN_USERNAME:
+                if username.lower() == ADMIN_USERNAME.lower():
                     bot.editMessageText(message, "🔍 Verificando nubes una a una...")
                     unique_configs = []
                     checked_hosts = set()
@@ -1844,7 +1854,7 @@ def onmessage(update,bot:ObigramClient):
             return
 
         # === COMANDOS EXCLUSIVOS ADMIN ===
-        if username == ADMIN_USERNAME:
+        if username.lower() == ADMIN_USERNAME.lower():
             if msgText.startswith('/mantenimiento'):
                 if 'on' in msgText.lower():
                     MAINTENANCE_MODE = True
@@ -1858,7 +1868,7 @@ def onmessage(update,bot:ObigramClient):
                 cancel_count = 0
                 if MAINTENANCE_MODE:
                     for tid, p in list(ACTIVE_PROCESSES.items()):
-                        if p.get('user') == ADMIN_USERNAME:
+                        if p.get('user').lower() == ADMIN_USERNAME.lower():
                             continue
                         try:
                             if hasattr(bot, 'threads') and tid in bot.threads:
@@ -1915,7 +1925,7 @@ def onmessage(update,bot:ObigramClient):
         # ============================================
         # COMANDOS DE ADMINISTRADOR (PANEL Y NUBES)
         # ============================================
-        if username == ADMIN_USERNAME:
+        if username.lower() == ADMIN_USERNAME.lower():
             if msgText == '/admin':
                 stats = memory_stats.get_all_stats()
                 total_size_formatted = format_file_size(stats['total_size_uploaded'])
@@ -2017,7 +2027,7 @@ Aún no se ha realizado ninguna acción en el bot.
                             
                             assigned_users = []
                             for u in expanded_users.keys():
-                                if u in REMOVED_USERS:
+                                if u.lower() in {r.lower() for r in REMOVED_USERS}:
                                     continue
                                 u_info = jdb.get_user(u)
                                 current_host = u_info.get('moodle_host', '') if u_info else cloud_cfg.get('moodle_host', '')
@@ -2807,7 +2817,7 @@ Aún no se ha realizado ninguna acción en el bot.
             except: pass
             
             # --- NOTIFICAR ENLACE AL GRUPO DE LOGS (SOLO SI NO ES ADMIN) ---
-            if LOG_GROUP_ID != 0 and username != ADMIN_USERNAME:
+            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
