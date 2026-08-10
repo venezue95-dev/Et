@@ -46,7 +46,7 @@ except:
 # SEPARATOR FOR USER EVIDENCES
 USER_EVIDENCE_MARKER = " "  # Space as separator
 
-# LISTA DISPONIBLE DE NUBES (1 al 6)
+# LISTA DISPONIBLE DE NUBES (1 al 7)
 AVAILABLE_CLOUDS = [
     {
         "cloudtype": "moodle",
@@ -113,6 +113,17 @@ AVAILABLE_CLOUDS = [
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
+    },
+    {
+        "cloudtype": "moodle",
+        "moodle_host": "https://aula.uclv.edu.cu/",
+        "moodle_repo_id": 4,
+        "moodle_user": "lircarrasco",
+        "moodle_password": "jarofo-234",
+        "zips": 300,
+        "uploadtype": "evidence",
+        "proxy": "",
+        "tokenize": 0
     }
 ]
 
@@ -123,7 +134,8 @@ PRE_CONFIGURATED_USERS = {
     "VanNeiFertio,XD,SchnauzerMinnie": AVAILABLE_CLOUDS[2],
     "hola,usuario2": AVAILABLE_CLOUDS[3],
     "gatitoo_miauu,usuario_nuevo2": AVAILABLE_CLOUDS[4],
-    "Satoru_2115,usuario_nuevo4": AVAILABLE_CLOUDS[5]
+    "Satoru_2115,usuario_nuevo4": AVAILABLE_CLOUDS[5],
+    "usuario_uclv1,usuario_uclv2": AVAILABLE_CLOUDS[6]
 }
 
 # ==============================
@@ -1411,7 +1423,7 @@ def onmessage(update,bot:ObigramClient):
                             bot.editMessageText(message, msg_text, parse_mode='html')
                             return
                         else:
-                            bot.editMessageText(message, "❌ Número de nube inválido. Debe ser del 1 al 6.")
+                            bot.editMessageText(message, "❌ Número de nube inválido. Debe ser del 1 al 7.")
                             return
                     else:
                         bot.editMessageText(message, "❌ Formato incorrecto. Use: <code>/add usuario1,usuario2 1</code>", parse_mode='html')
@@ -1447,7 +1459,7 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, f"✅ <b>¡Nube cambiada exitosamente!</b>\n\n☁️ Nueva nube: <code>{short_name}</code>\n⚖️ Límite: <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
                     return
                 else:
-                    bot.editMessageText(message, "❌ Número inválido. Envía un número del 1 al 6.")
+                    bot.editMessageText(message, "❌ Número inválido. Envía un número del 1 al 7.")
                     CHANGING_CLOUD_USERS.discard(username)
                     return
             else:
@@ -1476,7 +1488,7 @@ def onmessage(update,bot:ObigramClient):
             for i, c in enumerate(AVAILABLE_CLOUDS, 1):
                 short = c['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                 menu_msg += f"<b>{i}.</b> <code>{short}</code>\n   ⚖️ Límite: {c['zips']} MB\n\n"
-            menu_msg += "────────────────────────\n💡 <b>Envía solo el número</b> (1 al 6)."
+            menu_msg += "────────────────────────\n💡 <b>Envía solo el número</b> (1 al 7)."
             
             CHANGING_CLOUD_USERS.add(username)
             bot.editMessageText(message, menu_msg, parse_mode='html')
@@ -1527,7 +1539,7 @@ def onmessage(update,bot:ObigramClient):
 /adm_nuke - Eliminar TODO ⚠️
 
 🔧 <b>TUS COMANDOS PERSONALES:</b>
-/cambiar - Cambiar de nube (1 al 6) 🔄
+/cambiar - Cambiar de nube (1 al 7) 🔄
 /files - Ver tus evidencias
 /txt_X - Ver TXT de tu evidencia
 /del_X - Eliminar tu evidencia
@@ -1546,7 +1558,7 @@ def onmessage(update,bot:ObigramClient):
 
 🔧 <b>TUS COMANDOS:</b>
 /start - Ver esta información
-/cambiar - Cambiar de nube (1 al 6) 🔄
+/cambiar - Cambiar de nube (1 al 7) 🔄
 /status - Estado de tu nube 🟢/🔴
 /files - Ver tus evidencias
 /txt_X - Ver TXT de evidencia X
@@ -1806,7 +1818,7 @@ Aún no se ha realizado ninguna acción en el bot.
                     try:
                         uclouds_msg = "☁️ <b>GESTIÓN DE NUBES Y USUARIOS</b>\n────────────────────────\n\n"
                         
-                        # Recorrer de forma fija las AVAILABLE_CLOUDS para mantener siempre el orden del 1 al 6 y consultar DB en tiempo real
+                        # Recorrer de forma fija las AVAILABLE_CLOUDS para mantener siempre el orden del 1 al 7 y consultar DB en tiempo real
                         for idx, cloud_cfg in enumerate(AVAILABLE_CLOUDS, 1):
                             target_host = cloud_cfg.get('moodle_host', '')
                             zips = cloud_cfg.get('zips', '?')
