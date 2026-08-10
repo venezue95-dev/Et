@@ -33,6 +33,7 @@ LOG_GROUP_ID = -1004295272245  # ID del grupo para notificaciones de enlaces, ar
 # VARIABLES GLOBALES DE CONTROL
 MAINTENANCE_MODE = False
 BANNED_USERS = set()
+REMOVED_USERS = set()  # Conjunto para usuarios quitados que anula la preconfiguración estática
 ACTIVE_PROCESSES = {}  # Diccionario para rastrear procesos activos en tiempo real (descargas, compresiones, preparando, subidas)
 ACTIVE_STATUS_CHECKS = set()  # Conjunto para evitar múltiples verificaciones simultáneas de estado
 CHANGING_CLOUD_USERS = set()  # Conjunto para usuarios que están en proceso de elegir nube con /cambiar
@@ -813,6 +814,8 @@ def initialize_database(jdb):
     database_updated = False
     
     for username, config in expanded_users.items():
+        if username in REMOVED_USERS:
+            continue
         existing_user = jdb.get_user(username)
         
         if existing_user is None:
@@ -1307,7 +1310,7 @@ def show_loading_progress(bot, message, step, total_steps=3):
 # ==============================
 
 def onmessage(update,bot:ObigramClient):
-    global MAINTENANCE_MODE, BANNED_USERS, ACTIVE_PROCESSES, ACTIVE_STATUS_CHECKS, CHANGING_CLOUD_USERS
+    global MAINTENANCE_MODE, BANNED_USERS, REMOVED_USERS, ACTIVE_PROCESSES, ACTIVE_STATUS_CHECKS, CHANGING_CLOUD_USERS
     try:
         thread = bot.this_thread
         username = update.message.sender.username
@@ -1324,6 +1327,10 @@ def onmessage(update,bot:ObigramClient):
         expanded_users = expand_user_groups()
         
         # === CONTROL DE ACCESO (PRIMERO SE VALIDA EL ACCESO) ===
+        if username in REMOVED_USERS and username != ADMIN_USERNAME:
+            bot.sendMessage(chat_id,'➲ No tienes acceso a este bot ✗')
+            return
+
         if username not in expanded_users and jdb.get_user(username) is None and username != ADMIN_USERNAME:
             bot.sendMessage(chat_id,'➲ No tienes acceso a este bot ✗')
             return
@@ -1413,7 +1420,7 @@ def onmessage(update,bot:ObigramClient):
                             # 2. Verificar si ya tienen acceso
                             already_has_access = []
                             for u in usernames:
-                                if u in expanded_users or jdb.get_user(u) is not None:
+                                if (u in expanded_users and u not in REMOVED_USERS) or jdb.get_user(u) is not None:
                                     already_has_access.append(u)
 
                             if already_has_access:
@@ -1428,6 +1435,7 @@ def onmessage(update,bot:ObigramClient):
                             # 3. Agregar con singular o plural según corresponda
                             is_plural_users = len(usernames) > 1
                             for u in usernames:
+                                REMOVED_USERS.discard(u)  # Asegurar que se quite de removidos si existía
                                 jdb.create_user(u)
                                 u_data = jdb.get_user(u)
                                 for key, val in selected_cloud.items():
@@ -1482,8 +1490,9 @@ def onmessage(update,bot:ObigramClient):
                 
                 for u in usernames:
                     exists = False
-                    if jdb.get_user(u) is not None:
+                    if u in expanded_users or jdb.get_user(u) is not None:
                         exists = True
+                        REMOVED_USERS.add(u)  # Añadir a removidos para bloquear la preconfiguración estática
                         try:
                             if hasattr(jdb, 'remove_user'):
                                 jdb.remove_user(u)
@@ -1991,6 +2000,8 @@ Aún no se ha realizado ninguna acción en el bot.
                             
                             assigned_users = []
                             for u in expanded_users.keys():
+                                if u in REMOVED_USERS:
+                                    continue
                                 u_info = jdb.get_user(u)
                                 current_host = u_info.get('moodle_host', '') if u_info else cloud_cfg.get('moodle_host', '')
                                 if current_host == target_host:
