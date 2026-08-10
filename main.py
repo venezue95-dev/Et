@@ -688,7 +688,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 if 'uclv.edu.cu' in host or 'fundacion.uh.cu' in host:
                     m_user = getUser.get('moodle_user', '')
                     m_pass = getUser.get('moodle_password', '')
-                    extra_msg = f"\n⚠️ <b>Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n👤 Usuario: <code>{m_user}</code>\n🔑 Contraseña: <code>{m_pass}</code>\n"
+                    extra_msg = f"⚠️ <b>Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n👤 Usuario: <code>{m_user}</code>\n🔑 Contraseña: <code>{m_pass}</code>\n"
 
             bot.sendMessage(message.chat.id, finishInfo + '\n' + extra_msg + '\n' + filesInfo, parse_mode='html')
             
@@ -704,9 +704,8 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             if LOG_GROUP_ID != 0 and username != ADMIN_USERNAME:
                 try:
                     clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                    user_prefix = "👑 " if username == ADMIN_USERNAME else ""
                     mensaje_log = (f"✅ <b>¡Subida completada!</b>\n"
-                                   f"👤 {user_prefix}@{username}\n"
+                                   f"👤 Usuario: @{username}\n"
                                    f"📄 Archivo: <code>{filename_clean}</code>\n"
                                    f"⚖️ Peso: {format_file_size(file_size)}\n"
                                    f"☁️ Nube: <code>{clean_host}</code>")
@@ -1174,8 +1173,7 @@ def show_updated_cloud(bot, message, cloud_idx):
                 marker = f"{USER_EVIDENCE_MARKER}{user}"
                 if marker in ev_name:
                     clean_name = ev_name.replace(marker, "").strip()
-                    tag_prefix = "👑 " if user == ADMIN_USERNAME else ""
-                    user_tags.append(f"{tag_prefix}@{user}")
+                    user_tags.append(f"@{user}")
             
             if user_tags:
                 user_str = f" ({', '.join(user_tags[:2])})"
@@ -1388,11 +1386,16 @@ def onmessage(update,bot:ObigramClient):
                                 bot.editMessageText(message, "❌ No se especificó ningún usuario válido.")
                                 return
 
+                            # Protección contra la adición del administrador
+                            if ADMIN_USERNAME in usernames:
+                                bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> No es posible agregar al usuario administrador (@{ADMIN_USERNAME}).', parse_mode='html')
+                                return
+
                             # 1. Verificar si alguno está baneado
                             banned_found = [u for u in usernames if u in BANNED_USERS]
                             if banned_found:
                                 is_plural_banned = len(banned_found) > 1
-                                banned_str = ", ".join([f"👑 @{u}" if u == ADMIN_USERNAME else f"@{u}" for u in banned_found])
+                                banned_str = ", ".join([f"@{u}" for u in banned_found])
                                 if is_plural_banned:
                                     bot.editMessageText(message, f"❌ Los usuarios {banned_str} están baneados y no se pueden agregar.")
                                 else:
@@ -1407,7 +1410,7 @@ def onmessage(update,bot:ObigramClient):
 
                             if already_has_access:
                                 is_plural_access = len(already_has_access) > 1
-                                access_str = ", ".join([f"👑 @{u}" if u == ADMIN_USERNAME else f"@{u}" for u in already_has_access])
+                                access_str = ", ".join([f"@{u}" for u in already_has_access])
                                 if is_plural_access:
                                     bot.editMessageText(message, f"❌ Los usuarios {access_str} ya tienen acceso al bot.")
                                 else:
@@ -1425,7 +1428,7 @@ def onmessage(update,bot:ObigramClient):
                             jdb.save()
                             
                             short_host = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                            users_str = ", ".join([f"👑 @{u}" if u == ADMIN_USERNAME else f"@{u}" for u in usernames])
+                            users_str = ", ".join([f"@{u}" for u in usernames])
                             
                             if is_plural_users:
                                 msg_text = f"✅ <b>¡Usuarios agregados con éxito!</b>\n\n👥 Usuarios: <code>{users_str}</code>\n☁️ Nube asignada: <code>{short_host}</code>\n⚖️ Límite: <code>{selected_cloud['zips']} MB</code>"
@@ -1463,7 +1466,7 @@ def onmessage(update,bot:ObigramClient):
                 
                 # Protección contra la eliminación del administrador
                 if ADMIN_USERNAME in usernames:
-                    bot.editMessageText(message, f"🛡️ <b>Acción denegada:</b> No es posible quitar al usuario administrador (👑 @{ADMIN_USERNAME}).", parse_mode='html')
+                    bot.editMessageText(message, f"🛡️ <b>Acción denegada:</b> No es posible quitar al usuario administrador (@{ADMIN_USERNAME}).", parse_mode='html')
                     return
                 
                 removed_users = []
@@ -1493,7 +1496,7 @@ def onmessage(update,bot:ObigramClient):
                 jdb.save()
                 
                 is_plural = len(removed_users) > 1
-                users_str = ", ".join([f"👑 @{u}" if u == ADMIN_USERNAME else f"@{u}" for u in removed_users])
+                users_str = ", ".join([f"@{u}" for u in removed_users])
                 
                 response_text = ""
                 if removed_users:
@@ -1503,7 +1506,7 @@ def onmessage(update,bot:ObigramClient):
                         response_text += f"✅ <b>¡Usuario eliminado con éxito!</b>\n\n👤 Usuario: <code>{users_str}</code>"
                 
                 if not_found_users:
-                    not_found_str = ", ".join([f"👑 @{u}" if u == ADMIN_USERNAME else f"@{u}" for u in not_found_users])
+                    not_found_str = ", ".join([f"@{u}" for u in not_found_users])
                     response_text += f"\n\n⚠️ No se encontraron en la base de datos: <code>{not_found_str}</code>"
                 
                 bot.editMessageText(message, response_text, parse_mode='html')
@@ -1526,7 +1529,7 @@ def onmessage(update,bot:ObigramClient):
                     return
                 
                 if ADMIN_USERNAME in targets:
-                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> No es posible banear al usuario administrador (👑 @{ADMIN_USERNAME}).', parse_mode='html')
+                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> No es posible banear al usuario administrador (@{ADMIN_USERNAME}).', parse_mode='html')
                     return
                 
                 success_targets = []
@@ -1545,7 +1548,7 @@ def onmessage(update,bot:ObigramClient):
                     success_targets.append(target)
                 
                 is_plural = len(success_targets) > 1
-                targets_str = ", ".join([f"👑 @{u}" if u == ADMIN_USERNAME else f"@{u}" for u in success_targets])
+                targets_str = ", ".join([f"@{u}" for u in success_targets])
                 
                 response_text = ""
                 if success_targets:
@@ -1555,11 +1558,11 @@ def onmessage(update,bot:ObigramClient):
                         response_text += f"🚫 <b>¡Usuario baneado con éxito!</b>\n\n👤 Usuario: <code>{targets_str}</code>"
                 
                 if already_banned:
-                    ab_str = ", ".join([f"👑 @{u}" if u == ADMIN_USERNAME else f"@{u}" for u in already_banned])
+                    ab_str = ", ".join([f"@{u}" for u in already_banned])
                     response_text += f"\n\nℹ️ Ya se encontraban baneados: <code>{ab_str}</code>"
                 
                 if not_found:
-                    nf_str = ", ".join([f"👑 @{u}" if u == ADMIN_USERNAME else f"@{u}" for u in not_found])
+                    nf_str = ", ".join([f"@{u}" for u in not_found])
                     response_text += f"\n\n❌ No existen en el sistema: <code>{nf_str}</code>"
                 
                 bot.editMessageText(message, response_text, parse_mode='html')
@@ -1582,7 +1585,7 @@ def onmessage(update,bot:ObigramClient):
                     return
                 
                 if ADMIN_USERNAME in targets:
-                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> El usuario administrador (👑 @{ADMIN_USERNAME}) no puede ser objetivo de este comando.', parse_mode='html')
+                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> El usuario administrador (@{ADMIN_USERNAME}) no puede ser objetivo de este comando.', parse_mode='html')
                     return
                 
                 success_targets = []
@@ -1601,7 +1604,7 @@ def onmessage(update,bot:ObigramClient):
                     success_targets.append(target)
                 
                 is_plural = len(success_targets) > 1
-                targets_str = ", ".join([f"👑 @{u}" if u == ADMIN_USERNAME else f"@{u}" for u in success_targets])
+                targets_str = ", ".join([f"@{u}" for u in success_targets])
                 
                 response_text = ""
                 if success_targets:
@@ -1611,11 +1614,11 @@ def onmessage(update,bot:ObigramClient):
                         response_text += f"✅ <b>¡Usuario desbaneado con éxito!</b>\n\n👤 Usuario: <code>{targets_str}</code>"
                 
                 if not_banned:
-                    nb_str = ", ".join([f"👑 @{u}" if u == ADMIN_USERNAME else f"@{u}" for u in not_banned])
+                    nb_str = ", ".join([f"@{u}" for u in not_banned])
                     response_text += f"\n\nℹ️ No estaban baneados: <code>{nb_str}</code>"
                 
                 if not_found:
-                    nf_str = ", ".join([f"👑 @{u}" if u == ADMIN_USERNAME else f"@{u}" for u in not_found])
+                    nf_str = ", ".join([f"@{u}" for u in not_found])
                     response_text += f"\n\n❌ No existen en el sistema: <code>{nf_str}</code>"
                 
                 bot.editMessageText(message, response_text, parse_mode='html')
@@ -1692,7 +1695,7 @@ def onmessage(update,bot:ObigramClient):
                 start_msg = f"""
 👑 <b>Usuario Administrador</b>
 
-👤 Usuario: 👑 @{username}
+👤 Usuario: @{username}
 ☁️ Nube actual: <code>{admin_current_cloud}</code>
 ⚖️ Límite: {user_info["zips"]} MB
 🔧 Rol: Administrador
@@ -1984,8 +1987,7 @@ Aún no se ha realizado ninguna acción en el bot.
                                 u_info = jdb.get_user(u)
                                 current_host = u_info.get('moodle_host', '') if u_info else cloud_cfg.get('moodle_host', '')
                                 if current_host == target_host:
-                                    u_str = f"👑 @{u.lstrip('@')}" if u.lstrip('@') == ADMIN_USERNAME else f"@{u.lstrip('@')}"
-                                    assigned_users.append(u_str)
+                                    assigned_users.append(f"@{u.lstrip('@')}")
                             
                             users_str = ", ".join(assigned_users) if assigned_users else "Ninguno"
                             
@@ -2118,8 +2120,7 @@ Aún no se ha realizado ninguna acción en el bot.
                                 marker = f"{USER_EVIDENCE_MARKER}{user}"
                                 if marker in ev_name:
                                     clean_name = ev_name.replace(marker, "").strip()
-                                    tag_prefix = "👑 " if user == ADMIN_USERNAME else ""
-                                    user_tags.append(f"{tag_prefix}@{user}")
+                                    user_tags.append(f"@{user}")
                             
                             if user_tags:
                                 user_str = f" ({', '.join(user_tags[:2])})"
@@ -2439,17 +2440,15 @@ Aún no se ha realizado ninguna acción en el bot.
                         if uploads:
                             logs_msg += "⬆️ <b>Subidas:</b>\n"
                             for log in uploads:
-                                user_prefix = "👑 " if log['username'] == ADMIN_USERNAME else ""
-                                logs_msg += f"• {log['timestamp']} - {user_prefix}@{log['username']}: {log['filename']} ({log['file_size_formatted']})\n"
+                                logs_msg += f"• {log['timestamp']} - @{log['username']}: {log['filename']} ({log['file_size_formatted']})\n"
                             logs_msg += "\n"
                         if deletes:
                             logs_msg += "🗑️ <b>Eliminaciones:</b>\n"
                             for log in deletes:
-                                user_prefix = "👑 " if log['username'] == ADMIN_USERNAME else ""
                                 if log['type'] == 'delete_all':
-                                    logs_msg += f"• {log['timestamp']} - {user_prefix}@{log['username']}: Eliminó todo ({log.get('deleted_evidences', 1)} ev.)\n"
+                                    logs_msg += f"• {log['timestamp']} - @{log['username']}: Eliminó todo ({log.get('deleted_evidences', 1)} ev.)\n"
                                 else:
-                                    logs_msg += f"• {log['timestamp']} - {user_prefix}@{log['username']}: {log['filename']}\n"
+                                    logs_msg += f"• {log['timestamp']} - @{log['username']}: {log['filename']}\n"
                         
                         if len(logs_msg) > 4000:
                             logs_msg = logs_msg[:4000] + "\n\n⚠️ Truncado"
@@ -2468,8 +2467,7 @@ Aún no se ha realizado ninguna acción en el bot.
                         users_msg = "👥 <b>Estadísticas por usuario</b>\n────────────────────────\n\n"
                         for user, data in sorted(users.items(), key=lambda x: x[1]['uploads'], reverse=True):
                             total_size_formatted = format_file_size(data['total_size'])
-                            user_prefix = "👑 " if user == ADMIN_USERNAME else ""
-                            users_msg += f"👤 {user_prefix}<b>@{user}</b>\n   📤 Subidas: {data['uploads']}\n   🗑️ Eliminaciones: {data['deletes']}\n   💾 Espacio: {total_size_formatted}\n\n"
+                            users_msg += f"👤 <b>@{user}</b>\n   📤 Subidas: {data['uploads']}\n   🗑️ Eliminaciones: {data['deletes']}\n   💾 Espacio: {total_size_formatted}\n\n"
                         
                         if len(users_msg) > 4000:
                             users_msg = users_msg[:4000] + "\n\n⚠️ Truncado"
@@ -2487,8 +2485,7 @@ Aún no se ha realizado ninguna acción en el bot.
                         
                         uploads_msg = "📤 <b>Últimas subidas</b>\n────────────────────────\n\n"
                         for i, log in enumerate(uploads, 1):
-                            user_prefix = "👑 " if log['username'] == ADMIN_USERNAME else ""
-                            uploads_msg += f"{i}. <code>{log['filename']}</code>\n   👤 {user_prefix}@{log['username']} | 📏 {log['file_size_formatted']}\n\n"
+                            uploads_msg += f"{i}. <code>{log['filename']}</code>\n   👤 @{log['username']} | 📏 {log['file_size_formatted']}\n\n"
                         bot.editMessageText(message, uploads_msg, parse_mode='html')
                     except Exception as e:
                         bot.editMessageText(message, f"❌ Error al obtener subidas: {str(e)}")
@@ -2503,11 +2500,10 @@ Aún no se ha realizado ninguna acción en el bot.
                         
                         deletes_msg = "🗑️ <b>Últimas eliminaciones</b>\n────────────────────────\n\n"
                         for i, log in enumerate(deletes, 1):
-                            user_prefix = "👑 " if log['username'] == ADMIN_USERNAME else ""
                             if log['type'] == 'delete_all':
-                                deletes_msg += f"{i}. Eliminación masiva\n   👤 {user_prefix}@{log['username']} ({log.get('deleted_evidences', 1)} ev.)\n\n"
+                                deletes_msg += f"{i}. Eliminación masiva\n   👤 @{log['username']} ({log.get('deleted_evidences', 1)} ev.)\n\n"
                             else:
-                                deletes_msg += f"{i}. {log['filename']}\n   👤 {user_prefix}@{log['username']}\n\n"
+                                deletes_msg += f"{i}. {log['filename']}\n   👤 @{log['username']}\n\n"
                         bot.editMessageText(message, deletes_msg, parse_mode='html')
                     except Exception as e:
                         bot.editMessageText(message, f"❌ Error al obtener eliminaciones: {str(e)}")
@@ -2530,13 +2526,12 @@ Aún no se ha realizado ninguna acción en el bot.
         
         if '/mystats' in msgText:
             user_stats = memory_stats.get_user_stats(username)
-            user_prefix = "👑 " if username == ADMIN_USERNAME else ""
             if user_stats:
                 total_size_formatted = format_file_size(user_stats['total_size'])
                 stats_msg = f"""
 📊 <b>Tus estadísticas</b>
 ────────────────────────
-👤 Usuario: {user_prefix}@{username}
+👤 Usuario: @{username}
 📤 Subidas: {user_stats['uploads']}
 🗑️ Eliminaciones: {user_stats['deletes']}
 💾 Espacio usado: {total_size_formatted}
@@ -2547,7 +2542,7 @@ Aún no se ha realizado ninguna acción en el bot.
                 stats_msg = f"""
 📊 <b>Tus estadísticas</b>
 ────────────────────────
-👤 Usuario: {user_prefix}@{username}
+👤 Usuario: @{username}
 📤 Subidas: 0
 🗑️ Eliminaciones: 0
 💾 Espacio usado: 0 B
@@ -2781,8 +2776,7 @@ Aún no se ha realizado ninguna acción en el bot.
                 try:
                     clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
-                    user_prefix = "👑 " if username == ADMIN_USERNAME else ""
-                    mensaje_log = (f"🔔 <b>¡Nuevo enlace recibido!</b>\n👤 {user_prefix}@{username}\n📄 Archivo: <code>{filename}</code>\n⚖️ Peso: {tamano_formateado}\n🔗 Enlace: <code>{url}</code>\n☁️ Nube: <code>{clean_host}</code>")
+                    mensaje_log = (f"🔔 <b>¡Nuevo enlace recibido!</b>\n👤 Usuario: @{username}\n📄 Archivo: <code>{filename}</code>\n⚖️ Peso: {tamano_formateado}\n🔗 Enlace: <code>{url}</code>\n☁️ Nube: <code>{clean_host}</code>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar enlace: {e}")
