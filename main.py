@@ -604,7 +604,10 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             return None
     except Exception as ex:
         if thread and thread.getStore('stop'):
-            bot.editMessageText(message, '➲ Tarea cancelada ✗ ')
+            try:
+                bot.editMessageText(message, '➲ Tarea cancelada ✗ ')
+            except:
+                pass
         else:
             bot.editMessageText(message,'➥ Error ✗\n' + str(ex))
         return None
@@ -637,9 +640,25 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             zipname = str(file).split('.')[0] + createID()
             mult_file = zipfile.MultiFile(zipname,max_file_size)
             zip = zipfile.ZipFile(mult_file,  mode='w', compression=zipfile.ZIP_DEFLATED)
+            
+            if thread and thread.getStore('stop'):
+                zip.close()
+                mult_file.close()
+                raise Exception("Tarea detenida por mantenimiento o cancelación")
+            
             zip.write(file)
+            
+            if thread and thread.getStore('stop'):
+                zip.close()
+                mult_file.close()
+                raise Exception("Tarea detenida por mantenimiento o cancelación")
+                
             zip.close()
             mult_file.close()
+            
+            if thread and thread.getStore('stop'):
+                raise Exception("Tarea detenida por mantenimiento o cancelación")
+
             client = processUploadFiles(file,file_size,mult_file.files,update,bot,message,thread=thread,jdb=jdb)
             try:
                 os.unlink(file)
@@ -733,7 +752,10 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             bot.editMessageText(message,'➥ Error en la página ✗')
     except Exception as ex:
         if thread and thread.getStore('stop'):
-            pass
+            try:
+                bot.editMessageText(message, '➲ Tarea cancelada ✗ ')
+            except:
+                pass
         else:
             print(f"Proceso detenido o error: {ex}")
     finally:
@@ -777,7 +799,13 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                 except:
                     bot.editMessageText(message,'➥ Error en la descarga ✗')
     except Exception as ex:
-        print(f"Error en ddl: {ex}")
+        if thread and thread.getStore('stop'):
+            try:
+                bot.editMessageText(message, '➲ Tarea cancelada ✗ ')
+            except:
+                pass
+        else:
+            print(f"Error en ddl: {ex}")
     finally:
         if thread:
             clean_process(thread.id)
