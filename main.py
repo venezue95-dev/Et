@@ -119,8 +119,8 @@ AVAILABLE_CLOUDS = [
         "cloudtype": "moodle",
         "moodle_host": "https://aula.uclv.edu.cu/",
         "moodle_repo_id": 5,
-        "moodle_user": "lircarrasco",
-        "moodle_password": "jarofo-234",
+        "moodle_user": "eliel15",
+        "moodle_password": "ElielEliel1515.",
         "zips": 100,
         "uploadtype": "evidence",
         "proxy": "",
@@ -530,7 +530,7 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
         
         uploadingInfo = infos.createUploading(filename,totalBits,currentBits,speed,time,originalfile)
         if thread:
-            uploadingInfo += f"\n\n/cancel_{thread.id}"
+            uploadingInfo += f"\n/cancel_{thread.id}"
         bot.editMessageText(message,uploadingInfo)
     except Exception as ex: 
         raise ex
@@ -539,7 +539,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
     try:
         prep_msg = '⬆️ Preparando para subir ☁ ●●○'
         if thread:
-            prep_msg += f"\n\n/cancel_{thread.id}"
+            prep_msg += f"\n/cancel_{thread.id}"
         bot.editMessageText(message, prep_msg)
         
         username = update.message.sender.username
@@ -603,7 +603,10 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             bot.editMessageText(message,'➥ Error en la página ✗')
             return None
     except Exception as ex:
-        bot.editMessageText(message,'➥ Error ✗\n' + str(ex))
+        if thread and thread.getStore('stop'):
+            bot.editMessageText(message, '➲ Tarea cancelada ✗ ')
+        else:
+            bot.editMessageText(message,'➥ Error ✗\n' + str(ex))
         return None
 
 def processFile(update,bot,message,file,thread=None,jdb=None):
@@ -622,7 +625,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if file_size > max_file_size:
             compresingInfo = infos.createCompresing(file,file_size,max_file_size)
             if thread:
-                compresingInfo += f"\n\n/cancel_{thread.id}"
+                compresingInfo += f"\n/cancel_{thread.id}"
             bot.editMessageText(message,compresingInfo)
             
             # Registrar estado de compresión en procesos activos (sin porcentaje)
@@ -729,7 +732,10 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         else:
             bot.editMessageText(message,'➥ Error en la página ✗')
     except Exception as ex:
-        print(f"Proceso detenido o error: {ex}")
+        if thread and thread.getStore('stop'):
+            pass
+        else:
+            print(f"Proceso detenido o error: {ex}")
     finally:
         if thread:
             clean_process(thread.id)
@@ -1389,9 +1395,28 @@ def onmessage(update,bot:ObigramClient):
                 tcancel = bot.threads[tid]
                 msg = tcancel.getStore('msg')
                 tcancel.store('stop',True)
+                
+                # Obtener info del proceso antes de limpiar
+                proc_info = ACTIVE_PROCESSES.get(tid, {})
+                proc_user = proc_info.get('user', username)
+                proc_file = proc_info.get('file', 'Desconocido')
+                proc_action = proc_info.get('action', 'Proceso')
+                
                 clean_process(tid)
                 time.sleep(3)
                 bot.editMessageText(msg,'➲ Tarea cancelada ✗ ')
+                
+                # Notificar al grupo de logs si el usuario no es el administrador y el grupo está configurado
+                if LOG_GROUP_ID != 0 and proc_user.lower() != ADMIN_USERNAME.lower():
+                    try:
+                        mensaje_log = (f"❌ <b>¡Proceso cancelado!</b>\n"
+                                       f"👤 Usuario: @{proc_user}\n"
+                                       f"🛠️ Acción: {proc_action}\n"
+                                       f"📄 Archivo: <code>{proc_file}</code>")
+                        bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+                    except Exception as e:
+                        print(f"Error al notificar cancelación al grupo: {e}")
+
             except Exception as ex:
                 print(str(ex))
             return
@@ -2029,7 +2054,7 @@ Aún no se ha realizado ninguna acción en el bot.
                             
                             assigned_users = []
                             for u in expanded_users.keys():
-                                if u.lower() in {r.lower() for r in REMOVED_USERS}:
+                                if u in REMOVED_USERS:
                                     continue
                                 u_info = jdb.get_user(u)
                                 current_host = u_info.get('moodle_host', '') if u_info else cloud_cfg.get('moodle_host', '')
@@ -2785,8 +2810,8 @@ Aún no se ha realizado ninguna acción en el bot.
                     bot.editMessageText(message, deletion_msg, parse_mode='html')
                 else:
                     bot.editMessageText(message,'➲ Error y causas🧐\n1-Revise su cuenta\n2-Servidor deshabilitado: '+client.path)
-            except Exception as e:
-                bot.editMessageText(message, f'❌ Error: {str(e)}')
+            except Exception as ex:
+                bot.editMessageText(message, f'❌ Error: {str(ex)}')
                 
         elif 'http' in msgText:
             url = msgText
