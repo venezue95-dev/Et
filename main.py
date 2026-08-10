@@ -117,7 +117,7 @@ AVAILABLE_CLOUDS = [
     {
         "cloudtype": "moodle",
         "moodle_host": "https://aula.uclv.edu.cu/",
-        "moodle_repo_id": 4,
+        "moodle_repo_id": 5,
         "moodle_user": "lircarrasco",
         "moodle_password": "jarofo-234",
         "zips": 300,
