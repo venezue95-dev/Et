@@ -729,7 +729,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 if 'uclv.edu.cu' in host or 'fundacion.uh.cu' in host:
                     m_user = getUser.get('moodle_user', '')
                     m_pass = getUser.get('moodle_password', '')
-                    extra_msg = f"\n<b>⚠️ Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n<b>👤 Usuario:</b> <code>{m_user}</code>\n<b>🔑 Contraseña:</b> <code>{m_pass}</code>\n"
+                    extra_msg = f"\n<b>⚠️ Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n\n<b>👤 Usuario:</b> <code>{m_user}</code>\n<b>🔑 Contraseña:</b> <code>{m_pass}</code>\n"
 
             bot.sendMessage(message.chat.id, finishInfo + '\n' + extra_msg + '\n' + filesInfo, parse_mode='html')
             
