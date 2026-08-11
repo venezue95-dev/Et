@@ -530,7 +530,7 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
         
         uploadingInfo = infos.createUploading(filename,totalBits,currentBits,speed,time,originalfile)
         if thread:
-            uploadingInfo += f"\n/cancel_{thread.id}"
+            uploadingInfo = uploadingInfo.strip() + f"\n/cancel_{thread.id}"
         bot.editMessageText(message,uploadingInfo)
     except Exception as ex: 
         raise ex
@@ -628,7 +628,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if file_size > max_file_size:
             compresingInfo = infos.createCompresing(file,file_size,max_file_size)
             if thread:
-                compresingInfo += f"\n/cancel_{thread.id}"
+                compresingInfo = compresingInfo.strip() + f"\n/cancel_{thread.id}"
             bot.editMessageText(message,compresingInfo)
             
             # Registrar estado de compresión en procesos activos (sin porcentaje)
