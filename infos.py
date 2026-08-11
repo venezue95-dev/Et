@@ -37,26 +37,28 @@ def createDownloading(filename, totalBits, currentBits, speed, time_val, tid='')
     msg = '⬇️ Descargando archivo...\n\n'
     msg += f'📄 Archivo: {filename}\n'
     msg += text_progres(currentBits, totalBits) + '\n'
-    msg += f'📊 Progreso: {porcent(currentBits, totalBits)}%\n\n'
+    msg += f'📊 Porcentaje: {porcent(currentBits, totalBits)}%\n\n'
     msg += f'💾 Tamaño total: {sizeof_fmt(totalBits)}\n\n'
     msg += f'📥 Descargado: {sizeof_fmt(currentBits)}\n\n'
     msg += f'⚡ Velocidad: {sizeof_fmt(speed)}/s\n\n'
-    msg += f'⏱️ Tiempo transcurrido: {datetime.timedelta(seconds=int(time_val))}\n\n'
+    msg += f'⏱️ Tiempo: {datetime.timedelta(seconds=int(time_val))}\n\n'
 
     if tid != '':
         msg += f'/cancel_{tid}'
     return msg
 
 def createUploading(filename, totalBits, currentBits, speed, time_val, originalname='', tid=''):
-    display_name = originalname if originalname != '' else filename
     msg = '⬆️ Subiendo a la nube...\n\n'
-    msg += f'📄 Archivo: {display_name}\n'
+    msg += f'📁 Nombre: {filename}\n'
+    if originalname != '':
+        msg = str(msg).replace(filename, originalname)
+        msg += f'📤 Subiendo: {filename}\n'
     msg += text_progres(currentBits, totalBits) + '\n'
-    msg += f'📊 Progreso: {porcent(currentBits, totalBits)}%\n\n'
+    msg += f'📊 Porcentaje: {porcent(currentBits, totalBits)}%\n\n'
     msg += f'💾 Tamaño total: {sizeof_fmt(totalBits)}\n\n'
     msg += f'📤 Subido: {sizeof_fmt(currentBits)}\n\n'
     msg += f'⚡ Velocidad: {sizeof_fmt(speed)}/s\n\n'
-    msg += f'⏱️ Tiempo transcurrido: {datetime.timedelta(seconds=int(time_val))}\n\n'
+    msg += f'⏱️ Tiempo: {datetime.timedelta(seconds=int(time_val))}\n\n'
 
     if tid != '':
         msg += f'/cancel_{tid}'
