@@ -46,8 +46,8 @@ def porcent(index, max):
     return porcent_val
 
 def createDownloading(filename, totalBits, currentBits, speed, time_val, tid=''):
-    msg = '<b>⬇️ Descargando...</b>\n\n'
-    msg += f'<b>📄 Archivo: {filename}</b>\n'
+    msg = '<b>⬇️ Descargando archivo...</b>\n\n'
+    msg += f'<b>📄 Nombre: {filename}</b>\n'
     msg += f'<b>{text_progres(currentBits, totalBits)}</b>'
     msg += f'<b>📊 Porcentaje: {porcent(currentBits, totalBits)}%</b>\n\n'
     msg += f'<b>💾 Tamaño total: {sizeof_fmt(totalBits)}</b>\n\n'
