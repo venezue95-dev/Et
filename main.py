@@ -119,9 +119,9 @@ AVAILABLE_CLOUDS = [
         "cloudtype": "moodle",
         "moodle_host": "https://aula.uclv.edu.cu/",
         "moodle_repo_id": 5,
-        "moodle_user": "lircarrasco",
-        "moodle_password": "jarofo-234",
-        "zips": 300,
+        "moodle_user": "eliel15",
+        "moodle_password": "ElielEliel1515.",
+        "zips": 100,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
@@ -589,12 +589,25 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 while resp is None:
                     if thread and thread.getStore('stop'):
                         raise Exception("Tarea detenida por mantenimiento o cancelación")
+                    
+                    # Verificación adicional estricta antes de subir cada parte
+                    if thread and thread.getStore('stop'):
+                        raise Exception("Tarea detenida por mantenimiento o cancelación")
+
                     fileid,resp = client.upload_file(f,evidence,fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
+                    
+                    if thread and thread.getStore('stop'):
+                        raise Exception("Tarea detenida por mantenimiento o cancelación")
+
                     draftlist.append(resp)
                     iter += 1
                     if iter>=10:
                         break
                 os.unlink(f)
+            
+            if thread and thread.getStore('stop'):
+                raise Exception("Tarea detenida por mantenimiento o cancelación")
+
             try:
                 client.saveEvidence(evidence)
             except:pass
@@ -668,6 +681,10 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             client = processUploadFiles(file,file_size,[file],update,bot,message,thread=thread,jdb=jdb)
             file_upload_count = 1
         
+        # Verificación estricta final antes de guardar evidencia
+        if thread and thread.getStore('stop'):
+            raise Exception("Tarea detenida por mantenimiento o cancelación")
+
         visible_evidname = ''
         files = []
         if client:
@@ -709,6 +726,10 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 print(f"Error obteniendo índice de evidencia: {e}")
                 findex = 0
             
+            # Doble comprobación por si canceló justo antes de enviar el mensaje final
+            if thread and thread.getStore('stop'):
+                raise Exception("Tarea detenida por mantenimiento o cancelación")
+
             bot.deleteMessage(message.chat.id,message.message_id)
             finishInfo = infos.createFinishUploading(file,file_size,max_file_size,file_upload_count,file_upload_count,findex)
             filesInfo = infos.createFileMsg(file,files)
@@ -1430,7 +1451,7 @@ def onmessage(update,bot:ObigramClient):
                 proc_action = proc_info.get('action', 'Proceso')
                 
                 clean_process(tid)
-                time.sleep(3)
+                time.sleep(1)
                 bot.editMessageText(msg,'➲ Tarea cancelada ✗ ')
                 
                 # Notificar al grupo de logs si el usuario no es el administrador y el grupo está configurado
