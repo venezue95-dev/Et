@@ -119,9 +119,9 @@ AVAILABLE_CLOUDS = [
         "cloudtype": "moodle",
         "moodle_host": "https://aula.uclv.edu.cu/",
         "moodle_repo_id": 5,
-        "moodle_user": "eliel15",
-        "moodle_password": "ElielEliel1515.",
-        "zips": 100,
+        "moodle_user": "lircarrasco",
+        "moodle_password": "jarofo-234",
+        "zips": 300,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
@@ -749,7 +749,10 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 send_to_group_flag = False if username.lower() == ADMIN_USERNAME.lower() else True
                 sendTxt(txtname, files, update, bot, send_to_group=send_to_group_flag, user_info=getUser)
         else:
-            bot.editMessageText(message,'➥ Error en la página ✗')
+            if thread and thread.getStore('stop'):
+                pass
+            else:
+                bot.editMessageText(message,'➥ Error en la página ✗')
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
@@ -1354,38 +1357,34 @@ def onmessage(update,bot:ObigramClient):
         try: msgText = update.message.text
         except:pass
 
-        # === INTERCEPCIÓN PROFESIONAL PARA COMANDOS DE ADMIN POR USUARIOS NO AUTORIZADOS ===
-        admin_commands = ['/add', '/remove', '/ban', '/unban', '/admin', '/procesos', '/mantenimiento', '/adm_']
-        is_admin_cmd = any(msgText.lower().startswith(cmd) for cmd in admin_commands)
-        if is_admin_cmd and username.lower() != ADMIN_USERNAME.lower():
-            bot.sendMessage(chat_id, "🛡️ <b>Acción denegada:</b> No tienes permisos de administrador para ejecutar este comando.", parse_mode='html')
-            return
-
         jdb = JsonDatabase('database')
         jdb.check_create()
         jdb.load()
         
         expanded_users = expand_user_groups()
         
-        # === CONTROL DE ACCESO (PRIMERO SE VALIDA EL ACCESO) ===
-        if username and username.lower() in {u.lower() for u in REMOVED_USERS}:
-            bot.sendMessage(chat_id,'➲ No tienes acceso a este bot ✗')
-            return
-
-        if username and username.lower() != ADMIN_USERNAME.lower():
-            is_valid = False
-            for u in expanded_users.keys():
-                if u.lower() == username.lower() and u.lower() not in {r.lower() for r in REMOVED_USERS}:
-                    is_valid = True
-                    break
-            if not is_valid and jdb.get_user(username) is None:
-                bot.sendMessage(chat_id,'➲ No tienes acceso a este bot ✗')
+        # === CONTROL DE ACCESO ESTRICTO (PARA CUALQUIER COMANDO SI NO TIENE ACCESO O ESTÁ BANEADO) ===
+        has_access = False
+        if username:
+            if username.lower() == ADMIN_USERNAME.lower():
+                has_access = True
+            elif username.lower() in {b.lower() for b in BANNED_USERS}:
+                bot.sendMessage(chat_id, '🚫 Has sido baneado y no puedes usar este bot.')
                 return
+            elif username.lower() in {u.lower() for u in REMOVED_USERS}:
+                has_access = False
+            else:
+                for u in expanded_users.keys():
+                    if u.lower() == username.lower():
+                        has_access = True
+                        break
+                if not has_access and jdb.get_user(username) is not None:
+                    has_access = True
 
-        if username and username.lower() in {b.lower() for b in BANNED_USERS} and username.lower() != ADMIN_USERNAME.lower():
-            bot.sendMessage(chat_id, '🚫 Has sido baneado y no puedes usar este bot.')
+        if not has_access:
+            bot.sendMessage(chat_id, '➲ No tienes acceso a este bot ✗')
             return
-            
+
         if MAINTENANCE_MODE and username.lower() != ADMIN_USERNAME.lower():
             bot.sendMessage(chat_id, 
                 "🛠️ <b>¡Sistema en mantenimiento temporal!</b>\n\n"
