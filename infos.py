@@ -53,7 +53,7 @@ def createDownloading(filename, totalBits, currentBits, speed, time_val, tid='')
     msg += f'<b>⏱️ Tiempo:</b> <b>{datetime.timedelta(seconds=int(time_val))}</b>\n\n'
 
     if tid != '':
-        msg += f'<code>/cancel_{tid}</code>'
+        msg += f'/cancel_{tid}'
     return msg
 
 def createUploading(filename, totalBits, currentBits, speed, time_val, originalname='', tid=''):
@@ -71,7 +71,7 @@ def createUploading(filename, totalBits, currentBits, speed, time_val, originaln
     msg += f'<b>⏱️ Tiempo:</b> <b>{datetime.timedelta(seconds=int(time_val))}</b>\n\n'
 
     if tid != '':
-        msg += f'<code>/cancel_{tid}</code>'
+        msg += f'/cancel_{tid}'
     return msg
 
 def createCompresing(filename, filesize, splitsize):
