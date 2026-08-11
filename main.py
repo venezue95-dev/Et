@@ -200,6 +200,7 @@ def format_cuba_datetime(dt=None):
     return dt.strftime("%d/%m/%y %I:%M %p")
 
 def format_file_size(size_bytes):
+    """Formatea bytes a KB, MB o GB automáticamente"""
     if size_bytes < 1024:
         return f"{size_bytes} B"
     elif size_bytes < 1024 * 1024:
@@ -214,10 +215,13 @@ def format_file_size(size_bytes):
 # ==============================
 
 class MemoryStats:
+    """Sistema de estadísticas en memoria (sin archivos)"""
+    
     def __init__(self):
         self.reset_stats()
     
     def reset_stats(self):
+        """Reinicia todas las estadísticas"""
         self.stats = {
             'total_uploads': 0,
             'total_deletes': 0,
@@ -228,6 +232,7 @@ class MemoryStats:
         self.delete_logs = []
     
     def log_upload(self, username, filename, file_size, moodle_host):
+        """Registra una subida exitosa"""
         try:
             file_size = int(file_size)
         except:
@@ -264,6 +269,7 @@ class MemoryStats:
         return True
     
     def log_delete(self, username, filename, evidence_name, moodle_host):
+        """Registra una eliminación individual"""
         self.stats['total_deletes'] += 1
         
         if username not in self.user_stats:
@@ -293,6 +299,7 @@ class MemoryStats:
         return True
     
     def log_delete_all(self, username, deleted_evidences, deleted_files, moodle_host):
+        """Registra eliminación masiva"""
         self.stats['total_deletes'] += deleted_files
         
         if username not in self.user_stats:
@@ -323,32 +330,40 @@ class MemoryStats:
         return True
     
     def get_user_stats(self, username):
+        """Obtiene estadísticas de un usuario"""
         if username in self.user_stats:
             return self.user_stats[username]
         return None
     
     def get_all_stats(self):
+        """Obtiene todas las estadísticas globales"""
         return self.stats
     
     def get_all_users(self):
+        """Obtiene todos los usuarios"""
         return self.user_stats
     
     def get_recent_uploads(self, limit=10):
+        """Obtiene subidas recientes"""
         return self.upload_logs[-limit:][::-1] if self.upload_logs else []
     
     def get_recent_deletes(self, limit=10):
+        """Obtiene eliminaciones recientes"""
         return self.delete_logs[-limit:][::-1] if self.delete_logs else []
     
     def has_any_data(self):
+        """Verifica si hay datos"""
         return len(self.upload_logs) > 0 or len(self.delete_logs) > 0
     
     def clear_all_data(self):
+        """Limpia todos los datos"""
         self.reset_stats()
         return "<b>✅ Todos los datos han sido eliminados</b>"
 
 memory_stats = MemoryStats()
 
 def get_random_large_file_message():
+    """Retorna un mensaje chistoso aleatorio para archivos grandes"""
     messages = [
         "¡Uy! Este archivo pesa más que mis ganas de trabajar los lunes 📦",
         "¿Seguro que no estás subiendo toda la temporada de tu serie favorita? 🎬",
@@ -379,6 +394,7 @@ def get_random_large_file_message():
     return random.choice(messages)
 
 def expand_user_groups():
+    """Convierte 'usuario1,usuario2':config a 'usuario1':config, 'usuario2':config"""
     expanded = {}
     for user_group, config in PRE_CONFIGURATED_USERS.items():
         users = [u.strip() for u in user_group.split(',')]
@@ -386,6 +402,9 @@ def expand_user_groups():
             expanded[user] = config.copy()
     return expanded
 
+# ==============================
+# FUNCIÓN PARA VERIFICAR ESTADO DE UNA NUBE INDIVIDUAL
+# ==============================
 def check_single_cloud(cloud_config):
     moodle_host = cloud_config.get('moodle_host', '')
     moodle_user = cloud_config.get('moodle_user', '')
@@ -413,6 +432,9 @@ def check_single_cloud(cloud_config):
         'online': is_online
     }
 
+# ==============================
+# TRACKER DE PROCESOS ACTIVOS (PROFESIONAL Y PRECISO)
+# ==============================
 def update_process(thread_id, username, filename, action, current, total):
     try:
         current = int(current or 0)
@@ -433,7 +455,11 @@ def clean_process(thread_id):
     if thread_id in ACTIVE_PROCESSES:
         del ACTIVE_PROCESSES[thread_id]
 
+# ==============================
+# FUNCIÓN PARA DIVIDIR MENSAJES LARGOS
+# ==============================
 def send_long_message(bot, chat_id, text, original_message=None, parse_mode='html'):
+    """Divide mensajes largos por saltos de línea para respetar el límite de Telegram"""
     MAX_LEN = 4000
     
     if len(text) <= MAX_LEN:
@@ -463,7 +489,7 @@ def send_long_message(bot, chat_id, text, original_message=None, parse_mode='htm
         bot.sendMessage(chat_id, messages_to_send[0], parse_mode=parse_mode)
         
     for msg_part in messages_to_send[1:]:
-        time.sleep(0.5)
+        time.sleep(0.5)  # Breve pausa para evitar flood
         bot.sendMessage(chat_id, msg_part, parse_mode=parse_mode)
 
 def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
