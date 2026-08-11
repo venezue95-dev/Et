@@ -8,81 +8,78 @@ def text_progres(index, max):
     try:
         if max < 1:
             max += 1
-        porcent_val = index / max
-        porcent_val *= 100
-        porcent_val = round(porcent_val)
+        porcent = index / max
+        porcent *= 100
+        porcent = round(porcent)
         make_text = ''
         index_make = 1
         make_text += '\n[ '
-        while index_make < 21:
-            if porcent_val >= index_make * 5:
-                make_text += '⬢'
-            else:
-                make_text += '⬡'
+        while(index_make < 21):
+            if porcent >= index_make * 5: make_text += '⬢'
+            else: make_text += '⬡'
             index_make += 1
         make_text += ' ]\n'
         return make_text
-    except Exception:
-        return ''
+    except Exception as ex:
+            return ''
 
 def porcent(index, max):
-    if max < 1:
-        max = 1
-    porcent_val = index / max
-    porcent_val *= 100
-    porcent_val = round(porcent_val)
-    return porcent_val
+    porcent = index / max
+    porcent *= 100
+    porcent = round(porcent)
+    return porcent
 
-def createDownloading(filename, totalBits, currentBits, speed, time_val, tid=''):
+def createDownloading(filename, totalBits, currentBits, speed, time, tid=''):
     msg = '⬇️ <b>Descargando archivo...</b>\n\n'
-    msg += f'📄 <b>Archivo:</b> <code>{filename}</code>\n'
+    msg += '📄 <b>Archivo:</b> <code>' + str(filename) + '</code>\n'
     msg += text_progres(currentBits, totalBits) + '\n'
-    msg += f'📊 <b>Progreso:</b> {porcent(currentBits, totalBits)}%\n'
-    msg += f'💾 <b>Total:</b> {sizeof_fmt(totalBits)}\n'
-    msg += f'📥 <b>Descargado:</b> {sizeof_fmt(currentBits)}\n'
-    msg += f'⚡ <b>Velocidad:</b> {sizeof_fmt(speed)}/s\n'
-    msg += f'⏱️ <b>Tiempo restante:</b> {datetime.timedelta(seconds=int(time_val))}\n\n'
+    msg += '📊 <b>Progreso:</b> ' + str(porcent(currentBits, totalBits)) + '%\n'
+    msg += '💾 <b>Total:</b> ' + sizeof_fmt(totalBits) + '\n'
+    msg += '📥 <b>Descargado:</b> ' + sizeof_fmt(currentBits) + '\n'
+    msg += '⚡ <b>Velocidad:</b> ' + sizeof_fmt(speed) + '/s\n'
+    msg += '⏱️ <b>Tiempo restante:</b> ' + str(datetime.timedelta(seconds=int(time))) + '\n\n'
 
     if tid != '':
-        msg += f'/cancel_{tid}'
+        msg += '/cancel_' + tid
     return msg
 
-def createUploading(filename, totalBits, currentBits, speed, time_val, originalname='', tid=''):
+def createUploading(filename, totalBits, currentBits, speed, time, originalname='', tid=''):
     msg = '⬆️ <b>Subiendo a la nube...</b> ☁️\n\n'
     if originalname != '':
-        msg += f'📁 <b>Nombre:</b> <code>{originalname}</code>\n'
+        msg += '📁 <b>Nombre:</b> <code>' + str(originalname) + '</code>\n'
     else:
-        msg += f'📁 <b>Nombre:</b> <code>{filename}</code>\n'
+        msg += '📁 <b>Nombre:</b> <code>' + str(filename) + '</code>\n'
     msg += text_progres(currentBits, totalBits) + '\n'
-    msg += f'📊 <b>Progreso:</b> {porcent(currentBits, totalBits)}%\n'
-    msg += f'💾 <b>Total:</b> {sizeof_fmt(totalBits)}\n'
-    msg += f'📤 <b>Subido:</b> {sizeof_fmt(currentBits)}\n'
-    msg += f'⚡ <b>Velocidad:</b> {sizeof_fmt(speed)}/s\n'
-    msg += f'⏱️ <b>Tiempo restante:</b> {datetime.timedelta(seconds=int(time_val))}\n\n'
+    msg += '📊 <b>Progreso:</b> ' + str(porcent(currentBits, totalBits)) + '%\n'
+    msg += '💾 <b>Total:</b> ' + sizeof_fmt(totalBits) + '\n'
+    msg += '📤 <b>Subido:</b> ' + sizeof_fmt(currentBits) + '\n'
+    msg += '⚡ <b>Velocidad:</b> ' + sizeof_fmt(speed) + '/s\n'
+    msg += '⏱️ <b>Tiempo restante:</b> ' + str(datetime.timedelta(seconds=int(time))) + '\n\n'
 
     if tid != '':
-        msg += f'/cancel_{tid}'
+        msg += '/cancel_' + tid
     return msg
 
 def createCompresing(filename, filesize, splitsize):
     msg = '🗜️ <b>Comprimiendo archivo...</b>\n\n'
-    msg += f'📁 <b>Nombre:</b> <code>{filename}</code>\n'
-    msg += f'📊 <b>Tamaño total:</b> {sizeof_fmt(filesize)}\n'
-    msg += f'📦 <b>Tamaño de partes:</b> {sizeof_fmt(splitsize)}\n'
-    msg += f'🔢 <b>Cantidad de partes:</b> {round(int(filesize / splitsize) + 1, 1)}\n'
+    msg += '📁 <b>Nombre:</b> <code>' + str(filename) + '</code>\n'
+    msg += '📊 <b>Tamaño total:</b> ' + sizeof_fmt(filesize) + '\n'
+    msg += '📦 <b>Tamaño de partes:</b> ' + sizeof_fmt(splitsize) + '\n'
+    msg += '🔢 <b>Cantidad de partes:</b> ' + str(round(int(filesize/splitsize)+1, 1)) + '\n'
     return msg
 
 def createFinishUploading(filename, filesize, split_size, current, count, findex):
     msg = '✅ <b>¡Proceso finalizado con éxito!</b>\n\n'
-    msg += f'📁 <b>Nombre:</b> <code>{filename}</code>\n'
-    msg += f'📊 <b>Tamaño total:</b> {sizeof_fmt(filesize)}\n'
-    msg += f'📦 <b>Tamaño de partes:</b> {sizeof_fmt(split_size)}\n'
-    msg += f'🔢 <b>Partes subidas:</b> {current}/{count}\n'
+    msg += '📁 <b>Nombre:</b> <code>' + str(filename) + '</code>\n'
+    msg += '📊 <b>Tamaño total:</b> ' + sizeof_fmt(filesize) + '\n'
+    msg += '📦 <b>Tamaño de partes:</b> ' + sizeof_fmt(split_size) + '\n'
+    msg += '🔢 <b>Partes subidas:</b> ' + str(current) + '/' + str(count) + '\n'
     return msg
 
 def createFileMsg(filename, files):
+    import urllib
     if len(files) > 0:
-        msg = '\n🔗 <b>Enlaces generados:</b>\n'
+        msg = '🔗 <b>Enlaces generados:</b>\n'
         for f in files:
             url = urllib.parse.unquote(f['directurl'], encoding='utf-8', errors='replace')
             msg += f"🔽 <a href='{url}'>{f['name']}</a>\n"
@@ -90,7 +87,7 @@ def createFileMsg(filename, files):
     return ''
 
 def createFilesMsg(evfiles):
-    msg = f'📁 <b>Archivos guardados</b> ({len(evfiles)})\n\n'
+    msg = '📁 <b>Archivos guardados</b> (' + str(len(evfiles)) + ')\n\n'
     i = 0
     for f in evfiles:
         try:
@@ -104,31 +101,34 @@ def createFilesMsg(evfiles):
             msg += f'📄 <code>{fname}</code>\n'
             msg += f'👁️ /txt_{i}  |  🗑️ /del_{i}\n\n'
             i += 1
-        except Exception:
-            pass
+        except: pass
     return msg
 
 def createStat(username, userdata, isadmin):
     from pyobigram.utils import sizeof_fmt
     msg = '⚙️ <b>Configuración de usuario</b>\n\n'
-    msg += f'👤 <b>Nombre:</b> @{username}\n'
-    msg += f'👤 <b>Usuario:</b> <code>{userdata["moodle_user"]}</code>\n'
-    msg += f'🔑 <b>Contraseña:</b> <code>{userdata["moodle_password"]}</code>\n'
-    msg += f'🌐 <b>Host:</b> <code>{userdata["moodle_host"]}</code>\n'
+    msg += '👤 <b>Nombre:</b> @' + str(username) + '\n'
+    msg += '👤 <b>Usuario:</b> <code>' + str(userdata['moodle_user']) + '</code>\n'
+    msg += '🔑 <b>Contraseña:</b> <code>' + str(userdata['moodle_password']) + '</code>\n'
+    msg += '🌐 <b>Host:</b> <code>' + str(userdata['moodle_host']) + '</code>\n'
     if userdata['cloudtype'] == 'moodle':
-        msg += f'📁 <b>RepoID:</b> {userdata["moodle_repo_id"]}\n'
-    msg += f'☁️ <b>Tipo de nube:</b> {userdata["cloudtype"]}\n'
-    msg += f'⬆️ <b>Tipo de subida:</b> {userdata["uploadtype"]}\n'
+        msg += '📁 <b>RepoID:</b> ' + str(userdata['moodle_repo_id']) + '\n'
+    msg += '☁️ <b>Tipo de nube:</b> ' + str(userdata['cloudtype']) + '\n'
+    msg += '⬆️ <b>Tipo de subida:</b> ' + str(userdata['uploadtype']) + '\n'
     if userdata['cloudtype'] == 'cloud':
-        msg += f'📂 <b>Directorio:</b> /{userdata["dir"]}\n'
-    msg += f'📏 <b>Límite de zips:</b> {sizeof_fmt(userdata["zips"] * 1024 * 1024)}\n\n'
-    
-    msg_admin = 'Sí' if isadmin else 'No'
-    msg += f'👑 <b>Administrador:</b> {msg_admin}\n'
-    
-    proxy = 'Sí' if userdata['proxy'] != '' else 'No'
-    tokenize = 'Sí' if userdata['tokenize'] != 0 else 'No'
-    msg += f'🔗 <b>Proxy:</b> {proxy}\n'
-    msg += f'🔐 <b>Tokenización:</b> {tokenize}\n'
+        msg += '📂 <b>Directorio:</b> /' + str(userdata['dir']) + '\n'
+    msg += '📏 <b>Límite de zips:</b> ' + sizeof_fmt(userdata['zips']*1024*1024) + '\n\n'
+    msg_admin = 'No'
+    if isadmin:
+        msg_admin = 'Sí'
+    msg += '👑 <b>Administrador:</b> ' + msg_admin + '\n'
+    proxy = 'No'
+    if userdata['proxy'] != '':
+       proxy = 'Sí'
+    tokenize = 'No'
+    if userdata['tokenize'] != 0:
+       tokenize = 'Sí'
+    msg += '🔗 <b>Proxy:</b> ' + proxy + '\n'
+    msg += '🔐 <b>Tokenización:</b> ' + tokenize + '\n'
     return msg
     
