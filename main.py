@@ -828,7 +828,7 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
             except:
                 pass
         else:
-            print(f"Error en ddl: {ex}")
+            print(f"Proceso detenido o error: {ex}")
     finally:
         if thread:
             clean_process(thread.id)
