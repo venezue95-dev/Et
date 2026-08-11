@@ -532,7 +532,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
     try:
         prep_msg = '<b>⬆️ Preparando para subir ☁ ●●○</b>'
         if thread:
-            prep_msg += f"\n\n<code>/cancel_{thread.id}</code>"
+            prep_msg += f"\n\n/cancel_{thread.id}"
         bot.editMessageText(message, prep_msg, parse_mode='html')
         
         username = update.message.sender.username
@@ -633,8 +633,8 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if file_size > max_file_size:
             compresingInfo = infos.createCompresing(file,file_size,max_file_size)
             if thread:
-                compresingInfo = compresingInfo.strip() + f"\n\n<code>/cancel_{thread.id}</code>"
-            bot.editMessageText(message, compresingInfo, parse_mode='html') # <--- CORREGIDO AQUÍ CON parse_mode='html'
+                compresingInfo = compresingInfo.strip() + f"\n\n/cancel_{thread.id}"
+            bot.editMessageText(message, compresingInfo, parse_mode='html')
             
             if thread:
                 if thread.getStore('stop'):
