@@ -154,39 +154,33 @@ class CloudCache:
     def should_refresh(self, cloud_name=None):
         """Determina si debe refrescar los datos"""
         if cloud_name is None:
-            # Para refresco completo
             if self.last_full_refresh is None:
                 return True
             elapsed = (datetime.datetime.now() - self.last_full_refresh).total_seconds()
             return elapsed > self.ttl
         
-        # Para nube específica
         if cloud_name not in self.last_refresh:
             return True
         elapsed = (datetime.datetime.now() - self.last_refresh[cloud_name]).total_seconds()
         return elapsed > self.ttl
     
     def update_cache(self, cloud_name, data):
-        """Actualiza la caché para una nube específica"""
         self.cache[cloud_name] = data
         self.last_refresh[cloud_name] = datetime.datetime.now()
     
     def update_full_cache(self, data):
-        """Actualiza caché completa"""
         self.cache = data.copy()
         self.last_full_refresh = datetime.datetime.now()
     
     def get_cache(self, cloud_name):
-        """Obtiene datos de caché"""
         return self.cache.get(cloud_name)
     
     def clear_cache(self):
-        """Limpia toda la caché"""
         self.cache = {}
         self.last_refresh = {}
         self.last_full_refresh = None
 
-cloud_cache = CloudCache(ttl_seconds=30)  # 30 segundos de caché
+cloud_cache = CloudCache(ttl_seconds=30)
 
 def get_cuba_time():
     if CUBA_TZ:
@@ -206,7 +200,6 @@ def format_cuba_datetime(dt=None):
     return dt.strftime("%d/%m/%y %I:%M %p")
 
 def format_file_size(size_bytes):
-    """Formatea bytes a KB, MB o GB automáticamente"""
     if size_bytes < 1024:
         return f"{size_bytes} B"
     elif size_bytes < 1024 * 1024:
@@ -221,13 +214,10 @@ def format_file_size(size_bytes):
 # ==============================
 
 class MemoryStats:
-    """Sistema de estadísticas en memoria (sin archivos)"""
-    
     def __init__(self):
         self.reset_stats()
     
     def reset_stats(self):
-        """Reinicia todas las estadísticas"""
         self.stats = {
             'total_uploads': 0,
             'total_deletes': 0,
@@ -238,7 +228,6 @@ class MemoryStats:
         self.delete_logs = []
     
     def log_upload(self, username, filename, file_size, moodle_host):
-        """Registra una subida exitosa"""
         try:
             file_size = int(file_size)
         except:
@@ -275,7 +264,6 @@ class MemoryStats:
         return True
     
     def log_delete(self, username, filename, evidence_name, moodle_host):
-        """Registra una eliminación individual"""
         self.stats['total_deletes'] += 1
         
         if username not in self.user_stats:
@@ -305,7 +293,6 @@ class MemoryStats:
         return True
     
     def log_delete_all(self, username, deleted_evidences, deleted_files, moodle_host):
-        """Registra eliminación masiva"""
         self.stats['total_deletes'] += deleted_files
         
         if username not in self.user_stats:
@@ -336,40 +323,32 @@ class MemoryStats:
         return True
     
     def get_user_stats(self, username):
-        """Obtiene estadísticas de un usuario"""
         if username in self.user_stats:
             return self.user_stats[username]
         return None
     
     def get_all_stats(self):
-        """Obtiene todas las estadísticas globales"""
         return self.stats
     
     def get_all_users(self):
-        """Obtiene todos los usuarios"""
         return self.user_stats
     
     def get_recent_uploads(self, limit=10):
-        """Obtiene subidas recientes"""
         return self.upload_logs[-limit:][::-1] if self.upload_logs else []
     
     def get_recent_deletes(self, limit=10):
-        """Obtiene eliminaciones recientes"""
         return self.delete_logs[-limit:][::-1] if self.delete_logs else []
     
     def has_any_data(self):
-        """Verifica si hay datos"""
         return len(self.upload_logs) > 0 or len(self.delete_logs) > 0
     
     def clear_all_data(self):
-        """Limpia todos los datos"""
         self.reset_stats()
         return "<b>✅ Todos los datos han sido eliminados</b>"
 
 memory_stats = MemoryStats()
 
 def get_random_large_file_message():
-    """Retorna un mensaje chistoso aleatorio para archivos grandes"""
     messages = [
         "¡Uy! Este archivo pesa más que mis ganas de trabajar los lunes 📦",
         "¿Seguro que no estás subiendo toda la temporada de tu serie favorita? 🎬",
@@ -400,7 +379,6 @@ def get_random_large_file_message():
     return random.choice(messages)
 
 def expand_user_groups():
-    """Convierte 'usuario1,usuario2':config a 'usuario1':config, 'usuario2':config"""
     expanded = {}
     for user_group, config in PRE_CONFIGURATED_USERS.items():
         users = [u.strip() for u in user_group.split(',')]
@@ -408,9 +386,6 @@ def expand_user_groups():
             expanded[user] = config.copy()
     return expanded
 
-# ==============================
-# FUNCIÓN PARA VERIFICAR ESTADO DE UNA NUBE INDIVIDUAL
-# ==============================
 def check_single_cloud(cloud_config):
     moodle_host = cloud_config.get('moodle_host', '')
     moodle_user = cloud_config.get('moodle_user', '')
@@ -438,9 +413,6 @@ def check_single_cloud(cloud_config):
         'online': is_online
     }
 
-# ==============================
-# TRACKER DE PROCESOS ACTIVOS (PROFESIONAL Y PRECISO)
-# ==============================
 def update_process(thread_id, username, filename, action, current, total):
     try:
         current = int(current or 0)
@@ -461,11 +433,7 @@ def clean_process(thread_id):
     if thread_id in ACTIVE_PROCESSES:
         del ACTIVE_PROCESSES[thread_id]
 
-# ==============================
-# FUNCIÓN PARA DIVIDIR MENSAJES LARGOS
-# ==============================
 def send_long_message(bot, chat_id, text, original_message=None, parse_mode='html'):
-    """Divide mensajes largos por saltos de línea para respetar el límite de Telegram"""
     MAX_LEN = 4000
     
     if len(text) <= MAX_LEN:
@@ -495,7 +463,7 @@ def send_long_message(bot, chat_id, text, original_message=None, parse_mode='htm
         bot.sendMessage(chat_id, messages_to_send[0], parse_mode=parse_mode)
         
     for msg_part in messages_to_send[1:]:
-        time.sleep(0.5)  # Breve pausa para evitar flood
+        time.sleep(0.5)
         bot.sendMessage(chat_id, msg_part, parse_mode=parse_mode)
 
 def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
@@ -538,7 +506,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
     try:
         prep_msg = '<b><b>⬆️ Preparando para subir ☁ ●●○</b></b>'
         if thread:
-            prep_msg += f"\n\n<code>/cancel_{thread.id}</code>"
+            prep_msg += f"\n\n/cancel_{thread.id}"
         bot.editMessageText(message, prep_msg, parse_mode='html')
         
         username = update.message.sender.username
@@ -639,7 +607,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if file_size > max_file_size:
             compresingInfo = infos.createCompresing(file,file_size,max_file_size)
             if thread:
-                compresingInfo = compresingInfo.strip() + f"\n\n<code>/cancel_{thread.id}</code>"
+                compresingInfo = compresingInfo.strip() + f"\n\n/cancel_{thread.id}"
             bot.editMessageText(message,compresingInfo)
             
             if thread:
@@ -753,7 +721,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                     mensaje_log = (f"<b><b>✅ ¡Subida completada!</b></b>\n"
                                    f"<b>👤 Usuario:</b> @{username}\n"
                                    f"<b>📄 Archivo:</b> <code>{filename_clean}</code>\n"
-                                   f"<b>⚖️ Peso:</b> <b>{format_file_size(file_size)}</b>\n"
+                                   f"<b>⚖️ Peso:</b> <b><b>{format_file_size(file_size)}</b></b>\n"
                                    f"<b>☁️ Nube:</b> <code>{clean_host}</code>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
@@ -1204,9 +1172,9 @@ def show_updated_cloud(bot, message, cloud_idx):
                 list_msg += "..."
             list_msg += f"<b><b>{user_str}</b></b>\n"
             list_msg += f"   📁 <b><b>Archivos:</b></b> <b><b>{evidence['files_count']}</b></b>\n"
-            list_msg += f"   👁️ <b><b>Ver:</b></b> <code>/adm_show_{cloud_idx}_{idx}</code>\n"
-            list_msg += f"   📄 <b><b>TXT:</b></b> <code>/adm_fetch_{cloud_idx}_{idx}</code>\n"
-            list_msg += f"   🗑️ <b><b>Borrar:</b></b> <code>/adm_delete_{cloud_idx}_{idx}</code>\n\n"
+            list_msg += f"   👁️ <b><b>Ver:</b></b> /adm_show_{cloud_idx}_{idx}\n"
+            list_msg += f"   📄 <b><b>TXT:</b></b> /adm_fetch_{cloud_idx}_{idx}\n"
+            list_msg += f"   🗑️ <b><b>Borrar:</b></b> /adm_delete_{cloud_idx}_{idx}\n\n"
         
         total_evidences = len(evidences)
         total_files = sum(e['files_count'] for e in evidences)
@@ -1214,7 +1182,7 @@ def show_updated_cloud(bot, message, cloud_idx):
         list_msg += f"""
 ────────────────────────
 🔧 <b><b>Acciones masivas:</b></b>
-<code>/adm_wipe_{cloud_idx}</code> - <b><b>Eliminación masiva</b></b>
+/adm_wipe_{cloud_idx} - <b><b>Eliminación masiva</b></b>
 
 📊 <b><b>Resumen:</b></b>
 • <b><b>Evidencias:</b></b> <b><b>{total_evidences}</b></b>
@@ -1275,10 +1243,10 @@ def show_updated_all_clouds(bot, message):
             
             menu_msg += f"\n\n<b><b>{cloud_index}.</b></b> <code>{short_name}</code>"
             menu_msg += f"\n   📁 <b><b>{len(evidences)} evidencias, {cloud_files} archivos</b></b>"
-            menu_msg += f"\n   🔍 <code>/adm_cloud_{cloud_index}</code>"
+            menu_msg += f"\n   🔍 /adm_cloud_{cloud_index}"
             
             if len(evidences) > 0:
-                menu_msg += f"\n   🗑️ <code>/adm_wipe_{cloud_index}</code>"
+                menu_msg += f"\n   🗑️ /adm_wipe_{cloud_index}"
             
             cloud_index += 1
         
@@ -1287,7 +1255,7 @@ def show_updated_all_clouds(bot, message):
 
 ────────────────────────
 🔧 <b><b>Opciones masivas:</b></b>
-<code>/adm_nuke</code> - ⚠️ <b><b>Eliminación masiva</b></b>
+/adm_nuke - ⚠️ <b><b>Eliminación masiva</b></b>
 ────────────────────────
         """
         
@@ -1426,7 +1394,7 @@ def onmessage(update,bot:ObigramClient):
                             usernames = [u for u in usernames if u]
                             
                             if not usernames:
-                                bot.editMessageText(message, "<b><b>❌ Formato incorrecto.</b></b>\n💡 <b><b>Uso correcto:</b></b> <code>/add usuario1,usuario2 1</code>", parse_mode='html')
+                                bot.editMessageText(message, "<b><b>❌ Formato incorrecto.</b></b>\n💡 <b><b>Uso correcto:</b></b> /add usuario1,usuario2 1", parse_mode='html')
                                 return
 
                             if any(u.lower() == ADMIN_USERNAME.lower() for u in usernames):
@@ -1485,10 +1453,10 @@ def onmessage(update,bot:ObigramClient):
                             bot.editMessageText(message, "<b><b>❌ Número de nube inválido.</b></b>\n💡 <b><b>Debe ser un número del 1 al 7.</b></b>", parse_mode='html')
                             return
                     else:
-                        bot.editMessageText(message, "<b><b>❌ Formato incorrecto.</b></b>\n💡 <b><b>Uso correcto:</b></b> <code>/add usuario1,usuario2 1</code>", parse_mode='html')
+                        bot.editMessageText(message, "<b><b>❌ Formato incorrecto.</b></b>\n💡 <b><b>Uso correcto:</b></b> /add usuario1,usuario2 1", parse_mode='html')
                         return
                 else:
-                    bot.editMessageText(message, "<b><b>❌ Formato incorrecto.</b></b>\n💡 <b><b>Uso correcto:</b></b> <code>/add usuario1,usuario2 1</code>", parse_mode='html')
+                    bot.editMessageText(message, "<b><b>❌ Formato incorrecto.</b></b>\n💡 <b><b>Uso correcto:</b></b> /add usuario1,usuario2 1", parse_mode='html')
                     return
             except Exception as e:
                 bot.editMessageText(message, f"<b><b>❌ Error al agregar usuarios:</b></b> <code>{str(e)}</code>", parse_mode='html')
@@ -1501,7 +1469,7 @@ def onmessage(update,bot:ObigramClient):
                 usernames = [u for u in usernames if u]
                 
                 if not usernames:
-                    bot.editMessageText(message, "<b><b>❌ Formato incorrecto.</b></b>\n💡 <b><b>Uso correcto:</b></b> <code>/remove usuario1,usuario2</code>", parse_mode='html')
+                    bot.editMessageText(message, "<b><b>❌ Formato incorrecto.</b></b>\n💡 <b><b>Uso correcto:</b></b> /remove usuario1,usuario2", parse_mode='html')
                     return
                 
                 if any(u.lower() == ADMIN_USERNAME.lower() for u in usernames):
@@ -1565,7 +1533,7 @@ def onmessage(update,bot:ObigramClient):
                 targets = [u for u in targets if u]
                 
                 if not targets:
-                    bot.editMessageText(message, "<b><b>❌ Formato incorrecto.</b></b>\n💡 <b><b>Uso correcto:</b></b> <code>/ban usuario1,usuario2</code>", parse_mode='html')
+                    bot.editMessageText(message, "<b><b>❌ Formato incorrecto.</b></b>\n💡 <b><b>Uso correcto:</b></b> /ban usuario1,usuario2", parse_mode='html')
                     return
                 
                 if any(t.lower() == ADMIN_USERNAME.lower() for t in targets):
@@ -1620,7 +1588,7 @@ def onmessage(update,bot:ObigramClient):
                 targets = [u for u in targets if u]
                 
                 if not targets:
-                    bot.editMessageText(message, "<b><b>❌ Formato incorrecto.</b></b>\n💡 <b><b>Uso correcto:</b></b> <code>/unban usuario1,usuario2</code>", parse_mode='html')
+                    bot.editMessageText(message, "<b><b>❌ Formato incorrecto.</b></b>\n💡 <b><b>Uso correcto:</b></b> /unban usuario1,usuario2", parse_mode='html')
                     return
                 
                 if any(t.lower() == ADMIN_USERNAME.lower() for t in targets):
@@ -1740,39 +1708,39 @@ def onmessage(update,bot:ObigramClient):
 • <b><b>Gestión de evidencias globales</b></b>
 
 🎯 <b><b>Comandos principales:</b></b>
-<code>/admin</code> - <b><b>Panel de administración</b></b>
-<code>/status</code> - <b><b>Estado de las nubes 🟢/🔴</b></b>
-<code>/procesos</code> - <b><b>Procesos en tiempo real 🚀</b></b>
-<code>/mantenimiento</code> - <b><b>Modo mantenimiento 🛠️</b></b>
-<code>/add</code> - <b><b>Agregar usuario y nube ➕</b></b>
-<code>/remove</code> - <b><b>Quitar usuario del bot ➖</b></b>
-<code>/ban</code> - <b><b>Banear usuario 🚫</b></b>
-<code>/unban</code> - <b><b>Desbanear usuario ✅</b></b>
+/admin - <b><b>Panel de administración</b></b>
+/status - <b><b>Estado de las nubes 🟢/🔴</b></b>
+/procesos - <b><b>Procesos en tiempo real 🚀</b></b>
+/mantenimiento - <b><b>Modo mantenimiento 🛠️</b></b>
+/add - <b><b>Agregar usuario y nube ➕</b></b>
+/remove - <b><b>Quitar usuario del bot ➖</b></b>
+/ban - <b><b>Banear usuario 🚫</b></b>
+/unban - <b><b>Desbanear usuario ✅</b></b>
 
 📈 <b><b>Estadísticas y gestión:</b></b>
-<code>/adm_logs</code> - <b><b>Logs del sistema</b></b>
-<code>/adm_users</code> - <b><b>Estadísticas por usuario</b></b>
-<code>/adm_userclouds</code> - <b><b>Ver nubes y usuarios ☁️</b></b>
-<code>/adm_uploads</code> - <b><b>Últimas subidas</b></b>
-<code>/adm_deletes</code> - <b><b>Últimas eliminaciones</b></b>
-<code>/adm_cleardata</code> - <b><b>Limpiar estadísticas</b></b>
+/adm_logs - <b><b>Logs del sistema</b></b>
+/adm_users - <b><b>Estadísticas por usuario</b></b>
+/adm_userclouds - <b><b>Ver nubes y usuarios ☁️</b></b>
+/adm_uploads - <b><b>Últimas subidas</b></b>
+/adm_deletes - <b><b>Últimas eliminaciones</b></b>
+/adm_cleardata - <b><b>Limpiar estadísticas</b></b>
 
 ☁️ <b><b>Gestión de nubes:</b></b>
-<code>/adm_allclouds</code> - <b><b>Ver todas las nubes</b></b>
-<code>/adm_cloud_X</code> - <b><b>Nube específica</b></b>
-<code>/adm_show_X_Y</code> - <b><b>Detalles de evidencia</b></b>
-<code>/adm_fetch_X_Y</code> - <b><b>Descargar TXT</b></b>
-<code>/adm_delete_X_Y</code> - <b><b>Eliminar evidencia</b></b>
-<code>/adm_wipe_X</code> - <b><b>Limpiar nube X</b></b>
-<code>/adm_nuke</code> - <b><b>Eliminación masiva ⚠️</b></b>
+/adm_allclouds - <b><b>Ver todas las nubes</b></b>
+/adm_cloud_X - <b><b>Nube específica</b></b>
+/adm_show_X_Y - <b><b>Detalles de evidencia</b></b>
+/adm_fetch_X_Y - <b><b>Descargar TXT</b></b>
+/adm_delete_X_Y - <b><b>Eliminar evidencia</b></b>
+/adm_wipe_X - <b><b>Limpiar nube X</b></b>
+/adm_nuke - <b><b>Eliminación masiva ⚠️</b></b>
 
 🔧 <b><b>Tus comandos personales:</b></b>
-<code>/cambiar</code> - <b><b>Cambiar de nube (1 al 7) 🔄</b></b>
-<code>/files</code> - <b><b>Ver tus evidencias</b></b>
-<code>/txt_X</code> - <b><b>Ver TXT de tu evidencia</b></b>
-<code>/del_X</code> - <b><b>Eliminar tu evidencia</b></b>
-<code>/delall</code> - <b><b>Eliminar tus evidencias</b></b>
-<code>/mystats</code> - <b><b>Tus estadísticas</b></b>
+/cambiar - <b><b>Cambiar de nube (1 al 7) 🔄</b></b>
+/files - <b><b>Ver tus evidencias</b></b>
+/txt_X - <b><b>Ver TXT de tu evidencia</b></b>
+/del_X - <b><b>Eliminar tu evidencia</b></b>
+/delall - <b><b>Eliminar tus evidencias</b></b>
+/mystats - <b><b>Tus estadísticas</b></b>
                 """
             else:
                 current_cloud_short = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
@@ -1785,14 +1753,14 @@ def onmessage(update,bot:ObigramClient):
 📁 <b><b>Evidence:</b></b> <b><b>Activado</b></b>
 
 🔧 <b><b>Tus comandos:</b></b>
-<code>/start</code> - <b><b>Ver esta información</b></b>
-<code>/cambiar</code> - <b><b>Cambiar de nube (1 al 7) 🔄</b></b>
-<code>/status</code> - <b><b>Estado de tu nube 🟢/🔴</b></b>
-<code>/files</code> - <b><b>Ver tus evidencias</b></b>
-<code>/txt_X</code> - <b><b>Ver TXT de evidencia X</b></b>
-<code>/del_X</code> - <b><b>Eliminar evidencia X</b></b>
-<code>/delall</code> - <b><b>Eliminar tus evidencias</b></b>
-<code>/mystats</code> - <b><b>Ver tus estadísticas</b></b>
+/start - <b><b>Ver esta información</b></b>
+/cambiar - <b><b>Cambiar de nube (1 al 7) 🔄</b></b>
+/status - <b><b>Estado de tu nube 🟢/🔴</b></b>
+/files - <b><b>Ver tus evidencias</b></b>
+/txt_X - <b><b>Ver TXT de evidencia X</b></b>
+/del_X - <b><b>Eliminar evidencia X</b></b>
+/delall - <b><b>Eliminar tus evidencias</b></b>
+/mystats - <b><b>Ver tus estadísticas</b></b>
                 """
             
             bot.editMessageText(message, start_msg, parse_mode='html')
@@ -1926,33 +1894,33 @@ def onmessage(update,bot:ObigramClient):
 • <b><b>Nubes configuradas:</b></b> <b><b>{len(AVAILABLE_CLOUDS)}</b></b>
 
 🚀 <b><b>Comandos rápidos:</b></b>
-<code>/status</code> - <b><b>Estado de las nubes 🟢/🔴</b></b>
-<code>/procesos</code> - <b><b>Procesos activos 🚀</b></b>
-<code>/mantenimiento</code> - <b><b>Activar/Desactivar 🛠️</b></b>
-<code>/add</code> - <b><b>Agregar usuario y nube ➕</b></b>
-<code>/remove</code> - <b><b>Quitar usuario del bot ➖</b></b>
-<code>/ban</code> - <b><b>Banear usuario 🚫</b></b>
-<code>/unban</code> - <b><b>Desbanear usuario ✅</b></b>
+/status - <b><b>Estado de las nubes 🟢/🔴</b></b>
+/procesos - <b><b>Procesos activos 🚀</b></b>
+/mantenimiento - <b><b>Activar/Desactivar 🛠️</b></b>
+/add - <b><b>Agregar usuario y nube ➕</b></b>
+/remove - <b><b>Quitar usuario del bot ➖</b></b>
+/ban - <b><b>Banear usuario 🚫</b></b>
+/unban - <b><b>Desbanear usuario ✅</b></b>
 
 📈 <b><b>Estadísticas y usuarios:</b></b>
-<code>/adm_logs</code> - <b><b>Ver últimos logs</b></b>
-<code>/adm_users</code> - <b><b>Estadísticas por usuario</b></b>
-<code>/adm_userclouds</code> - <b><b>Ver nubes y usuarios ☁️</b></b>
-<code>/adm_uploads</code> - <b><b>Últimas subidas</b></b>
-<code>/adm_deletes</code> - <b><b>Últimas eliminaciones</b></b>
-<code>/adm_cleardata</code> - <b><b>Limpiar todos los datos</b></b>
+/adm_logs - <b><b>Ver últimos logs</b></b>
+/adm_users - <b><b>Estadísticas por usuario</b></b>
+/adm_userclouds - <b><b>Ver nubes y usuarios ☁️</b></b>
+/adm_uploads - <b><b>Últimas subidas</b></b>
+/adm_deletes - <b><b>Últimas eliminaciones</b></b>
+/adm_cleardata - <b><b>Limpiar todos los datos</b></b>
 
 ☁️ <b><b>Gestión de nubes:</b></b>
-<code>/adm_allclouds</code> - <b><b>Ver todas las nubes</b></b>
-<code>/adm_cloud_X</code> - <b><b>Ver nube específica</b></b>
-<code>/adm_show_X_Y</code> - <b><b>Detalles de evidencia</b></b>
-<code>/adm_fetch_X_Y</code> - <b><b>Descargar TXT</b></b>
-<code>/adm_delete_X_Y</code> - <b><b>Eliminar evidencia</b></b>
-<code>/adm_wipe_X</code> - <b><b>Limpiar nube X</b></b>
-<code>/adm_nuke</code> - <b><b>Eliminación masiva ⚠️</b></b>
+/adm_allclouds - <b><b>Ver todas las nubes</b></b>
+/adm_cloud_X - <b><b>Ver nube específica</b></b>
+/adm_show_X_Y - <b><b>Detalles de evidencia</b></b>
+/adm_fetch_X_Y - <b><b>Descargar TXT</b></b>
+/adm_delete_X_Y - <b><b>Eliminar evidencia</b></b>
+/adm_wipe_X - <b><b>Limpiar nube X</b></b>
+/adm_nuke - <b><b>Eliminación masiva ⚠️</b></b>
 
 🔧 <b><b>Otros:</b></b>
-<code>/start</code> - <b><b>Información de usuario</b></b>
+/start - <b><b>Información de usuario</b></b>
 ────────────────────────
 🕐 <b><b>Hora Cuba:</b></b> <b><b>{format_cuba_datetime()}</b></b>
                     """
@@ -1967,29 +1935,29 @@ def onmessage(update,bot:ObigramClient):
 📊 <b><b>Nubes configuradas:</b></b> <b><b>{len(AVAILABLE_CLOUDS)}</b></b>
 
 🚀 <b><b>Comandos rápidos:</b></b>
-<code>/status</code> - <b><b>Estado de las nubes 🟢/🔴</b></b>
-<code>/procesos</code> - <b><b>Procesos activos 🚀</b></b>
-<code>/mantenimiento</code> - <b><b>Activar/Desactivar 🛠️</b></b>
-<code>/add</code> - <b><b>Agregar usuario y nube ➕</b></b>
-<code>/remove</code> - <b><b>Quitar usuario del bot ➖</b></b>
-<code>/ban</code> - <b><b>Banear usuario 🚫</b></b>
-<code>/unban</code> - <b><b>Desbanear usuario ✅</b></b>
+/status - <b><b>Estado de las nubes 🟢/🔴</b></b>
+/procesos - <b><b>Procesos activos 🚀</b></b>
+/mantenimiento - <b><b>Activar/Desactivar 🛠️</b></b>
+/add - <b><b>Agregar usuario y nube ➕</b></b>
+/remove - <b><b>Quitar usuario del bot ➖</b></b>
+/ban - <b><b>Banear usuario 🚫</b></b>
+/unban - <b><b>Desbanear usuario ✅</b></b>
 
 📈 <b><b>Estadísticas y usuarios:</b></b>
-<code>/adm_logs</code> - <b><b>Ver últimos logs</b></b>
-<code>/adm_users</code> - <b><b>Estadísticas por usuario</b></b>
-<code>/adm_userclouds</code> - <b><b>Ver nubes y usuarios ☁️</b></b>
-<code>/adm_uploads</code> - <b><b>Últimas subidas</b></b>
-<code>/adm_deletes</code> - <b><b>Últimas eliminaciones</b></b>
+/adm_logs - <b><b>Ver últimos logs</b></b>
+/adm_users - <b><b>Estadísticas por usuario</b></b>
+/adm_userclouds - <b><b>Ver nubes y usuarios ☁️</b></b>
+/adm_uploads - <b><b>Últimas subidas</b></b>
+/adm_deletes - <b><b>Últimas eliminaciones</b></b>
 
 ☁️ <b><b>Gestión de nubes:</b></b>
-<code>/adm_allclouds</code> - <b><b>Ver todas las nubes</b></b>
-<code>/adm_cloud_X</code> - <b><b>Ver nube específica</b></b>
-<code>/adm_show_X_Y</code> - <b><b>Detalles de evidencia</b></b>
-<code>/adm_fetch_X_Y</code> - <b><b>Descargar TXT</b></b>
+/adm_allclouds - <b><b>Ver todas las nubes</b></b>
+/adm_cloud_X - <b><b>Ver nube específica</b></b>
+/adm_show_X_Y - <b><b>Detalles de evidencia</b></b>
+/adm_fetch_X_Y - <b><b>Descargar TXT</b></b>
 
 🔧 <b><b>Otros:</b></b>
-<code>/start</code> - <b><b>Información de usuario</b></b>
+/start - <b><b>Información de usuario</b></b>
 ────────────────────────
 🕐 <b><b>Hora Cuba:</b></b> <b><b>{format_cuba_datetime()}</b></b>
                     """
@@ -2072,10 +2040,10 @@ def onmessage(update,bot:ObigramClient):
                             
                             menu_msg += f"\n\n<b><b>{cloud_index}.</b></b> <code>{short_name}</code>"
                             menu_msg += f"\n   📁 <b><b>{len(evidences)} evidencias, {cloud_files} archivos</b></b>"
-                            menu_msg += f"\n   🔍 <code>/adm_cloud_{cloud_index}</code>"
+                            menu_msg += f"\n   🔍 /adm_cloud_{cloud_index}"
                             
                             if len(evidences) > 0:
-                                menu_msg += f"\n   🗑️ <code>/adm_wipe_{cloud_index}</code>"
+                                menu_msg += f"\n   🗑️ /adm_wipe_{cloud_index}"
                             
                             cloud_index += 1
                         
@@ -2086,9 +2054,9 @@ def onmessage(update,bot:ObigramClient):
 
 ────────────────────────
 🔧 <b><b>OPCIONES MASIVAS:</b></b>
-<code>/adm_nuke</code> - ⚠️ <b><b>Eliminación masiva</b></b>
+/adm_nuke - ⚠️ <b><b>Eliminación masiva</b></b>
 ────────────────────────
-ℹ️ <b><b>Usa</b></b> <code>/adm_cloud_X</code> <b><b>para ver evidencias</b></b>
+ℹ️ <b><b>Usa</b></b> /adm_cloud_X <b><b>para ver evidencias</b></b>
                             """
                         else:
                             menu_msg += f"""
@@ -2108,7 +2076,7 @@ def onmessage(update,bot:ObigramClient):
                     try:
                         cloud_idx = extract_one_param_simple(msgText, '/adm_cloud_')
                         if cloud_idx is None:
-                            bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> <code>/adm_cloud_0</code>', parse_mode='html')
+                            bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> /adm_cloud_0', parse_mode='html')
                             return
                         
                         admin_evidence_manager.refresh_data()
@@ -2161,9 +2129,9 @@ def onmessage(update,bot:ObigramClient):
                                 list_msg += "..."
                             list_msg += f"<b><b>{user_str}</b></b>\n"
                             list_msg += f"   📁 <b><b>Archivos:</b></b> <b><b>{evidence['files_count']}</b></b>\n"
-                            list_msg += f"   👁️ <b><b>Ver:</b></b> <code>/adm_show_{cloud_idx}_{idx}</code>\n"
-                            list_msg += f"   📄 <b><b>TXT:</b></b> <code>/adm_fetch_{cloud_idx}_{idx}</code>\n"
-                            list_msg += f"   🗑️ <b><b>Borrar:</b></b> <code>/adm_delete_{cloud_idx}_{idx}</code>\n\n"
+                            list_msg += f"   👁️ <b><b>Ver:</b></b> /adm_show_{cloud_idx}_{idx}\n"
+                            list_msg += f"   📄 <b><b>TXT:</b></b> /adm_fetch_{cloud_idx}_{idx}\n"
+                            list_msg += f"   🗑️ <b><b>Borrar:</b></b> /adm_delete_{cloud_idx}_{idx}\n\n"
                         
                         total_evidences = len(evidences)
                         total_files = sum(e['files_count'] for e in evidences)
@@ -2171,7 +2139,7 @@ def onmessage(update,bot:ObigramClient):
                         list_msg += f"""
 ────────────────────────
 🔧 <b><b>ACCIÓN MASIVA:</b></b>
-<code>/adm_wipe_{cloud_idx}</code> - <b><b>Eliminación masiva</b></b>
+/adm_wipe_{cloud_idx} - <b><b>Eliminación masiva</b></b>
 
 📊 <b><b>RESUMEN:</b></b>
 • <b><b>Evidencias:</b></b> <b><b>{total_evidences}</b></b>
@@ -2189,7 +2157,7 @@ def onmessage(update,bot:ObigramClient):
                     try:
                         params = extract_two_params_simple(msgText, '/adm_show_')
                         if params is None:
-                            bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> <code>/adm_show_0_1</code>', parse_mode='html')
+                            bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> /adm_show_0_1', parse_mode='html')
                             return
                         
                         cloud_idx, evid_idx = params
@@ -2214,8 +2182,8 @@ def onmessage(update,bot:ObigramClient):
 ☁️ <b><b>Nube:</b></b> <code>{short_name}</code>
 
 🔧 <b><b>ACCIONES:</b></b>
-📄 <code>/adm_fetch_{cloud_idx}_{evid_idx}</code> - <b><b>TXT</b></b>
-🗑️ <code>/adm_delete_{cloud_idx}_{evid_idx}</code> - <b><b>Eliminar</b></b>
+📄 /adm_fetch_{cloud_idx}_{evid_idx} - <b><b>TXT</b></b>
+🗑️ /adm_delete_{cloud_idx}_{evid_idx} - <b><b>Eliminar</b></b>
 ────────────────────────
                             """
                             bot.editMessageText(message, show_msg, parse_mode='html')
@@ -2229,7 +2197,7 @@ def onmessage(update,bot:ObigramClient):
                     try:
                         params = extract_two_params_simple(msgText, '/adm_fetch_')
                         if params is None:
-                            bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> <code>/adm_fetch_0_1</code>', parse_mode='html')
+                            bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> /adm_fetch_0_1', parse_mode='html')
                             return
                         
                         cloud_idx, evid_idx = params
@@ -2274,7 +2242,7 @@ def onmessage(update,bot:ObigramClient):
                     try:
                         params = extract_two_params_simple(msgText, '/adm_delete_')
                         if params is None:
-                            bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> <code>/adm_delete_0_1</code>', parse_mode='html')
+                            bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> /adm_delete_0_1', parse_mode='html')
                             return
                         
                         cloud_idx, evid_idx = params
@@ -2358,7 +2326,7 @@ def onmessage(update,bot:ObigramClient):
                     try:
                         cloud_idx = extract_one_param_simple(msgText, '/adm_wipe_')
                         if cloud_idx is None:
-                            bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> <code>/adm_wipe_0</code>', parse_mode='html')
+                            bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> /adm_wipe_0', parse_mode='html')
                             return
                         
                         if cloud_idx < 0 or cloud_idx >= len(admin_evidence_manager.clouds_dict):
@@ -2604,7 +2572,7 @@ def onmessage(update,bot:ObigramClient):
                 if len(visible_list) > 0:
                     files_msg = "📁 <b><b>Tus evidencias</b></b>\n────────────────────────\n\n"
                     for idx, item in enumerate(visible_list):
-                        files_msg += f"• <b><b>{item['name']}</b></b> [ <b><b>{item['file_count']}</b></b> ]\n  <code>/txt_{idx}</code> | <code>/del_{idx}</code>\n\n"
+                        files_msg += f"• <b><b>{item['name']}</b></b> [ <b><b>{item['file_count']}</b></b> ]\n  /txt_{idx} | /del_{idx}\n\n"
                     files_msg += f"────────────────────────\n<b><b>Total:</b></b> <b><b>{len(visible_list)} evidencia(s)</b></b>"
                     bot.editMessageText(message, files_msg, parse_mode='html')
                 else:
@@ -2636,7 +2604,7 @@ def onmessage(update,bot:ObigramClient):
                             })
                     
                     if findex < 0 or findex >= len(visible_list):
-                        bot.editMessageText(message, '<b><b>❌ Índice inválido. Use </b></b><code>/files</code><b><b> para ver la lista.</b></b>', parse_mode='html')
+                        bot.editMessageText(message, '<b><b>❌ Índice inválido. Use </b></b>/files<b><b> para ver la lista.</b></b>', parse_mode='html')
                         client.logout()
                         return
                     
@@ -2649,7 +2617,7 @@ def onmessage(update,bot:ObigramClient):
                 else:
                     bot.editMessageText(message,'<b><b>➲ Error y causas🧐</b></b>\n1-<b><b>Revise su cuenta</b></b>\n2-<b><b>Servidor deshabilitado:</b></b> <code>'+client.path+'</code>', parse_mode='html')
             except ValueError:
-                bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> <code>/txt_0</code>', parse_mode='html')
+                bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> /txt_0', parse_mode='html')
             except Exception as e:
                 bot.editMessageText(message, f'<b><b>❌ Error:</b></b> <code>{str(e)}</code>', parse_mode='html')
              
@@ -2677,7 +2645,7 @@ def onmessage(update,bot:ObigramClient):
                             })
                     
                     if findex < 0 or findex >= len(visible_list):
-                        bot.editMessageText(message, '<b><b>❌ Índice inválido. Use </b></b><code>/files</code><b><b> para ver la lista.</b></b>', parse_mode='html')
+                        bot.editMessageText(message, '<b><b>❌ Índice inválido. Use </b></b>/files<b><b> para ver la lista.</b></b>', parse_mode='html')
                         client.logout()
                         return
                     
@@ -2711,7 +2679,7 @@ def onmessage(update,bot:ObigramClient):
                         for idx, item in enumerate(updated_visible_list):
                             clean_name = item['clean_name']
                             item_file_count = len(item['original']['files']) if 'files' in item['original'] else 0
-                            confirmation_msg += f"• <b><b>{clean_name}</b></b> [ <b><b>{item_file_count}</b></b> ]\n  <code>/txt_{idx}</code> | <code>/del_{idx}</code>\n\n"
+                            confirmation_msg += f"• <b><b>{clean_name}</b></b> [ <b><b>{item_file_count}</b></b> ]\n  /txt_{idx} | /del_{idx}\n\n"
                         bot.editMessageText(message, confirmation_msg, parse_mode='html')
                     else:
                         confirmation_msg += "<b><b>📭 No hay evidencias disponibles</b></b>"
@@ -2719,7 +2687,7 @@ def onmessage(update,bot:ObigramClient):
                 else:
                     bot.editMessageText(message,'<b><b>➲ Error y causas🧐</b></b>\n1-<b><b>Revise su cuenta</b></b>\n2-<b><b>Servidor deshabilitado:</b></b> <code>'+client.path+'</code>', parse_mode='html')
             except ValueError:
-                bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> <code>/del_0</code>', parse_mode='html')
+                bot.editMessageText(message, '<b><b>❌ Formato incorrecto. Use:</b></b> /del_0', parse_mode='html')
             except Exception as e:
                 bot.editMessageText(message, f'<b><b>❌ Error:</b></b> <code>{str(e)}</code>', parse_mode='html')
                 
