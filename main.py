@@ -505,7 +505,7 @@ def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
         update_process(thread.id, username, filename, '📥 Descargando', currentBits, totalBits)
         
         downloadingInfo = infos.createDownloading(filename,totalBits,currentBits,speed,time,tid=thread.id)
-        bot.editMessageText(message, downloadingInfo, parse_mode='html') # <--- CORREGIDO AQUÍ
+        bot.editMessageText(message, downloadingInfo, parse_mode='html')
     except Exception as ex: 
         raise ex
 
@@ -524,7 +524,7 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
         
         tid_str = thread.id if thread else ''
         uploadingInfo = infos.createUploading(filename, totalBits, currentBits, speed, time, originalfile, tid=tid_str)
-        bot.editMessageText(message, uploadingInfo, parse_mode='html') # <--- CORREGIDO AQUÍ
+        bot.editMessageText(message, uploadingInfo, parse_mode='html')
     except Exception as ex: 
         raise ex
 
@@ -532,7 +532,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
     try:
         prep_msg = '<b>⬆️ Preparando para subir ☁ ●●○</b>'
         if thread:
-            prep_msg += f"\n\n/cancel_{thread.id}"
+            prep_msg += f"\n\n<code>/cancel_{thread.id}</code>"
         bot.editMessageText(message, prep_msg, parse_mode='html')
         
         username = update.message.sender.username
@@ -633,8 +633,8 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if file_size > max_file_size:
             compresingInfo = infos.createCompresing(file,file_size,max_file_size)
             if thread:
-                compresingInfo = compresingInfo.strip() + f"\n\n/cancel_{thread.id}"
-            bot.editMessageText(message,compresingInfo)
+                compresingInfo = compresingInfo.strip() + f"\n\n<code>/cancel_{thread.id}</code>"
+            bot.editMessageText(message, compresingInfo, parse_mode='html') # <--- CORREGIDO AQUÍ CON parse_mode='html'
             
             if thread:
                 if thread.getStore('stop'):
