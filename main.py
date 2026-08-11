@@ -530,7 +530,7 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
         
         uploadingInfo = infos.createUploading(filename,totalBits,currentBits,speed,time,originalfile)
         if thread:
-            uploadingInfo = uploadingInfo.strip() + f"\n/cancel_{thread.id}"
+            uploadingInfo = uploadingInfo.strip() + f"\n\n/cancel_{thread.id}"
         bot.editMessageText(message,uploadingInfo)
     except Exception as ex: 
         raise ex
@@ -539,7 +539,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
     try:
         prep_msg = '⬆️ Preparando para subir ☁ ●●○'
         if thread:
-            prep_msg = prep_msg.strip() + f"\n/cancel_{thread.id}"
+            prep_msg = prep_msg.strip() + f"\n\n/cancel_{thread.id}"
         bot.editMessageText(message, prep_msg)
         
         username = update.message.sender.username
@@ -640,7 +640,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if file_size > max_file_size:
             compresingInfo = infos.createCompresing(file,file_size,max_file_size)
             if thread:
-                compresingInfo = compresingInfo.strip() + f"\n/cancel_{thread.id}"
+                compresingInfo = compresingInfo.strip() + f"\n\n/cancel_{thread.id}"
             bot.editMessageText(message,compresingInfo)
             
             # Registrar estado de compresión en procesos activos (sin porcentaje)
@@ -725,7 +725,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 print(f"Error obteniendo índice de evidencia: {e}")
                 findex = 0
             
-            # Doble comprobación final antes de enviar mensaje de éxito
+            # Doble comprobación por si canceló justo antes de enviar el mensaje final
             if thread and thread.getStore('stop'):
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
 
