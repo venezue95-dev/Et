@@ -4,12 +4,15 @@ import time
 import os
 
 def sizeof_fmt(num, suffix='B'):
-    """Formatea los bytes a un estilo limpio (KB, MB, GB) sin la 'i'"""
+    """Formatea los bytes a un estilo limpio (KB, MB, GB) sin la 'i' y sin decimales .0 innecesarios"""
     for unit in ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
         if abs(num) < 1024.0:
             if unit == '':
-                return f"{num} {unit}{suffix}"
-            return f"{num:.1f} {unit}{suffix}"
+                return f"{int(num)} {unit}{suffix}"
+            formatted = f"{num:.1f}"
+            if formatted.endswith('.0'):
+                formatted = formatted[:-2]
+            return f"{formatted} {unit}{suffix}"
         num /= 1024.0
     return f"{num:.1f} Y{suffix}"
 
@@ -43,9 +46,9 @@ def porcent(index, max):
     return porcent_val
 
 def createDownloading(filename, totalBits, currentBits, speed, time_val, tid=''):
-    msg = '<b>⬇️ Descargando archivo...</b>\n\n'
-    msg += f'<b>📄 Nombre: {filename}</b>\n'
-    msg += f'<b>{text_progres(currentBits, totalBits)}</b>\n'
+    msg = '<b>⬇️ Descargando...</b>\n\n'
+    msg += f'<b>📄 Archivo: {filename}</b>\n'
+    msg += f'<b>{text_progres(currentBits, totalBits)}</b>'
     msg += f'<b>📊 Porcentaje: {porcent(currentBits, totalBits)}%</b>\n\n'
     msg += f'<b>💾 Tamaño total: {sizeof_fmt(totalBits)}</b>\n\n'
     msg += f'<b>📥 Descargado: {sizeof_fmt(currentBits)}</b>\n\n'
@@ -63,7 +66,7 @@ def createUploading(filename, totalBits, currentBits, speed, time_val, originaln
         msg += f'<b>📤 Subiendo: {filename}</b>\n'
     else:
         msg += f'<b>📁 Nombre: {filename}</b>\n'
-    msg += f'<b>{text_progres(currentBits, totalBits)}</b>\n'
+    msg += f'<b>{text_progres(currentBits, totalBits)}</b>'
     msg += f'<b>📊 Porcentaje: {porcent(currentBits, totalBits)}%</b>\n\n'
     msg += f'<b>💾 Tamaño total: {sizeof_fmt(totalBits)}</b>\n\n'
     msg += f'<b>📤 Subido: {sizeof_fmt(currentBits)}</b>\n\n'
@@ -147,3 +150,4 @@ def createStat(username, userdata, isadmin):
     msg += f'<b>🔗 Proxy: {proxy}</b>\n'
     msg += f'<b>🔐 Tokenización: {tokenize}</b>\n\n'
     return msg
+    
