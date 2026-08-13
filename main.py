@@ -211,11 +211,11 @@ def format_file_size(size_bytes):
         return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
 
 # ==============================
-# SISTEMA DE ESTADÍSTICAS EN MEMORIA
+# SISTEMA DE ESTADÍSTICAS EN MEMORIA Y CONTROL DIARIO
 # ==============================
 
 class MemoryStats:
-    """Sistema de estadísticas en memoria (sin archivos)"""
+    """Sistema de estadísticas en memoria y control de límites diarios"""
     
     def __init__(self):
         self.reset_stats()
@@ -231,26 +231,38 @@ class MemoryStats:
         self.upload_logs = []
         self.delete_logs = []
     
+    def check_and_update_daily_reset(self, username):
+        """Verifica si cambió el día en Cuba para restablecer el uso diario a 0"""
+        current_date = format_cuba_date()
+        if username in self.user_stats:
+            if self.user_stats[username].get('last_date') != current_date:
+                self.user_stats[username]['daily_size'] = 0
+                self.user_stats[username]['last_date'] = current_date
+        else:
+            self.user_stats[username] = {
+                'uploads': 0,
+                'deletes': 0,
+                'total_size': 0,
+                'daily_size': 0,
+                'last_date': current_date,
+                'last_activity': format_cuba_datetime()
+            }
+    
     def log_upload(self, username, filename, file_size, moodle_host):
-        """Registra una subida exitosa"""
+        """Registra una subida exitosa y acumula el consumo diario"""
         try:
             file_size = int(file_size)
         except:
             file_size = 0
         
+        self.check_and_update_daily_reset(username)
+        
         self.stats['total_uploads'] += 1
         self.stats['total_size_uploaded'] += file_size
         
-        if username not in self.user_stats:
-            self.user_stats[username] = {
-                'uploads': 0,
-                'deletes': 0,
-                'total_size': 0,
-                'last_activity': format_cuba_datetime()
-            }
-        
         self.user_stats[username]['uploads'] += 1
         self.user_stats[username]['total_size'] += file_size
+        self.user_stats[username]['daily_size'] += file_size
         self.user_stats[username]['last_activity'] = format_cuba_datetime()
         
         log_entry = {
@@ -273,10 +285,13 @@ class MemoryStats:
         self.stats['total_deletes'] += 1
         
         if username not in self.user_stats:
+            current_date = format_cuba_date()
             self.user_stats[username] = {
                 'uploads': 0,
                 'deletes': 0,
                 'total_size': 0,
+                'daily_size': 0,
+                'last_date': current_date,
                 'last_activity': format_cuba_datetime()
             }
         
@@ -303,10 +318,13 @@ class MemoryStats:
         self.stats['total_deletes'] += deleted_files
         
         if username not in self.user_stats:
+            current_date = format_cuba_date()
             self.user_stats[username] = {
                 'uploads': 0,
                 'deletes': 0,
                 'total_size': 0,
+                'daily_size': 0,
+                'last_date': current_date,
                 'last_activity': format_cuba_datetime()
             }
         
@@ -331,6 +349,7 @@ class MemoryStats:
     
     def get_user_stats(self, username):
         """Obtiene estadísticas de un usuario"""
+        self.check_and_update_daily_reset(username)
         if username in self.user_stats:
             return self.user_stats[username]
         return None
@@ -614,7 +633,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             except:
                 pass
         else:
-            bot.editMessageText(message,'<b>➥ Error ✗</b>\n' + f"<code>{str(ex)}</code>", parse_mode='html')
+            bot.editMessageText(message,'<b>➥ Error ✗</b>\n' + f"<b>{str(ex)}</b>", parse_mode='html')
         return None
 
 def processFile(update,bot,message,file,thread=None,jdb=None):
@@ -729,7 +748,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 if 'uclv.edu.cu' in host or 'fundacion.uh.cu' in host:
                     m_user = getUser.get('moodle_user', '')
                     m_pass = getUser.get('moodle_password', '')
-                    extra_msg = f"\n<b>⚠️ Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n\n<b>👤 Usuario:</b> <code>{m_user}</code>\n<b>🔑 Contraseña:</b> <code>{m_pass}</code>\n"
+                    extra_msg = f"\n<b>⚠️ Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n\n<b>👤 Usuario:</b> <b>{m_user}</b>\n<b>🔑 Contraseña:</b> <b>{m_pass}</b>\n"
 
             bot.sendMessage(message.chat.id, finishInfo + '\n' + extra_msg + '\n' + filesInfo, parse_mode='html')
             
@@ -740,15 +759,15 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 file_size=file_size,
                 moodle_host=getUser['moodle_host']
             )
-            
+
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     mensaje_log = (f"<b>✅ ¡Subida completada!</b>\n"
-                                   f"<b>👤 Usuario:</b> @{username}\n"
-                                   f"<b>📄 Archivo:</b> <code>{filename_clean}</code>\n"
+                                   f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                   f"<b>📄 Nombre:</b> <b>{filename_clean}</b>\n"
                                    f"<b>⚖️ Peso:</b> <b>{format_file_size(file_size)}</b>\n"
-                                   f"<b>☁️ Nube:</b> <code>{clean_host}</code>")
+                                   f"<b>☁️ Nube:</b> <b>{clean_host}</b>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar subida al grupo: {e}")
@@ -1155,7 +1174,7 @@ def show_updated_cloud(bot, message, cloud_idx):
 ────────────────────────
 
 <b>✅ Eliminación completa</b>
-☁️ <b>Nube:</b> <code>{short_name}</code>
+☁️ <b>Nube:</b> <b>{short_name}</b>
 
 🎉 <b>¡Has eliminado todas las evidencias de esta nube!</b>
 
@@ -1171,7 +1190,7 @@ def show_updated_cloud(bot, message, cloud_idx):
         
         list_msg = f"""
 <b>📋 Nube actualizada</b>
-☁️ <b>Nube:</b> <code>{short_name}</code>
+☁️ <b>Nube:</b> <b>{short_name}</b>
 ────────────────────────
 
 """
@@ -1267,7 +1286,7 @@ def show_updated_all_clouds(bot, message):
             cloud_files = sum(ev['files_count'] for ev in evidences)
             short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
             
-            menu_msg += f"\n\n<b>{cloud_index}.</b> <code>{short_name}</code>"
+            menu_msg += f"\n\n<b>{cloud_index}.</b> <b>{short_name}</b>"
             menu_msg += f"\n   📁 <b>{len(evidences)} evidencias, {cloud_files} archivos</b>"
             menu_msg += f"\n   🔍 /adm_cloud_{cloud_index}"
             
@@ -1288,7 +1307,7 @@ def show_updated_all_clouds(bot, message):
         bot.editMessageText(message, menu_msg, parse_mode='html')
         
     except Exception as e:
-        bot.editMessageText(message, f'<b>❌ Error al mostrar nubes actualizadas:</b> <code>{str(e)}</code>', parse_mode='html')
+        bot.editMessageText(message, f'<b>❌ Error al mostrar nubes actualizadas:</b> <b>{str(e)}</b>', parse_mode='html')
 
 def show_loading_progress(bot, message, step, total_steps=3):
     progress_chars = ['○', '◔', '◑', '◕', '●']
@@ -1392,9 +1411,9 @@ def onmessage(update,bot:ObigramClient):
                 if LOG_GROUP_ID != 0 and proc_user.lower() != ADMIN_USERNAME.lower():
                     try:
                         mensaje_log = (f"<b>❌ ¡Proceso cancelado!</b>\n"
-                                       f"<b>👤 Usuario:</b> @{proc_user}\n"
+                                       f"<b>👤 Usuario:</b> <b>@{proc_user}</b>\n"
                                        f"<b>🛠️ Acción:</b> <b>{proc_action}</b>\n"
-                                       f"<b>📄 Archivo:</b> <code>{proc_file}</code>")
+                                       f"<b>📄 Nombre:</b> <b>{proc_file}</b>")
                         bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                     except Exception as e:
                         print(f"Error al notificar cancelación al grupo: {e}")
@@ -1469,9 +1488,9 @@ def onmessage(update,bot:ObigramClient):
                             users_str = ", ".join([f"@{u}" for u in usernames])
                             
                             if is_plural_users:
-                                msg_text = f"<b>✅ ¡Usuarios agregados con éxito!</b>\n\n👥 <b>Usuarios:</b> <code>{users_str}</code>\n☁️ <b>Nube asignada:</b> <code>{short_host}</code>\n⚖️ <b>Límite:</b> <code>{selected_cloud['zips']} MB</code>"
+                                msg_text = f"<b>✅ ¡Usuarios agregados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{users_str}</b>\n☁️ <b>Nube asignada:</b> <b>{short_host}</b>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
                             else:
-                                msg_text = f"<b>✅ ¡Usuario agregado con éxito!</b>\n\n👤 <b>Usuario:</b> <code>{users_str}</code>\n☁️ <b>Nube asignada:</b> <code>{short_host}</code>\n⚖️ <b>Límite:</b> <code>{selected_cloud['zips']} MB</code>"
+                                msg_text = f"<b>✅ ¡Usuario agregado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{users_str}</b>\n☁️ <b>Nube asignada:</b> <b>{short_host}</b>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
                             
                             bot.editMessageText(message, msg_text, parse_mode='html')
                             return
@@ -1485,7 +1504,7 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /add usuario1,usuario2 1", parse_mode='html')
                     return
             except Exception as e:
-                bot.editMessageText(message, f"<b>❌ Error al agregar usuarios:</b> <code>{str(e)}</code>", parse_mode='html')
+                bot.editMessageText(message, f"<b>❌ Error al agregar usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
             return
 
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/remove '):
@@ -1538,18 +1557,18 @@ def onmessage(update,bot:ObigramClient):
                 response_text = ""
                 if removed_users:
                     if is_plural:
-                        response_text += f"<b>✅ ¡Usuarios eliminados con éxito!</b>\n\n👥 <b>Usuarios:</b> <code>{users_str}</code>"
+                        response_text += f"<b>✅ ¡Usuarios eliminados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{users_str}</b>"
                     else:
-                        response_text += f"<b>✅ ¡Usuario eliminado con éxito!</b>\n\n👤 <b>Usuario:</b> <code>{users_str}</code>"
+                        response_text += f"<b>✅ ¡Usuario eliminado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{users_str}</b>"
                 
                 if not_found_users:
                     not_found_str = ", ".join([f"@{u}" for u in not_found_users])
-                    response_text += f"\n\n⚠️ <b>No se encontraron en el sistema:</b> <code>{not_found_str}</code>"
+                    response_text += f"\n\n⚠️ <b>No se encontraron en el sistema:</b> <b>{not_found_str}</b>"
                 
                 bot.editMessageText(message, response_text, parse_mode='html')
                 return
             except Exception as e:
-                bot.editMessageText(message, f"<b>❌ Error al quitar usuarios:</b> <code>{str(e)}</code>", parse_mode='html')
+                bot.editMessageText(message, f"<b>❌ Error al quitar usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
             return
 
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/ban '):
@@ -1589,22 +1608,22 @@ def onmessage(update,bot:ObigramClient):
                 response_text = ""
                 if success_targets:
                     if is_plural:
-                        response_text += f"<b>🚫 ¡Usuarios baneados con éxito!</b>\n\n👥 <b>Usuarios:</b> <code>{targets_str}</code>"
+                        response_text += f"<b>🚫 ¡Usuarios baneados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{targets_str}</b>"
                     else:
-                        response_text += f"<b>🚫 ¡Usuario baneado con éxito!</b>\n\n👤 <b>Usuario:</b> <code>{targets_str}</code>"
+                        response_text += f"<b>🚫 ¡Usuario baneado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{targets_str}</b>"
                 
                 if already_banned:
                     ab_str = ", ".join([f"@{u}" for u in already_banned])
-                    response_text += f"\n\nℹ️ <b>Ya se encontraban baneados:</b> <code>{ab_str}</code>"
+                    response_text += f"\n\nℹ️ <b>Ya se encontraban baneados:</b> <b>{ab_str}</b>"
                 
                 if not_found:
                     nf_str = ", ".join([f"@{u}" for u in not_found])
-                    response_text += f"\n\n❌ <b>No existen en el sistema:</b> <code>{nf_str}</code>"
+                    response_text += f"\n\n❌ <b>No existen en el sistema:</b> <b>{nf_str}</b>"
                 
                 bot.editMessageText(message, response_text, parse_mode='html')
                 return
             except Exception as e:
-                bot.editMessageText(message, f"<b>❌ Error al banear usuarios:</b> <code>{str(e)}</code>", parse_mode='html')
+                bot.editMessageText(message, f"<b>❌ Error al banear usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
             return
 
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/unban '):
@@ -1644,22 +1663,22 @@ def onmessage(update,bot:ObigramClient):
                 response_text = ""
                 if success_targets:
                     if is_plural:
-                        response_text += f"<b>✅ ¡Usuarios desbaneados con éxito!</b>\n\n👥 <b>Usuarios:</b> <code>{targets_str}</code>"
+                        response_text += f"<b>✅ ¡Usuarios desbaneados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{targets_str}</b>"
                     else:
-                        response_text += f"<b>✅ ¡Usuario desbaneado con éxito!</b>\n\n👤 <b>Usuario:</b> <code>{targets_str}</code>"
+                        response_text += f"<b>✅ ¡Usuario desbaneado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{targets_str}</b>"
                 
                 if not_banned:
                     nb_str = ", ".join([f"@{u}" for u in not_banned])
-                    response_text += f"\n\nℹ️ <b>No estaban baneados:</b> <code>{nb_str}</code>"
+                    response_text += f"\n\nℹ️ <b>No estaban baneados:</b> <b>{nb_str}</b>"
                 
                 if not_found:
                     nf_str = ", ".join([f"@{u}" for u in not_found])
-                    response_text += f"\n\n❌ <b>No existen en el sistema:</b> <code>{nf_str}</code>"
+                    response_text += f"\n\n❌ <b>No existen en el sistema:</b> <b>{nf_str}</b>"
                 
                 bot.editMessageText(message, response_text, parse_mode='html')
                 return
             except Exception as e:
-                bot.editMessageText(message, f"<b>❌ Error al desbanear usuarios:</b> <code>{str(e)}</code>", parse_mode='html')
+                bot.editMessageText(message, f"<b>❌ Error al desbanear usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
             return
 
         if username in CHANGING_CLOUD_USERS:
@@ -1671,7 +1690,7 @@ def onmessage(update,bot:ObigramClient):
                     
                     if user_info.get('moodle_host') == selected_cloud['moodle_host']:
                         CHANGING_CLOUD_USERS.discard(username)
-                        bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
+                        bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <b>{short_name}</b>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                         return
                     
                     for key, val in selected_cloud.items():
@@ -1680,7 +1699,7 @@ def onmessage(update,bot:ObigramClient):
                     jdb.save()
                     CHANGING_CLOUD_USERS.discard(username)
                     
-                    bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
+                    bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <b>{short_name}</b>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                     return
                 else:
                     bot.editMessageText(message, "<b>❌ Número inválido. Envía un número del 1 al 7.</b>", parse_mode='html')
@@ -1698,20 +1717,20 @@ def onmessage(update,bot:ObigramClient):
                     short_name = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     
                     if user_info.get('moodle_host') == selected_cloud['moodle_host']:
-                        bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
+                        bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <b>{short_name}</b>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                         return
                     
                     for key, val in selected_cloud.items():
                         user_info[key] = val
                     jdb.save_data_user(username, user_info)
                     jdb.save()
-                    bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <code>{selected_cloud['zips']} MB</code>", parse_mode='html')
+                    bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <b>{short_name}</b>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                     return
             
             menu_msg = "☁️ <b>Selecciona tu nueva nube</b>\n────────────────────────\n\n"
             for i, c in enumerate(AVAILABLE_CLOUDS, 1):
                 short = c['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                menu_msg += f"<b>{i}.</b> <code>{short}</code>\n   ⚖️ <b>Límite:</b> <b>{c['zips']} MB</b>\n\n"
+                menu_msg += f"<b>{i}.</b> <b>{short}</b>\n   ⚖️ <b>Límite:</b> <b>{c['zips']} MB</b>\n\n"
             menu_msg += "────────────────────────\n💡 <b>Envía solo el número</b> (1 al 7)."
             
             CHANGING_CLOUD_USERS.add(username)
@@ -1724,8 +1743,8 @@ def onmessage(update,bot:ObigramClient):
                 start_msg = f"""
 👑 <b>Usuario Administrador</b>
 
-👤 <b>Usuario:</b> @{username}
-☁️ <b>Nube actual:</b> <code>{admin_current_cloud}</code>
+👤 <b>Usuario:</b> <b>@{username}</b>
+☁️ <b>Nube actual:</b> <b>{admin_current_cloud}</b>
 ⚖️ <b>Límite:</b> <b>{user_info["zips"]} MB</b>
 🔧 <b>Rol:</b> <b>Administrador</b>
 
@@ -1773,8 +1792,8 @@ def onmessage(update,bot:ObigramClient):
                 start_msg = f"""
 👤 <b>Usuario Regular</b>
 
-👤 <b>Usuario:</b> @{username}
-☁️ <b>Nube actual:</b> <code>{current_cloud_short}</code>
+👤 <b>Usuario:</b> <b>@{username}</b>
+☁️ <b>Nube actual:</b> <b>{current_cloud_short}</b>
 ⚖️ <b>Límite:</b> <b>{user_info["zips"]} MB</b>
 📁 <b>Evidence:</b> <b>Activado</b>
 
@@ -1815,7 +1834,7 @@ def onmessage(update,bot:ObigramClient):
                         s = check_single_cloud(cfg)
                         icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
                         clean_url = s['url'].replace('https://', '').replace('http://', '').strip('/')
-                        status_msg = f"☁️ <code>{clean_url}</code>\n<b>Estado:</b> <b>{icon}</b>"
+                        status_msg = f"☁️ <b>{clean_url}</b>\n<b>Estado:</b> <b>{icon}</b>"
                         
                         if idx == 0:
                             bot.editMessageText(message, status_msg, parse_mode='html')
@@ -1827,10 +1846,10 @@ def onmessage(update,bot:ObigramClient):
                     s = check_single_cloud(user_info)
                     icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
                     clean_url = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
-                    status_msg = f"☁️ <code>{clean_url}</code>\n<b>Estado:</b> <b>{icon}</b>"
+                    status_msg = f"☁️ <b>{clean_url}</b>\n<b>Estado:</b> <b>{icon}</b>"
                     bot.editMessageText(message, status_msg, parse_mode='html')
             except Exception as e:
-                bot.editMessageText(message, f"<b>❌ Error al comprobar el estado de la nube:</b> <code>{str(e)}</code>", parse_mode='html')
+                bot.editMessageText(message, f"<b>❌ Error al comprobar el estado de la nube:</b> <b>{str(e)}</b>", parse_mode='html')
             finally:
                 ACTIVE_STATUS_CHECKS.discard(username)
             return
@@ -1886,9 +1905,9 @@ def onmessage(update,bot:ObigramClient):
                         procesos_borrar.append(tid)
                         continue
                     
-                    proc_msg += f"👤 <b>Usuario:</b> @{p['user']}\n"
+                    proc_msg += f"👤 <b>Usuario:</b> <b>@{p['user']}</b>\n"
                     proc_msg += f"🛠️ <b>Acción:</b> <b>{p['action']}</b>{stalled_warning}\n"
-                    proc_msg += f"📄 <b>Archivo:</b> <code>{p['file']}</code>\n"
+                    proc_msg += f"📄 <b>Nombre:</b> <b>{p['file']}</b>\n"
                     if '🗜️ Comprimiendo' not in p['action'] and '⬆️ Preparando' not in p['action']:
                         proc_msg += f"📊 <b>Progreso:</b> <b>{p['percent']}</b>\n"
                     proc_msg += f"\n"
@@ -2012,14 +2031,14 @@ def onmessage(update,bot:ObigramClient):
                             
                             users_str = ", ".join(assigned_users) if assigned_users else "Ninguno"
                             
-                            uclouds_msg += f"🌐 <b>Nube {idx}:</b> <code>{short}</code>\n"
+                            uclouds_msg += f"🌐 <b>Nube {idx}:</b> <b>{short}</b>\n"
                             uclouds_msg += f"⚖️ <b>Límite:</b> <b>{zips} MB</b>\n"
                             uclouds_msg += f"👤 <b>Usuarios:</b> <b>{users_str}</b>\n"
                             uclouds_msg += f"────────────────────────\n\n"
                         
                         send_long_message(bot, chat_id, uclouds_msg, original_message=message, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'<b>❌ Error al obtener nubes y usuarios:</b> <code>{str(e)}</code>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error al obtener nubes y usuarios:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
 
                 elif '/adm_allclouds' in msgText:
@@ -2064,7 +2083,7 @@ def onmessage(update,bot:ObigramClient):
                             cloud_files = sum(ev['files_count'] for ev in evidences)
                             short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
                             
-                            menu_msg += f"\n\n<b>{cloud_index}.</b> <code>{short_name}</code>"
+                            menu_msg += f"\n\n<b>{cloud_index}.</b> <b>{short_name}</b>"
                             menu_msg += f"\n   📁 <b>{len(evidences)} evidencias, {cloud_files} archivos</b>"
                             menu_msg += f"\n   🔍 /adm_cloud_{cloud_index}"
                             
@@ -2095,7 +2114,7 @@ def onmessage(update,bot:ObigramClient):
                         bot.editMessageText(message, menu_msg, parse_mode='html')
                         
                     except Exception as e:
-                        bot.editMessageText(message, f'<b>❌ Error:</b> <code>{str(e)}</code>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_cloud_' in msgText:
@@ -2119,7 +2138,7 @@ def onmessage(update,bot:ObigramClient):
                             empty_msg = f"""
 <b>📭 NUBE VACÍA</b>
 ────────────────────────
-☁️ <code>{short_name}</code>
+☁️ <b>{short_name}</b>
 📊 <b>No hay evidencias en esta nube.</b>
 ────────────────────────
                             """
@@ -2128,7 +2147,7 @@ def onmessage(update,bot:ObigramClient):
                         
                         list_msg = f"""
 <b>📋 EVIDENCIAS DE LA NUBE</b>
-☁️ <code>{short_name}</code>
+☁️ <b>{short_name}</b>
 ────────────────────────
 
 """
@@ -2176,7 +2195,7 @@ def onmessage(update,bot:ObigramClient):
                         send_long_message(bot, message.chat.id, list_msg, original_message=message, parse_mode='html')
                         
                     except Exception as e:
-                        bot.editMessageText(message, f'<b>❌ Error:</b> <code>{str(e)}</code>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_show_' in msgText:
@@ -2205,7 +2224,7 @@ def onmessage(update,bot:ObigramClient):
 ────────────────────────
 📝 <b>Nombre:</b> <b>{clean_name}</b>
 📁 <b>Archivos:</b> <b>{evidence['files_count']}</b>
-☁️ <b>Nube:</b> <code>{short_name}</code>
+☁️ <b>Nube:</b> <b>{short_name}</b>
 
 🔧 <b>ACCIONES:</b>
 📄 /adm_fetch_{cloud_idx}_{evid_idx} - <b>TXT</b>
@@ -2216,7 +2235,7 @@ def onmessage(update,bot:ObigramClient):
                         else:
                             bot.editMessageText(message, '<b>❌ No se encontró la evidencia</b>', parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'<b>❌ Error:</b> <code>{str(e)}</code>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_fetch_' in msgText:
@@ -2261,7 +2280,7 @@ def onmessage(update,bot:ObigramClient):
                         else:
                             bot.editMessageText(message, '<b>❌ No hay archivos en esta evidencia</b>', parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'<b>❌ Error:</b> <code>{str(e)}</code>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_delete_' in msgText:
@@ -2323,7 +2342,7 @@ def onmessage(update,bot:ObigramClient):
 ────────────────────────
 🗑️ <b>Evidencia:</b> <b>{clean_name[:50]}</b>
 📁 <b>Archivos eliminados:</b> <b>{files_count}</b>
-☁️ <b>Nube:</b> <code>{short_name}</code>
+☁️ <b>Nube:</b> <b>{short_name}</b>
 ────────────────────────
                                     """
                                     bot.editMessageText(message, result_msg, parse_mode='html')
@@ -2345,7 +2364,7 @@ def onmessage(update,bot:ObigramClient):
                         else:
                             bot.editMessageText(message, f'<b>❌ Error al eliminar:</b> <b>{clean_name}</b>', parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'<b>❌ Error:</b> <code>{str(e)}</code>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_wipe_' in msgText:
@@ -2367,7 +2386,7 @@ def onmessage(update,bot:ObigramClient):
                             return
                         
                         short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
-                        bot.editMessageText(message, f'<b>💣 Limpiando nube</b> <code>{short_name}</code>...', parse_mode='html')
+                        bot.editMessageText(message, f'<b>💣 Limpiando nube</b> <b>{short_name}</b>...', parse_mode='html')
                         
                         cloud_config = None
                         for cfg in AVAILABLE_CLOUDS:
@@ -2382,7 +2401,7 @@ def onmessage(update,bot:ObigramClient):
                                 result_msg = f"""
 <b>💥 Limpieza exitosa</b>
 ────────────────────────
-✅ <b>Nube:</b> <code>{short_name}</code>
+✅ <b>Nube:</b> <b>{short_name}</b>
 ✅ <b>Evidencias:</b> <b>{deleted_count}</b>
 ✅ <b>Archivos:</b> <b>{total_files}</b>
 ────────────────────────
@@ -2391,11 +2410,11 @@ def onmessage(update,bot:ObigramClient):
                                 time.sleep(1)
                                 show_updated_all_clouds(bot, message)
                             else:
-                                bot.editMessageText(message, f'<b>❌ Error al limpiar</b> <code>{short_name}</code>', parse_mode='html')
+                                bot.editMessageText(message, f'<b>❌ Error al limpiar</b> <b>{short_name}</b>', parse_mode='html')
                         else:
                             bot.editMessageText(message, '<b>❌ No se encontró configuración</b>', parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'<b>❌ Error:</b> <code>{str(e)}</code>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_nuke' in msgText:
@@ -2423,9 +2442,9 @@ def onmessage(update,bot:ObigramClient):
                                 if success:
                                     deleted_total += deleted_count
                                     files_total += total_files
-                                    results.append(f"✅ <code>{short_name}</code>: <b>{deleted_count} ev., {total_files} arch.</b>")
+                                    results.append(f"✅ <b>{short_name}</b>: <b>{deleted_count} ev., {total_files} arch.</b>")
                                 else:
-                                    results.append(f"❌ <code>{short_name}</code>: <b>Error</b>")
+                                    results.append(f"❌ <b>{short_name}</b>: <b>Error</b>")
                         
                         admin_evidence_manager.refresh_data(force=True)
                         final_msg = f"""
@@ -2439,7 +2458,7 @@ def onmessage(update,bot:ObigramClient):
                             final_msg += f"\n{result}"
                         bot.editMessageText(message, final_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'<b>❌ Error:</b> <code>{str(e)}</code>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_logs' in msgText:
@@ -2461,21 +2480,21 @@ def onmessage(update,bot:ObigramClient):
                         if uploads:
                             logs_msg += "⬆️ <b>Subidas:</b>\n"
                             for log in uploads:
-                                logs_msg += f"• <b>{log['timestamp']}</b> - @{log['username']}: <code>{log['filename']}</code> (<b>{log['file_size_formatted']}</b>)\n"
+                                logs_msg += f"• <b>{log['timestamp']}</b> - <b>@{log['username']}</b>: <b>{log['filename']}</b> (<b>{log['file_size_formatted']}</b>)\n"
                             logs_msg += "\n"
                         if deletes:
                             logs_msg += "🗑️ <b>Eliminaciones:</b>\n"
                             for log in deletes:
                                 if log['type'] == 'delete_all':
-                                    logs_msg += f"• <b>{log['timestamp']}</b> - @{log['username']}: <b>Eliminación masiva ({log.get('deleted_evidences', 1)} ev.)</b>\n"
+                                    logs_msg += f"• <b>{log['timestamp']}</b> - <b>@{log['username']}</b>: <b>Eliminación masiva ({log.get('deleted_evidences', 1)} ev.)</b>\n"
                                 else:
-                                    logs_msg += f"• <b>{log['timestamp']}</b> - @{log['username']}: <code>{log['filename']}</code>\n"
+                                    logs_msg += f"• <b>{log['timestamp']}</b> - <b>@{log['username']}</b>: <b>{log['filename']}</b>\n"
                         
                         if len(logs_msg) > 4000:
                             logs_msg = logs_msg[:4000] + "\n\n⚠️ <b>Truncado</b>"
                         bot.editMessageText(message, logs_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b>❌ Error al obtener logs:</b> <code>{str(e)}</code>", parse_mode='html')
+                        bot.editMessageText(message, f"<b>❌ Error al obtener logs:</b> <b>{str(e)}</b>", parse_mode='html')
                     return
                 
                 elif '/adm_users' in msgText:
@@ -2488,13 +2507,13 @@ def onmessage(update,bot:ObigramClient):
                         users_msg = "👥 <b>Estadísticas por usuario</b>\n────────────────────────\n\n"
                         for user, data in sorted(users.items(), key=lambda x: x[1]['uploads'], reverse=True):
                             total_size_formatted = format_file_size(data['total_size'])
-                            users_msg += f"👤 <b>Usuario:</b> @{user}\n   📤 <b>Subidas:</b> <b>{data['uploads']}</b>\n   🗑️ <b>Eliminaciones:</b> <b>{data['deletes']}</b>\n   💾 <b>Espacio:</b> <b>{total_size_formatted}</b>\n\n"
+                            users_msg += f"👤 <b>Usuario:</b> <b>@{user}</b>\n   📤 <b>Subidas:</b> <b>{data['uploads']}</b>\n   🗑️ <b>Eliminaciones:</b> <b>{data['deletes']}</b>\n   💾 <b>Espacio:</b> <b>{total_size_formatted}</b>\n\n"
                         
                         if len(users_msg) > 4000:
                             users_msg = users_msg[:4000] + "\n\n⚠️ <b>Truncado</b>"
                         bot.editMessageText(message, users_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b>❌ Error al obtener usuarios:</b> <code>{str(e)}</code>", parse_mode='html')
+                        bot.editMessageText(message, f"<b>❌ Error al obtener usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
                     return
                 
                 elif '/adm_uploads' in msgText:
@@ -2506,10 +2525,10 @@ def onmessage(update,bot:ObigramClient):
                         
                         uploads_msg = "📤 <b>Últimas subidas</b>\n────────────────────────\n\n"
                         for i, log in enumerate(uploads, 1):
-                            uploads_msg += f"<b>{i}.</b> <code>{log['filename']}</code>\n   👤 @{log['username']} | 📏 <b>{log['file_size_formatted']}</b>\n\n"
+                            uploads_msg += f"<b>{i}.</b> <b>{log['filename']}</b>\n   👤 <b>@{log['username']}</b> | 📏 <b>{log['file_size_formatted']}</b>\n\n"
                         bot.editMessageText(message, uploads_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b>❌ Error al obtener subidas:</b> <code>{str(e)}</code>", parse_mode='html')
+                        bot.editMessageText(message, f"<b>❌ Error al obtener subidas:</b> <b>{str(e)}</b>", parse_mode='html')
                     return
                 
                 elif '/adm_deletes' in msgText:
@@ -2522,12 +2541,12 @@ def onmessage(update,bot:ObigramClient):
                         deletes_msg = "🗑️ <b>Últimas eliminaciones</b>\n────────────────────────\n\n"
                         for i, log in enumerate(deletes, 1):
                             if log['type'] == 'delete_all':
-                                deletes_msg += f"<b>{i}.</b> <b>Eliminación masiva</b>\n   👤 @{log['username']} (<b>{log.get('deleted_evidences', 1)} ev.</b>)\n\n"
+                                deletes_msg += f"<b>{i}.</b> <b>Eliminación masiva</b>\n   👤 <b>@{log['username']}</b> (<b>{log.get('deleted_evidences', 1)} ev.</b>)\n\n"
                             else:
-                                deletes_msg += f"<b>{i}.</b> <code>{log['filename']}</code>\n   👤 @{log['username']}\n\n"
+                                deletes_msg += f"<b>{i}.</b> <b>{log['filename']}</b>\n   👤 <b>@{log['username']}</b>\n\n"
                         bot.editMessageText(message, deletes_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b>❌ Error al obtener eliminaciones:</b> <code>{str(e)}</code>", parse_mode='html')
+                        bot.editMessageText(message, f"<b>❌ Error al obtener eliminaciones:</b> <b>{str(e)}</b>", parse_mode='html')
                     return
                 
                 elif '/adm_cleardata' in msgText:
@@ -2538,7 +2557,7 @@ def onmessage(update,bot:ObigramClient):
                         result = memory_stats.clear_all_data()
                         bot.editMessageText(message, f"<b>{result}</b>", parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b>❌ Error al limpiar datos:</b> <code>{str(e)}</code>", parse_mode='html')
+                        bot.editMessageText(message, f"<b>❌ Error al limpiar datos:</b> <b>{str(e)}</b>", parse_mode='html')
                     return
         
         # ============================================
@@ -2549,13 +2568,15 @@ def onmessage(update,bot:ObigramClient):
             user_stats = memory_stats.get_user_stats(username)
             if user_stats:
                 total_size_formatted = format_file_size(user_stats['total_size'])
+                daily_size_formatted = format_file_size(user_stats.get('daily_size', 0))
                 stats_msg = f"""
 📊 <b>Tus estadísticas</b>
 ────────────────────────
-👤 <b>Usuario:</b> @{username}
+👤 <b>Usuario:</b> <b>@{username}</b>
 📤 <b>Subidas:</b> <b>{user_stats['uploads']}</b>
 🗑️ <b>Eliminaciones:</b> <b>{user_stats['deletes']}</b>
-💾 <b>Espacio usado:</b> <b>{total_size_formatted}</b>
+💾 <b>Espacio usado hoy:</b> <b>{daily_size_formatted} / 1.0 GB</b>
+💾 <b>Espacio histórico:</b> <b>{total_size_formatted}</b>
 📅 <b>Última actividad:</b> <b>{user_stats['last_activity']}</b>
 ────────────────────────
                 """
@@ -2563,10 +2584,10 @@ def onmessage(update,bot:ObigramClient):
                 stats_msg = f"""
 📊 <b>Tus estadísticas</b>
 ────────────────────────
-👤 <b>Usuario:</b> @{username}
+👤 <b>Usuario:</b> <b>@{username}</b>
 📤 <b>Subidas:</b> <b>0</b>
 🗑️ <b>Eliminaciones:</b> <b>0</b>
-💾 <b>Espacio usado:</b> <b>0 B</b>
+💾 <b>Espacio usado hoy:</b> <b>0 B / 1.0 GB</b>
 ────────────────────────
 ℹ️ <b>Aún no tienes actividad registrada.</b>
                 """
@@ -2605,7 +2626,7 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, '<b>📭 No hay evidencias disponibles</b>', parse_mode='html')
                 client.logout()
             else:
-                bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <code>'+client.path+'</code>', parse_mode='html')
+                bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
                 
         elif '/txt_' in msgText:
             try:
@@ -2641,11 +2662,11 @@ def onmessage(update,bot:ObigramClient):
                     client.logout()
                     bot.editMessageText(message,'<b>📄 TXT aquí</b>', parse_mode='html')
                 else:
-                    bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <code>'+client.path+'</code>', parse_mode='html')
+                    bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
             except ValueError:
                 bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /txt_0', parse_mode='html')
             except Exception as e:
-                bot.editMessageText(message, f'<b>❌ Error:</b> <code>{str(e)}</code>', parse_mode='html')
+                bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
              
         elif '/del_' in msgText:
             try:
@@ -2711,11 +2732,11 @@ def onmessage(update,bot:ObigramClient):
                         confirmation_msg += "<b>📭 No hay evidencias disponibles</b>"
                         bot.editMessageText(message, confirmation_msg, parse_mode='html')
                 else:
-                    bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <code>'+client.path+'</code>', parse_mode='html')
+                    bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
             except ValueError:
                 bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /del_0', parse_mode='html')
             except Exception as e:
-                bot.editMessageText(message, f'<b>❌ Error:</b> <code>{str(e)}</code>', parse_mode='html')
+                bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                 
         elif '/delall' in msgText:
             try:
@@ -2758,9 +2779,9 @@ def onmessage(update,bot:ObigramClient):
                     deletion_msg = f"🗑️ <b>Eliminación masiva completada</b>\n────────────────────────\n• <b>Evidencias eliminadas:</b> <b>{total_evidences}</b>\n• <b>Archivos borrados:</b> <b>{total_files}</b>\n\n<b>✅ ¡Todas tus evidencias han sido eliminadas!</b>"
                     bot.editMessageText(message, deletion_msg, parse_mode='html')
                 else:
-                    bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <code>'+client.path+'</code>', parse_mode='html')
+                    bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
             except Exception as ex:
-                bot.editMessageText(message, f'<b>❌ Error:</b> <code>{str(ex)}</code>', parse_mode='html')
+                bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(ex)}</b>', parse_mode='html')
                 
         elif 'http' in msgText:
             url = msgText
@@ -2791,12 +2812,40 @@ def onmessage(update,bot:ObigramClient):
                     warning_msg = bot.sendMessage(chat_id, f"<b>⚠️ {funny_message}</b>\n\n<b>❌ Cojoneee, ¿tú piensas que esto es una nube artificial o qué? ¿Para qué quieres subir {file_size_mb:.2f} MB?</b>\n\n<b>⬆️ Bueno, lo subiré 😡</b>", parse_mode='html')
                     funny_message_sent = warning_msg
             except: pass
+
+            # --- VERIFICACIÓN DE LÍMITE DIARIO DE 1 GB (EN VIVO ANTES DE DESCARGAR, EXCEPTO ADMIN) ---
+            if username.lower() != ADMIN_USERNAME.lower():
+                memory_stats.check_and_update_daily_reset(username)
+                user_st = memory_stats.get_user_stats(username)
+                current_daily_size = user_st['daily_size'] if user_st else 0
+                MAX_DAILY_LIMIT = 1024 * 1024 * 1024  # 1 GB
+                
+                if current_daily_size + file_size > MAX_DAILY_LIMIT:
+                    limit_msg = (
+                        f"<b>🚫 Límite diario alcanzado</b>\n\n"
+                        f"<b>Estimado usuario @{username}, ha alcanzado su límite de uso diario de 1 GB. "
+                        f"No es posible procesar este archivo de {format_file_size(file_size)} ya que excedería su cuota permitida. "
+                        f"Su cuota se restablecerá automáticamente al cambiar el día.</b>"
+                    )
+                    bot.editMessageText(message, limit_msg, parse_mode='html')
+                    
+                    if LOG_GROUP_ID != 0:
+                        try:
+                            group_limit_msg = (
+                                f"<b>🚫 Límite diario excedido en el grupo</b>\n"
+                                f"<b>El usuario @{username} ha llegado a su límite de 1 GB diario e intentó procesar un archivo de {format_file_size(file_size)}. "
+                                f"La solicitud ha sido bloqueada automáticamente.</b>"
+                            )
+                            bot.sendMessage(LOG_GROUP_ID, group_limit_msg, parse_mode='html')
+                        except Exception as e:
+                            print(f"Error al notificar bloqueo por límite diario al grupo: {e}")
+                    return
             
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
-                    mensaje_log = (f"<b>🔔 ¡Nuevo enlace recibido!</b>\n👤 <b>Usuario:</b> @{username}\n📄 <b>Archivo:</b> <code>{filename}</code>\n⚖️ <b>Peso:</b> <b>{tamano_formateado}</b>\n🔗 <b>Enlace:</b> <code>{url}</code>\n☁️ <b>Nube:</b> <code>{clean_host}</code>")
+                    mensaje_log = (f"<b>🔔 ¡Nuevo enlace recibido!</b>\n👤 <b>Usuario:</b> <b>@{username}</b>\n📄 <b>Nombre:</b> <b>{filename}</b>\n⚖️ <b>Peso:</b> <b>{tamano_formateado}</b>\n🔗 <b>Enlace:</b> <code>{url}</code>\n☁️ <b>Nube:</b> <b>{clean_host}</b>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar enlace: {e}")
