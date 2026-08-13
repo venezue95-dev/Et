@@ -64,8 +64,8 @@ AVAILABLE_CLOUDS = [
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.uo.edu.cu/",
         "moodle_repo_id": 4,
-        "moodle_user": "adminremella",
-        "moodle_password": "Midea.1976*",
+        "moodle_user": "ray910210",
+        "moodle_password": "RaymonD*007",
         "zips": 99,
         "uploadtype": "evidence",
         "proxy": "",
@@ -1942,7 +1942,6 @@ def onmessage(update,bot:ObigramClient):
 /adm_show_X_Y - <b>Detalles de evidencia</b>
 /adm_fetch_X_Y - <b>Descargar TXT</b>
 /adm_delete_X_Y - <b>Eliminar evidencia</b>
-/adm_wipe_X - <b>Limpiar nube X</b>
 /adm_nuke - <b>Eliminación masiva ⚠️</b>
 
 🔧 <b>Otros:</b>
@@ -2762,6 +2761,51 @@ def onmessage(update,bot:ObigramClient):
             except Exception as ex:
                 bot.editMessageText(message, f'<b>❌ Error:</b> <code>{str(ex)}</code>', parse_mode='html')
                 
+        elif (getattr(update.message, 'document', None) or 
+              getattr(update.message, 'video', None) or 
+              getattr(update.message, 'audio', None) or 
+              getattr(update.message, 'photo', None) or 
+              getattr(update.message, 'voice', None) or 
+              getattr(update.message, 'animation', None) or 
+              getattr(update.message, 'video_note', None)):
+            try:
+                file_name = "archivo"
+                if update.message.document:
+                    file_name = getattr(update.message.document, 'file_name', None) or "documento"
+                elif update.message.video:
+                    file_name = getattr(update.message.video, 'file_name', None) or "video.mp4"
+                elif update.message.audio:
+                    file_name = getattr(update.message.audio, 'file_name', None) or "audio.mp3"
+                elif update.message.photo:
+                    file_name = "foto.jpg"
+                elif update.message.voice:
+                    file_name = "nota_de_voz.ogg"
+                elif update.message.animation:
+                    file_name = getattr(update.message.animation, 'file_name', None) or "animacion.mp4"
+                elif update.message.video_note:
+                    file_name = "videonota.mp4"
+
+                if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                    try:
+                        clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                        mensaje_log = (f"<b>📁 ¡Archivo recibido!</b>\n"
+                                       f"<b>👤 Usuario:</b> @{username}\n"
+                                       f"<b>📄 Archivo:</b> <code>{file_name}</code>\n"
+                                       f"<b>☁️ Nube:</b> <code>{clean_host}</code>")
+                        bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+                    except Exception as e:
+                        print(f"Error al notificar archivo: {e}")
+
+                update_process(thread.id, username, file_name, '📥 Descargando archivo', 0, 100)
+                downloaded_file = bot.download_file(update.message, progressfunc=downloadFile, args=(bot, message, thread, username))
+                
+                if downloaded_file:
+                    processFile(update, bot, message, downloaded_file, thread=thread, jdb=jdb)
+                else:
+                    bot.editMessageText(message, '<b>➥ Error al descargar el archivo de Telegram ✗</b>', parse_mode='html')
+            except Exception as ex:
+                bot.editMessageText(message, f'<b>➥ Error procesando archivo ✗</b>\n<code>{str(ex)}</code>', parse_mode='html')
+
         elif 'http' in msgText:
             url = msgText
             funny_message_sent = None
