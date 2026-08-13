@@ -629,39 +629,41 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 try:
                     clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if user_info else "Desconocido"
                     filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
-                    mensaje_log = (f"<b>❌ ¡Error en el proceso!</b>\n"
+                    mensaje_log = (f"<b>❌ ¡Error en la subida!</b>\n"
                                    f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                                    f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
                                    f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                                   f"<b>⚠️ Detalle:</b> <b>Error en la página o autenticación de Moodle</b>")
+                                   f"<b>⚠️ Detalle:</b> <b>Error en la autenticación o página de Moodle durante la subida</b>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar error de página al grupo: {e}")
             return None
     except Exception as ex:
+        error_detail = str(ex) if str(ex) else "Error desconocido en la subida"
         if thread and thread.getStore('stop'):
             try:
                 bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
             except:
                 pass
         else:
-            bot.editMessageText(message,'<b>➥ Error ✗</b>\n' + f"<b>{str(ex)}</b>", parse_mode='html')
+            bot.editMessageText(message, f'<b>➥ Error en la subida ✗</b>\n\n<b>⚠️ Detalle:</b> <code>{error_detail}</code>', parse_mode='html')
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     u_info = jdb.get_user(username) if jdb else None
                     clean_host = u_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if u_info else "Desconocido"
                     filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
-                    mensaje_log = (f"<b>❌ ¡Error en el proceso!</b>\n"
+                    mensaje_log = (f"<b>❌ ¡Error en la subida!</b>\n"
                                    f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                                    f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
                                    f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                                   f"<b>⚠️ Detalle:</b> <b>Fallo en la subida a la plataforma</b>")
+                                   f"<b>⚠️ Detalle:</b> <b>Fallo en la subida a la plataforma: {error_detail}</b>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar error de subida al grupo: {e}")
         return None
 
 def processFile(update,bot,message,file,thread=None,jdb=None):
+    phase = "procesamiento"
     try:
         if thread and thread.getStore('stop'):
             raise Exception("Tarea detenida por mantenimiento o cancelación")
@@ -675,6 +677,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         username = update.message.sender.username
         
         if file_size > max_file_size:
+            phase = "compresión"
             compresingInfo = infos.createCompresing(file,file_size,max_file_size)
             if thread:
                 compresingInfo = compresingInfo.strip() + f"\n\n/cancel_{thread.id}"
@@ -722,12 +725,14 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             if thread and thread.getStore('stop'):
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
 
+            phase = "subida"
             client = processUploadFiles(file,file_size,mult_file.files,update,bot,message,thread=thread,jdb=jdb)
             try:
                 os.unlink(file)
             except:pass
             file_upload_count = len(mult_file.files)
         else:
+            phase = "subida"
             client = processUploadFiles(file,file_size,[file],update,bot,message,thread=thread,jdb=jdb)
             file_upload_count = 1
         
@@ -822,22 +827,24 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             else:
                 bot.editMessageText(message,'<b>➥ Error en la página ✗</b>', parse_mode='html')
     except Exception as ex:
+        error_detail = str(ex) if str(ex) else "Error desconocido"
         if thread and thread.getStore('stop'):
             try:
                 bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
             except:
                 pass
         else:
-            print(f"Proceso detenido o error: {ex}")
+            print(f"Proceso detenido o error en {phase}: {ex}")
+            bot.editMessageText(message, f'<b>➥ Error en la {phase} ✗</b>\n\n<b>⚠️ Detalle:</b> <code>{error_detail}</code>', parse_mode='html')
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if getUser else "Desconocido"
                     filename_fail = os.path.basename(file) if file else "Desconocido"
-                    mensaje_log = (f"<b>❌ ¡Error en el proceso!</b>\n"
+                    mensaje_log = (f"<b>❌ ¡Error en la {phase}!</b>\n"
                                    f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                                    f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
                                    f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                                   f"<b>⚠️ Detalle:</b> <b>Error al procesar, comprimir o subir a la plataforma</b>")
+                                   f"<b>⚠️ Detalle:</b> <b>Fallo en la {phase} del archivo: {error_detail}</b>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar error de proceso al grupo: {e}")
@@ -866,9 +873,10 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                 if file:
                     break
             except Exception as ex:
+                error_detail = str(ex) if str(ex) else "Error desconocido"
                 if attempt == retries - 1:
                     try:
-                        bot.editMessageText(message, f"<b>❌ Error en la descarga tras {retries} intentos fallidos ✗</b>", parse_mode='html')
+                        bot.editMessageText(message, f"<b>❌ Error en la descarga tras {retries} intentos fallidos ✗</b>\n\n<b>⚠️ Detalle:</b> <code>{error_detail}</code>", parse_mode='html')
                     except: pass
                     
                     if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
@@ -880,7 +888,7 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                                            f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                                            f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
                                            f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                                           f"<b>⚠️ Detalle:</b> <b>Fallo en la descarga del enlace</b>")
+                                           f"<b>⚠️ Detalle:</b> <b>Fallo en la descarga del enlace: {error_detail}</b>")
                             bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                         except Exception as e:
                             print(f"Error al notificar error de descarga al grupo: {e}")
