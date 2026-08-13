@@ -639,31 +639,33 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                     print(f"Error al notificar error de página al grupo: {e}")
             return None
     except Exception as ex:
-        error_detail = str(ex) if str(ex) else "Error desconocido en la subida"
         if thread and thread.getStore('stop'):
             try:
                 bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
             except:
                 pass
-        else:
-            bot.editMessageText(message, f'<b>➥ Error en la subida ✗</b>\n\n<b>⚠️ Detalle:</b> <code>{error_detail}</code>', parse_mode='html')
-            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
-                try:
-                    u_info = jdb.get_user(username) if jdb else None
-                    clean_host = u_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if u_info else "Desconocido"
-                    filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
-                    mensaje_log = (f"<b>❌ ¡Error en la subida!</b>\n"
-                                   f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
-                                   f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
-                                   f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                                   f"<b>⚠️ Detalle:</b> <b>Fallo en la subida a la plataforma: {error_detail}</b>")
-                    bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
-                except Exception as e:
-                    print(f"Error al notificar error de subida al grupo: {e}")
+            return None
+
+        error_detail = str(ex) if str(ex) else "Error desconocido en la subida"
+        bot.editMessageText(message, f'<b>➥ Error en la subida ✗</b>\n\n<b>⚠️ Detalle:</b> <code>{error_detail}</code>', parse_mode='html')
+        if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+            try:
+                u_info = jdb.get_user(username) if jdb else None
+                clean_host = u_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if u_info else "Desconocido"
+                filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
+                mensaje_log = (f"<b>❌ ¡Error en la subida!</b>\n"
+                               f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                               f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                               f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                               f"<b>⚠️ Detalle:</b> <b>Fallo en la subida del archivo: {error_detail}</b>")
+                bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+            except Exception as e:
+                print(f"Error al notificar error de subida al grupo: {e}")
         return None
 
 def processFile(update,bot,message,file,thread=None,jdb=None):
     phase = "procesamiento"
+    findex = 0
     try:
         if thread and thread.getStore('stop'):
             raise Exception("Tarea detenida por mantenimiento o cancelación")
@@ -827,27 +829,28 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             else:
                 bot.editMessageText(message,'<b>➥ Error en la página ✗</b>', parse_mode='html')
     except Exception as ex:
-        error_detail = str(ex) if str(ex) else "Error desconocido"
         if thread and thread.getStore('stop'):
             try:
                 bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
             except:
                 pass
-        else:
-            print(f"Proceso detenido o error en {phase}: {ex}")
-            bot.editMessageText(message, f'<b>➥ Error en la {phase} ✗</b>\n\n<b>⚠️ Detalle:</b> <code>{error_detail}</code>', parse_mode='html')
-            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
-                try:
-                    clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if getUser else "Desconocido"
-                    filename_fail = os.path.basename(file) if file else "Desconocido"
-                    mensaje_log = (f"<b>❌ ¡Error en la {phase}!</b>\n"
-                                   f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
-                                   f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
-                                   f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                                   f"<b>⚠️ Detalle:</b> <b>Fallo en la {phase} del archivo: {error_detail}</b>")
-                    bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
-                except Exception as e:
-                    print(f"Error al notificar error de proceso al grupo: {e}")
+            return
+
+        error_detail = str(ex) if str(ex) else "Error desconocido"
+        print(f"Proceso detenido o error en {phase}: {ex}")
+        bot.editMessageText(message, f'<b>➥ Error en la {phase} ✗</b>\n\n<b>⚠️ Detalle:</b> <code>{error_detail}</code>', parse_mode='html')
+        if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+            try:
+                clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if getUser else "Desconocido"
+                filename_fail = os.path.basename(file) if file else "Desconocido"
+                mensaje_log = (f"<b>❌ ¡Error en la {phase}!</b>\n"
+                               f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                               f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                               f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                               f"<b>⚠️ Detalle:</b> <b>Fallo en la {phase} del archivo: {error_detail}</b>")
+                bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+            except Exception as e:
+                print(f"Error al notificar error de proceso al grupo: {e}")
     finally:
         if thread:
             clean_process(thread.id)
@@ -1762,6 +1765,7 @@ def onmessage(update,bot:ObigramClient):
                 if 1 <= num <= len(AVAILABLE_CLOUDS):
                     selected_cloud = AVAILABLE_CLOUDS[num - 1]
                     short_name = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                    old_host = user_info.get('moodle_host', '').replace('https://', '').replace('http://', '').strip('/')
                     
                     if user_info.get('moodle_host') == selected_cloud['moodle_host']:
                         CHANGING_CLOUD_USERS.discard(username)
@@ -1775,6 +1779,17 @@ def onmessage(update,bot:ObigramClient):
                     CHANGING_CLOUD_USERS.discard(username)
                     
                     bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
+                    
+                    if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                        try:
+                            msg_log = (f"<b>☁️ ¡Cambio de nube!</b>\n"
+                                       f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                       f"<b>🔄 Anterior:</b> <code>{old_host}</code>\n"
+                                       f"<b>🆕 Nueva:</b> <code>{short_name}</code>\n"
+                                       f"<b>⚖️ Límite:</b> <b>{selected_cloud['zips']} MB</b>")
+                            bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
+                        except Exception as e:
+                            print(f"Error al notificar cambio de nube al grupo: {e}")
                     return
                 else:
                     bot.editMessageText(message, "<b>❌ Número inválido. Envía un número del 1 al 7.</b>", parse_mode='html')
@@ -1790,6 +1805,7 @@ def onmessage(update,bot:ObigramClient):
                 if 1 <= num <= len(AVAILABLE_CLOUDS):
                     selected_cloud = AVAILABLE_CLOUDS[num - 1]
                     short_name = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                    old_host = user_info.get('moodle_host', '').replace('https://', '').replace('http://', '').strip('/')
                     
                     if user_info.get('moodle_host') == selected_cloud['moodle_host']:
                         bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
@@ -1800,6 +1816,17 @@ def onmessage(update,bot:ObigramClient):
                     jdb.save_data_user(username, user_info)
                     jdb.save()
                     bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
+                    
+                    if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                        try:
+                            msg_log = (f"<b>☁️ ¡Cambio de nube!</b>\n"
+                                       f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                       f"<b>🔄 Anterior:</b> <code>{old_host}</code>\n"
+                                       f"<b>🆕 Nueva:</b> <code>{short_name}</code>\n"
+                                       f"<b>⚖️ Límite:</b> <b>{selected_cloud['zips']} MB</b>")
+                            bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
+                        except Exception as e:
+                            print(f"Error al notificar cambio de nube al grupo: {e}")
                     return
             
             menu_msg = "☁️ <b>Selecciona tu nueva nube</b>\n────────────────────────\n\n"
@@ -2794,6 +2821,18 @@ def onmessage(update,bot:ObigramClient):
                         evidence_name=evidence_clean_name,
                         moodle_host=user_info['moodle_host']
                     )
+
+                    if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                        try:
+                            clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                            msg_log = (f"<b>🗑️ ¡Evidencia eliminada!</b>\n"
+                                       f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                       f"<b>📄 Evidencia:</b> <b>{evidence_clean_name}</b>\n"
+                                       f"<b>📁 Archivos:</b> <b>{file_count}</b>\n"
+                                       f"<b>☁️ Nube:</b> <code>{clean_host}</code>")
+                            bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
+                        except Exception as e:
+                            print(f"Error al notificar eliminación al grupo: {e}")
                     
                     confirmation_msg = f"🗑️ <b>Evidencia eliminada:</b> <b>{evidence_clean_name}</b>\n📁 <b>Archivos borrados:</b> <b>{file_count}</b>\n────────────────────────\n"
                     if len(updated_visible_list) > 0:
@@ -2850,6 +2889,18 @@ def onmessage(update,bot:ObigramClient):
                         deleted_files=total_files,
                         moodle_host=user_info['moodle_host']
                     )
+
+                    if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                        try:
+                            clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                            msg_log = (f"<b>🗑️💥 ¡Eliminación masiva!</b>\n"
+                                       f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                       f"<b>📊 Evidencias borradas:</b> <b>{total_evidences}</b>\n"
+                                       f"<b>📁 Archivos borrados:</b> <b>{total_files}</b>\n"
+                                       f"<b>☁️ Nube:</b> <code>{clean_host}</code>")
+                            bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
+                        except Exception as e:
+                            print(f"Error al notificar eliminación masiva al grupo: {e}")
                     
                     deletion_msg = f"🗑️ <b>Eliminación masiva completada</b>\n────────────────────────\n• <b>Evidencias eliminadas:</b> <b>{total_evidences}</b>\n• <b>Archivos borrados:</b> <b>{total_files}</b>\n\n<b>✅ ¡Todas tus evidencias han sido eliminadas!</b>"
                     bot.editMessageText(message, deletion_msg, parse_mode='html')
