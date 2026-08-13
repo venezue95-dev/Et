@@ -625,6 +625,18 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             return draftlist
         else:
             bot.editMessageText(message,'<b>➥ Error en la página ✗</b>', parse_mode='html')
+            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                try:
+                    clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if user_info else "Desconocido"
+                    filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
+                    mensaje_log = (f"<b>❌ ¡Error en el proceso!</b>\n"
+                                   f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                   f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                                   f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                                   f"<b>⚠️ Detalle:</b> <b>Error en la página o autenticación de Moodle</b>")
+                    bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+                except Exception as e:
+                    print(f"Error al notificar error de página al grupo: {e}")
             return None
     except Exception as ex:
         if thread and thread.getStore('stop'):
@@ -634,6 +646,19 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 pass
         else:
             bot.editMessageText(message,'<b>➥ Error ✗</b>\n' + f"<b>{str(ex)}</b>", parse_mode='html')
+            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                try:
+                    u_info = jdb.get_user(username) if jdb else None
+                    clean_host = u_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if u_info else "Desconocido"
+                    filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
+                    mensaje_log = (f"<b>❌ ¡Error en el proceso!</b>\n"
+                                   f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                   f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                                   f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                                   f"<b>⚠️ Detalle:</b> <b>Fallo en la subida a la plataforma</b>")
+                    bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+                except Exception as e:
+                    print(f"Error al notificar error de subida al grupo: {e}")
         return None
 
 def processFile(update,bot,message,file,thread=None,jdb=None):
@@ -804,6 +829,18 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 pass
         else:
             print(f"Proceso detenido o error: {ex}")
+            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                try:
+                    clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if getUser else "Desconocido"
+                    filename_fail = os.path.basename(file) if file else "Desconocido"
+                    mensaje_log = (f"<b>❌ ¡Error en el proceso!</b>\n"
+                                   f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                   f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                                   f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                                   f"<b>⚠️ Detalle:</b> <b>Error al procesar, comprimir o subir a la plataforma</b>")
+                    bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+                except Exception as e:
+                    print(f"Error al notificar error de proceso al grupo: {e}")
     finally:
         if thread:
             clean_process(thread.id)
@@ -833,6 +870,21 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                     try:
                         bot.editMessageText(message, f"<b>❌ Error en la descarga tras {retries} intentos fallidos ✗</b>", parse_mode='html')
                     except: pass
+                    
+                    if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                        try:
+                            u_info = jdb.get_user(username) if jdb else None
+                            clean_host = u_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if u_info else "Desconocido"
+                            filename_fail = url.split('/')[-1] or "Desconocido"
+                            mensaje_log = (f"<b>❌ ¡Error en la descarga!</b>\n"
+                                           f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                           f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                                           f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                                           f"<b>⚠️ Detalle:</b> <b>Fallo en la descarga del enlace</b>")
+                            bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+                        except Exception as e:
+                            print(f"Error al notificar error de descarga al grupo: {e}")
+                    
                     raise ex
                 time.sleep(3)
         
