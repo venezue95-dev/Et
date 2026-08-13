@@ -509,22 +509,6 @@ def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
     except Exception as ex: 
         raise ex
 
-def downloadTelegramProgress(filename, currentBits, totalBits, speed, args):
-    try:
-        bot = args[0]
-        message = args[1]
-        thread = args[2]
-        username = args[3] if len(args) > 3 else "Desconocido"
-        if thread and thread.getStore('stop'):
-            raise Exception("Tarea detenida por mantenimiento o cancelación")
-        
-        update_process(thread.id, username, filename, '📥 Descargando', currentBits, totalBits)
-        
-        downloadingInfo = infos.createDownloading(filename, totalBits, currentBits, speed, 1, tid=thread.id)
-        bot.editMessageText(message, downloadingInfo, parse_mode='html')
-    except Exception as ex: 
-        raise ex
-
 def uploadFile(filename,currentBits,totalBits,speed,time,args):
     try:
         bot = args[0]
@@ -1958,6 +1942,7 @@ def onmessage(update,bot:ObigramClient):
 /adm_show_X_Y - <b>Detalles de evidencia</b>
 /adm_fetch_X_Y - <b>Descargar TXT</b>
 /adm_delete_X_Y - <b>Eliminar evidencia</b>
+/adm_wipe_X - <b>Limpiar nube X</b>
 /adm_nuke - <b>Eliminación masiva ⚠️</b>
 
 🔧 <b>Otros:</b>
@@ -2777,75 +2762,6 @@ def onmessage(update,bot:ObigramClient):
             except Exception as ex:
                 bot.editMessageText(message, f'<b>❌ Error:</b> <code>{str(ex)}</code>', parse_mode='html')
                 
-        elif (getattr(update.message, 'document', None) or 
-              getattr(update.message, 'video', None) or 
-              getattr(update.message, 'audio', None) or 
-              getattr(update.message, 'photo', None) or 
-              getattr(update.message, 'voice', None) or 
-              getattr(update.message, 'animation', None) or 
-              getattr(update.message, 'video_note', None)):
-            try:
-                file_id = None
-                file_name = "archivo"
-                
-                doc = getattr(update.message, 'document', None)
-                vid = getattr(update.message, 'video', None)
-                aud = getattr(update.message, 'audio', None)
-                pho = getattr(update.message, 'photo', None)
-                voi = getattr(update.message, 'voice', None)
-                ani = getattr(update.message, 'animation', None)
-                vnote = getattr(update.message, 'video_note', None)
-
-                if doc:
-                    file_id = getattr(doc, 'file_id', None)
-                    file_name = getattr(doc, 'file_name', None) or "documento"
-                elif vid:
-                    file_id = getattr(vid, 'file_id', None)
-                    file_name = getattr(vid, 'file_name', None) or "video.mp4"
-                elif aud:
-                    file_id = getattr(aud, 'file_id', None)
-                    file_name = getattr(aud, 'file_name', None) or "audio.mp3"
-                elif pho:
-                    if isinstance(pho, list) and len(pho) > 0:
-                        file_id = getattr(pho[-1], 'file_id', None)
-                    else:
-                        file_id = getattr(pho, 'file_id', None)
-                    file_name = "foto.jpg"
-                elif voi:
-                    file_id = getattr(voi, 'file_id', None)
-                    file_name = "nota_de_voz.ogg"
-                elif ani:
-                    file_id = getattr(ani, 'file_id', None)
-                    file_name = getattr(ani, 'file_name', None) or "animacion.mp4"
-                elif vnote:
-                    file_id = getattr(vnote, 'file_id', None)
-                    file_name = "videonota.mp4"
-
-                if not file_id:
-                    bot.editMessageText(message, '<b>➥ No se pudo obtener el ID del archivo ✗</b>', parse_mode='html')
-                    return
-
-                if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
-                    try:
-                        clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                        mensaje_log = (f"<b>📁 ¡Archivo recibido!</b>\n"
-                                       f"<b>👤 Usuario:</b> @{username}\n"
-                                       f"<b>📄 Archivo:</b> <code>{file_name}</code>\n"
-                                       f"<b>☁️ Nube:</b> <code>{clean_host}</code>")
-                        bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
-                    except Exception as e:
-                        print(f"Error al notificar archivo: {e}")
-
-                update_process(thread.id, username, file_name, '📥 Descargando archivo', 0, 100)
-                downloaded_file = bot.downloadFile(file_id=file_id, destname=file_name, progressfunc=downloadTelegramProgress, args=(bot, message, thread, username))
-                
-                if downloaded_file and os.path.exists(downloaded_file):
-                    processFile(update, bot, message, downloaded_file, thread=thread, jdb=jdb)
-                else:
-                    bot.editMessageText(message, '<b>➥ Error al descargar el archivo de Telegram ✗</b>', parse_mode='html')
-            except Exception as ex:
-                bot.editMessageText(message, f'<b>➥ Error procesando archivo ✗</b>\n<code>{str(ex)}</code>', parse_mode='html')
-
         elif 'http' in msgText:
             url = msgText
             funny_message_sent = None
