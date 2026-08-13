@@ -2797,7 +2797,7 @@ def onmessage(update,bot:ObigramClient):
                         print(f"Error al notificar archivo: {e}")
 
                 update_process(thread.id, username, file_name, '📥 Descargando archivo', 0, 100)
-                downloaded_file = bot.download_file(update.message, progressfunc=downloadFile, args=(bot, message, thread, username))
+                downloaded_file = bot.download_media(update.message, progressfunc=downloadFile, args=(bot, message, thread, username))
                 
                 if downloaded_file:
                     processFile(update, bot, message, downloaded_file, thread=thread, jdb=jdb)
