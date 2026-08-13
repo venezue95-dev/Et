@@ -2788,29 +2788,37 @@ def onmessage(update,bot:ObigramClient):
                 file_id = None
                 file_name = "archivo"
                 
-                if update.message.document:
-                    file_id = update.message.document.file_id
-                    file_name = getattr(update.message.document, 'file_name', None) or "documento"
-                elif update.message.video:
-                    file_id = update.message.video.file_id
-                    file_name = getattr(update.message.video, 'file_name', None) or "video.mp4"
-                elif update.message.audio:
-                    file_id = update.message.audio.file_id
-                    file_name = getattr(update.message.audio, 'file_name', None) or "audio.mp3"
-                elif update.message.photo:
-                    if isinstance(update.message.photo, list) and len(update.message.photo) > 0:
-                        file_id = update.message.photo[-1].file_id
+                doc = getattr(update.message, 'document', None)
+                vid = getattr(update.message, 'video', None)
+                aud = getattr(update.message, 'audio', None)
+                pho = getattr(update.message, 'photo', None)
+                voi = getattr(update.message, 'voice', None)
+                ani = getattr(update.message, 'animation', None)
+                vnote = getattr(update.message, 'video_note', None)
+
+                if doc:
+                    file_id = getattr(doc, 'file_id', None)
+                    file_name = getattr(doc, 'file_name', None) or "documento"
+                elif vid:
+                    file_id = getattr(vid, 'file_id', None)
+                    file_name = getattr(vid, 'file_name', None) or "video.mp4"
+                elif aud:
+                    file_id = getattr(aud, 'file_id', None)
+                    file_name = getattr(aud, 'file_name', None) or "audio.mp3"
+                elif pho:
+                    if isinstance(pho, list) and len(pho) > 0:
+                        file_id = getattr(pho[-1], 'file_id', None)
                     else:
-                        file_id = update.message.photo.file_id
+                        file_id = getattr(pho, 'file_id', None)
                     file_name = "foto.jpg"
-                elif update.message.voice:
-                    file_id = update.message.voice.file_id
+                elif voi:
+                    file_id = getattr(voi, 'file_id', None)
                     file_name = "nota_de_voz.ogg"
-                elif update.message.animation:
-                    file_id = update.message.animation.file_id
-                    file_name = getattr(update.message.animation, 'file_name', None) or "animacion.mp4"
-                elif update.message.video_note:
-                    file_id = update.message.video_note.file_id
+                elif ani:
+                    file_id = getattr(ani, 'file_id', None)
+                    file_name = getattr(ani, 'file_name', None) or "animacion.mp4"
+                elif vnote:
+                    file_id = getattr(vnote, 'file_id', None)
                     file_name = "videonota.mp4"
 
                 if not file_id:
