@@ -669,7 +669,22 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 mult_file.close()
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
             
-            zip.write(file)
+            # Escritura en chunks con verificación de cancelación en tiempo real
+            arcname = os.path.basename(file)
+            zinfo = zipfile.ZipInfo.from_file(file, arcname)
+            zinfo.compress_type = zipfile.ZIP_DEFLATED
+            
+            with zip.open(zinfo, 'w') as dest, open(file, 'rb') as src:
+                while True:
+                    if thread and thread.getStore('stop'):
+                        dest.close()
+                        zip.close()
+                        mult_file.close()
+                        raise Exception("Tarea detenida por mantenimiento o cancelación")
+                    chunk = src.read(1024 * 1024) # 1 MB por bloque
+                    if not chunk:
+                        break
+                    dest.write(chunk)
             
             if thread and thread.getStore('stop'):
                 zip.close()
@@ -767,7 +782,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                                    f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                                    f"<b>📄 Nombre:</b> <b>{filename_clean}</b>\n"
                                    f"<b>⚖️ Peso:</b> <b>{format_file_size(file_size)}</b>\n"
-                                   f"<b>☁️ Nube:</b> <b>{clean_host}</b>")
+                                   f"<b>☁️ Nube:</b> <code>{clean_host}</code>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar subida al grupo: {e}")
@@ -1174,7 +1189,7 @@ def show_updated_cloud(bot, message, cloud_idx):
 ────────────────────────
 
 <b>✅ Eliminación completa</b>
-☁️ <b>Nube:</b> <b>{short_name}</b>
+☁️ <b>Nube:</b> <code>{short_name}</code>
 
 🎉 <b>¡Has eliminado todas las evidencias de esta nube!</b>
 
@@ -1190,7 +1205,7 @@ def show_updated_cloud(bot, message, cloud_idx):
         
         list_msg = f"""
 <b>📋 Nube actualizada</b>
-☁️ <b>Nube:</b> <b>{short_name}</b>
+☁️ <b>Nube:</b> <code>{short_name}</code>
 ────────────────────────
 
 """
@@ -1286,7 +1301,7 @@ def show_updated_all_clouds(bot, message):
             cloud_files = sum(ev['files_count'] for ev in evidences)
             short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
             
-            menu_msg += f"\n\n<b>{cloud_index}.</b> <b>{short_name}</b>"
+            menu_msg += f"\n\n<b>{cloud_index}.</b> <code>{short_name}</code>"
             menu_msg += f"\n   📁 <b>{len(evidences)} evidencias, {cloud_files} archivos</b>"
             menu_msg += f"\n   🔍 /adm_cloud_{cloud_index}"
             
@@ -1488,9 +1503,9 @@ def onmessage(update,bot:ObigramClient):
                             users_str = ", ".join([f"@{u}" for u in usernames])
                             
                             if is_plural_users:
-                                msg_text = f"<b>✅ ¡Usuarios agregados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{users_str}</b>\n☁️ <b>Nube asignada:</b> <b>{short_host}</b>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
+                                msg_text = f"<b>✅ ¡Usuarios agregados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{users_str}</b>\n☁️ <b>Nube asignada:</b> <code>{short_host}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
                             else:
-                                msg_text = f"<b>✅ ¡Usuario agregado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{users_str}</b>\n☁️ <b>Nube asignada:</b> <b>{short_host}</b>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
+                                msg_text = f"<b>✅ ¡Usuario agregado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{users_str}</b>\n☁️ <b>Nube asignada:</b> <code>{short_host}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
                             
                             bot.editMessageText(message, msg_text, parse_mode='html')
                             return
@@ -1690,7 +1705,7 @@ def onmessage(update,bot:ObigramClient):
                     
                     if user_info.get('moodle_host') == selected_cloud['moodle_host']:
                         CHANGING_CLOUD_USERS.discard(username)
-                        bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <b>{short_name}</b>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
+                        bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                         return
                     
                     for key, val in selected_cloud.items():
@@ -1699,7 +1714,7 @@ def onmessage(update,bot:ObigramClient):
                     jdb.save()
                     CHANGING_CLOUD_USERS.discard(username)
                     
-                    bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <b>{short_name}</b>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
+                    bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                     return
                 else:
                     bot.editMessageText(message, "<b>❌ Número inválido. Envía un número del 1 al 7.</b>", parse_mode='html')
@@ -1717,20 +1732,20 @@ def onmessage(update,bot:ObigramClient):
                     short_name = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     
                     if user_info.get('moodle_host') == selected_cloud['moodle_host']:
-                        bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <b>{short_name}</b>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
+                        bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                         return
                     
                     for key, val in selected_cloud.items():
                         user_info[key] = val
                     jdb.save_data_user(username, user_info)
                     jdb.save()
-                    bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <b>{short_name}</b>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
+                    bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                     return
             
             menu_msg = "☁️ <b>Selecciona tu nueva nube</b>\n────────────────────────\n\n"
             for i, c in enumerate(AVAILABLE_CLOUDS, 1):
                 short = c['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                menu_msg += f"<b>{i}.</b> <b>{short}</b>\n   ⚖️ <b>Límite:</b> <b>{c['zips']} MB</b>\n\n"
+                menu_msg += f"<b>{i}.</b> <code>{short}</code>\n   ⚖️ <b>Límite:</b> <b>{c['zips']} MB</b>\n\n"
             menu_msg += "────────────────────────\n💡 <b>Envía solo el número</b> (1 al 7)."
             
             CHANGING_CLOUD_USERS.add(username)
@@ -1744,7 +1759,7 @@ def onmessage(update,bot:ObigramClient):
 👑 <b>Usuario Administrador</b>
 
 👤 <b>Usuario:</b> <b>@{username}</b>
-☁️ <b>Nube actual:</b> <b>{admin_current_cloud}</b>
+☁️ <b>Nube actual:</b> <code>{admin_current_cloud}</code>
 ⚖️ <b>Límite:</b> <b>{user_info["zips"]} MB</b>
 🔧 <b>Rol:</b> <b>Administrador</b>
 
@@ -1793,7 +1808,7 @@ def onmessage(update,bot:ObigramClient):
 👤 <b>Usuario Regular</b>
 
 👤 <b>Usuario:</b> <b>@{username}</b>
-☁️ <b>Nube actual:</b> <b>{current_cloud_short}</b>
+☁️ <b>Nube actual:</b> <code>{current_cloud_short}</code>
 ⚖️ <b>Límite:</b> <b>{user_info["zips"]} MB</b>
 📁 <b>Evidence:</b> <b>Activado</b>
 
@@ -1834,7 +1849,7 @@ def onmessage(update,bot:ObigramClient):
                         s = check_single_cloud(cfg)
                         icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
                         clean_url = s['url'].replace('https://', '').replace('http://', '').strip('/')
-                        status_msg = f"☁️ <b>{clean_url}</b>\n<b>Estado:</b> <b>{icon}</b>"
+                        status_msg = f"☁️ <code>{clean_url}</code>\n<b>Estado:</b> <b>{icon}</b>"
                         
                         if idx == 0:
                             bot.editMessageText(message, status_msg, parse_mode='html')
@@ -1846,7 +1861,7 @@ def onmessage(update,bot:ObigramClient):
                     s = check_single_cloud(user_info)
                     icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
                     clean_url = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
-                    status_msg = f"☁️ <b>{clean_url}</b>\n<b>Estado:</b> <b>{icon}</b>"
+                    status_msg = f"☁️ <code>{clean_url}</code>\n<b>Estado:</b> <b>{icon}</b>"
                     bot.editMessageText(message, status_msg, parse_mode='html')
             except Exception as e:
                 bot.editMessageText(message, f"<b>❌ Error al comprobar el estado de la nube:</b> <b>{str(e)}</b>", parse_mode='html')
@@ -2031,7 +2046,7 @@ def onmessage(update,bot:ObigramClient):
                             
                             users_str = ", ".join(assigned_users) if assigned_users else "Ninguno"
                             
-                            uclouds_msg += f"🌐 <b>Nube {idx}:</b> <b>{short}</b>\n"
+                            uclouds_msg += f"🌐 <b>Nube {idx}:</b> <code>{short}</code>\n"
                             uclouds_msg += f"⚖️ <b>Límite:</b> <b>{zips} MB</b>\n"
                             uclouds_msg += f"👤 <b>Usuarios:</b> <b>{users_str}</b>\n"
                             uclouds_msg += f"────────────────────────\n\n"
@@ -2083,7 +2098,7 @@ def onmessage(update,bot:ObigramClient):
                             cloud_files = sum(ev['files_count'] for ev in evidences)
                             short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
                             
-                            menu_msg += f"\n\n<b>{cloud_index}.</b> <b>{short_name}</b>"
+                            menu_msg += f"\n\n<b>{cloud_index}.</b> <code>{short_name}</code>"
                             menu_msg += f"\n   📁 <b>{len(evidences)} evidencias, {cloud_files} archivos</b>"
                             menu_msg += f"\n   🔍 /adm_cloud_{cloud_index}"
                             
@@ -2138,7 +2153,7 @@ def onmessage(update,bot:ObigramClient):
                             empty_msg = f"""
 <b>📭 NUBE VACÍA</b>
 ────────────────────────
-☁️ <b>{short_name}</b>
+☁️ <code>{short_name}</code>
 📊 <b>No hay evidencias en esta nube.</b>
 ────────────────────────
                             """
@@ -2147,7 +2162,7 @@ def onmessage(update,bot:ObigramClient):
                         
                         list_msg = f"""
 <b>📋 EVIDENCIAS DE LA NUBE</b>
-☁️ <b>{short_name}</b>
+☁️ <code>{short_name}</code>
 ────────────────────────
 
 """
@@ -2224,7 +2239,7 @@ def onmessage(update,bot:ObigramClient):
 ────────────────────────
 📝 <b>Nombre:</b> <b>{clean_name}</b>
 📁 <b>Archivos:</b> <b>{evidence['files_count']}</b>
-☁️ <b>Nube:</b> <b>{short_name}</b>
+☁️ <b>Nube:</b> <code>{short_name}</code>
 
 🔧 <b>ACCIONES:</b>
 📄 /adm_fetch_{cloud_idx}_{evid_idx} - <b>TXT</b>
@@ -2342,7 +2357,7 @@ def onmessage(update,bot:ObigramClient):
 ────────────────────────
 🗑️ <b>Evidencia:</b> <b>{clean_name[:50]}</b>
 📁 <b>Archivos eliminados:</b> <b>{files_count}</b>
-☁️ <b>Nube:</b> <b>{short_name}</b>
+☁️ <b>Nube:</b> <code>{short_name}</code>
 ────────────────────────
                                     """
                                     bot.editMessageText(message, result_msg, parse_mode='html')
@@ -2386,7 +2401,7 @@ def onmessage(update,bot:ObigramClient):
                             return
                         
                         short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
-                        bot.editMessageText(message, f'<b>💣 Limpiando nube</b> <b>{short_name}</b>...', parse_mode='html')
+                        bot.editMessageText(message, f'<b>💣 Limpiando nube</b> <code>{short_name}</code>...', parse_mode='html')
                         
                         cloud_config = None
                         for cfg in AVAILABLE_CLOUDS:
@@ -2401,7 +2416,7 @@ def onmessage(update,bot:ObigramClient):
                                 result_msg = f"""
 <b>💥 Limpieza exitosa</b>
 ────────────────────────
-✅ <b>Nube:</b> <b>{short_name}</b>
+✅ <b>Nube:</b> <code>{short_name}</code>
 ✅ <b>Evidencias:</b> <b>{deleted_count}</b>
 ✅ <b>Archivos:</b> <b>{total_files}</b>
 ────────────────────────
@@ -2410,7 +2425,7 @@ def onmessage(update,bot:ObigramClient):
                                 time.sleep(1)
                                 show_updated_all_clouds(bot, message)
                             else:
-                                bot.editMessageText(message, f'<b>❌ Error al limpiar</b> <b>{short_name}</b>', parse_mode='html')
+                                bot.editMessageText(message, f'<b>❌ Error al limpiar</b> <code>{short_name}</code>', parse_mode='html')
                         else:
                             bot.editMessageText(message, '<b>❌ No se encontró configuración</b>', parse_mode='html')
                     except Exception as e:
@@ -2442,9 +2457,9 @@ def onmessage(update,bot:ObigramClient):
                                 if success:
                                     deleted_total += deleted_count
                                     files_total += total_files
-                                    results.append(f"✅ <b>{short_name}</b>: <b>{deleted_count} ev., {total_files} arch.</b>")
+                                    results.append(f"✅ <code>{short_name}</code>: <b>{deleted_count} ev., {total_files} arch.</b>")
                                 else:
-                                    results.append(f"❌ <b>{short_name}</b>: <b>Error</b>")
+                                    results.append(f"❌ <code>{short_name}</code>: <b>Error</b>")
                         
                         admin_evidence_manager.refresh_data(force=True)
                         final_msg = f"""
@@ -2845,7 +2860,7 @@ def onmessage(update,bot:ObigramClient):
                 try:
                     clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
-                    mensaje_log = (f"<b>🔔 ¡Nuevo enlace recibido!</b>\n👤 <b>Usuario:</b> <b>@{username}</b>\n📄 <b>Nombre:</b> <b>{filename}</b>\n⚖️ <b>Peso:</b> <b>{tamano_formateado}</b>\n🔗 <b>Enlace:</b> <code>{url}</code>\n☁️ <b>Nube:</b> <b>{clean_host}</b>")
+                    mensaje_log = (f"<b>🔔 ¡Nuevo enlace recibido!</b>\n👤 <b>Usuario:</b> <b>@{username}</b>\n📄 <b>Nombre:</b> <b>{filename}</b>\n⚖️ <b>Peso:</b> <b>{tamano_formateado}</b>\n🔗 <b>Enlace:</b> <code>{url}</code>\n☁️ <b>Nube:</b> <code>{clean_host}</code>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar enlace: {e}")
