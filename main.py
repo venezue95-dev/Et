@@ -64,7 +64,7 @@ AVAILABLE_CLOUDS = [
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.uo.edu.cu/",
         "moodle_repo_id": 4,
-        "moodle_user": "jgonazalezr",
+        "moodle_user": "adminguama",
         "moodle_password": "Et345210.",
         "zips": 99,
         "uploadtype": "evidence",
