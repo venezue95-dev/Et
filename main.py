@@ -498,8 +498,9 @@ def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
         message = args[1]
         thread = args[2]
         username = args[3] if len(args) > 3 else "Desconocido"
-        if thread.getStore('stop'):
-            downloader.stop()
+        if thread and thread.getStore('stop'):
+            if downloader:
+                downloader.stop()
             raise Exception("Tarea detenida por mantenimiento o cancelación")
         
         update_process(thread.id, username, filename, '📥 Descargando', currentBits, totalBits)
@@ -507,6 +508,85 @@ def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
         downloadingInfo = infos.createDownloading(filename,totalBits,currentBits,speed,time,tid=thread.id)
         bot.editMessageText(message, downloadingInfo, parse_mode='html')
     except Exception as ex: 
+        raise ex
+
+def download_telegram_file(bot, message_obj, progressfunc=None, args=None, thread=None):
+    """Descarga nativa de archivos enviados por Telegram usando requests y la API oficial"""
+    try:
+        file_id = None
+        file_name = "archivo"
+        
+        doc = getattr(message_obj, 'document', None)
+        vid = getattr(message_obj, 'video', None)
+        aud = getattr(message_obj, 'audio', None)
+        pho = getattr(message_obj, 'photo', None)
+        voi = getattr(message_obj, 'voice', None)
+        ani = getattr(message_obj, 'animation', None)
+        vnote = getattr(message_obj, 'video_note', None)
+        
+        if doc:
+            file_id = doc.file_id
+            file_name = getattr(doc, 'file_name', None) or "documento"
+        elif vid:
+            file_id = vid.file_id
+            file_name = getattr(vid, 'file_name', None) or "video.mp4"
+        elif aud:
+            file_id = aud.file_id
+            file_name = getattr(aud, 'file_name', None) or "audio.mp3"
+        elif pho:
+            if isinstance(pho, list) and len(pho) > 0:
+                file_id = pho[-1].file_id
+            else:
+                file_id = pho.file_id
+            file_name = "foto.jpg"
+        elif voi:
+            file_id = voi.file_id
+            file_name = "nota_de_voz.ogg"
+        elif ani:
+            file_id = ani.file_id
+            file_name = getattr(ani, 'file_name', None) or "animacion.mp4"
+        elif vnote:
+            file_id = vnote.file_id
+            file_name = "videonota.mp4"
+            
+        if not file_id:
+            return None
+            
+        file_info_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getFile?file_id={file_id}"
+        resp = requests.get(file_info_url).json()
+        if not resp.get('ok'):
+            return None
+            
+        file_path = resp['result']['file_path']
+        download_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+        
+        r = requests.get(download_url, stream=True)
+        total_size = int(r.headers.get('content-length', 0))
+        
+        current_size = 0
+        start_time = time.time()
+        
+        base_name = os.path.basename(file_path)
+        safe_filename = base_name if base_name and '.' in base_name else file_name
+            
+        with open(safe_filename, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if thread and thread.getStore('stop'):
+                    raise Exception("Tarea detenida por mantenimiento o cancelación")
+                if chunk:
+                    f.write(chunk)
+                    current_size += len(chunk)
+                    elapsed = time.time() - start_time
+                    speed = current_size / elapsed if elapsed > 0 else 0
+                    
+                    if progressfunc and args:
+                        try:
+                            progressfunc(None, safe_filename, current_size, total_size, speed, elapsed, args)
+                        except Exception:
+                            pass
+                            
+        return safe_filename
+    except Exception as ex:
         raise ex
 
 def uploadFile(filename,currentBits,totalBits,speed,time,args):
@@ -2797,7 +2877,7 @@ def onmessage(update,bot:ObigramClient):
                         print(f"Error al notificar archivo: {e}")
 
                 update_process(thread.id, username, file_name, '📥 Descargando archivo', 0, 100)
-                downloaded_file = bot.download_media(update.message, progressfunc=downloadFile, args=(bot, message, thread, username))
+                downloaded_file = download_telegram_file(bot, update.message, progressfunc=downloadFile, args=(bot, message, thread, username), thread=thread)
                 
                 if downloaded_file:
                     processFile(update, bot, message, downloaded_file, thread=thread, jdb=jdb)
