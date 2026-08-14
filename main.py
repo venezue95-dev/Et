@@ -602,9 +602,8 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             error_desc = "<b>Tiempo de espera agotado. El servidor tardó demasiado en responder.</b>"
             
             error_msg_user = (
-                f"<b>❌ ¡Error de conexión con Moodle!</b>\n\n"
+                f"<b>❌ ¡Error de conexión con Moodle (Timeout)!</b>\n\n"
                 f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
-                f"📄 <b>Archivo:</b> <b>{filename_fail}</b>\n"
                 f"⚠️ <b>Detalle:</b> {error_desc}\n\n"
                 f"💡 <i>Usa /status para revisar el estado o /cambiar para elegir otra nube.</i>"
             )
@@ -613,9 +612,9 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     mensaje_log = (
-                        f"<b>❌ ¡Error de Conexión / Moodle Caída!</b>\n\n"
+                        f"<b>❌ ¡Error de Conexión (Timeout)!</b>\n\n"
                         f"👤 <b>Usuario:</b> <b>@{username}</b>\n"
-                        f"📄 <b>Archivo:</b> <b>{filename_fail}</b>\n"
+                        f"📄 <b>Nombre:</b> <b>{filename_fail}</b>\n"
                         f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
                         f"⚠️ <b>Detalle:</b> {error_desc}"
                     )
@@ -631,9 +630,8 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             error_desc = "<b>La plataforma Moodle no responde (Servidor caído o inaccesible).</b>"
             
             error_msg_user = (
-                f"<b>❌ ¡Error de conexión con Moodle!</b>\n\n"
+                f"<b>❌ ¡Error de conexión con Moodle (Servidor Caído)!</b>\n\n"
                 f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
-                f"📄 <b>Archivo:</b> <b>{filename_fail}</b>\n"
                 f"⚠️ <b>Detalle:</b> {error_desc}\n\n"
                 f"💡 <i>Usa /status para revisar el estado o /cambiar para elegir otra nube.</i>"
             )
@@ -642,9 +640,9 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     mensaje_log = (
-                        f"<b>❌ ¡Error de Conexión / Moodle Caída!</b>\n\n"
+                        f"<b>❌ ¡Error de Conexión (Servidor Caído)!</b>\n\n"
                         f"👤 <b>Usuario:</b> <b>@{username}</b>\n"
-                        f"📄 <b>Archivo:</b> <b>{filename_fail}</b>\n"
+                        f"📄 <b>Nombre:</b> <b>{filename_fail}</b>\n"
                         f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
                         f"⚠️ <b>Detalle:</b> {error_desc}"
                     )
@@ -727,7 +725,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
             error_desc = "<b>Error en la autenticación o credenciales incorrectas.</b>"
             error_msg_user = (
-                f"<b>❌ ¡Error en la página!</b>\n\n"
+                f"<b>❌ ¡Error de Autenticación en Moodle!</b>\n\n"
                 f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
                 f"⚠️ <b>Detalle:</b> {error_desc}"
             )
@@ -735,7 +733,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
-                    mensaje_log = (f"<b>❌ ¡Error en la página!</b>\n\n"
+                    mensaje_log = (f"<b>❌ ¡Error de Autenticación en Moodle!</b>\n\n"
                                    f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                                    f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
                                    f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
@@ -925,7 +923,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                    mensaje_log = (f"<b>✅ ¡Subida completada!</b>\n"
+                    mensaje_log = (f"<b>✅ ¡Subida completada!</b>\n\n"
                                    f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                                    f"<b>📄 Nombre:</b> <b>{filename_clean}</b>\n"
                                    f"<b>⚖️ Peso:</b> <b>{format_file_size(file_size)}</b>\n"
@@ -947,9 +945,9 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             else:
                 clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if getUser else "Desconocido"
                 error_page_msg = (
-                    f"<b>❌ ¡Error en la página!</b>\n\n"
+                    f"<b>❌ ¡Error de Autenticación en Moodle!</b>\n\n"
                     f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                    f"<b>⚠️ Detalle:</b> <b>Error en la autenticación o página de Moodle</b>"
+                    f"<b>⚠️ Detalle:</b> <b>Error en la autenticación o credenciales incorrectas</b>"
                 )
                 bot.editMessageText(message, error_page_msg, parse_mode='html')
     except Exception as ex:
@@ -976,7 +974,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         
         if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
             try:
-                mensaje_log = (f"<b>❌ ¡Error en la {phase}!</b>\n"
+                mensaje_log = (f"<b>❌ ¡Error en la {phase}!</b>\n\n"
                                f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                                f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
                                f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
@@ -1027,7 +1025,7 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                     
                     if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                         try:
-                            mensaje_log = (f"<b>❌ ¡Error en la descarga!</b>\n"
+                            mensaje_log = (f"<b>❌ ¡Error en la descarga!</b>\n\n"
                                            f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                                            f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
                                            f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
