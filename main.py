@@ -443,7 +443,10 @@ def check_single_cloud(cloud_config):
     short_name = moodle_host.replace('https://', '').replace('http://', '').strip('/')
     is_online = False
     try:
-        proxy_parsed = ProxyCloud.parse(proxy)
+        proxy_parsed = ProxyCloud.parse(proxy) if proxy else None
+        # Pre-chequeo rápido con timeout de 5 segundos
+        requests.get(moodle_host, timeout=5, proxies=proxy_parsed, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
+        
         client = MoodleClient(moodle_user, moodle_password, moodle_host, moodle_repo_id, proxy=proxy_parsed)
         if client.login():
             is_online = True
@@ -574,7 +577,36 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         evidence = None
         fileid = None
         user_info = jdb.get_user(username)
-        proxy = ProxyCloud.parse(user_info['proxy'])
+        proxy = ProxyCloud.parse(user_info['proxy']) if user_info and user_info.get('proxy') else None
+        
+        # VERIFICACIÓN RÁPIDA DE CONECTIVIDAD (Falla rápido si la Moodle está caída)
+        try:
+            test_url = user_info['moodle_host']
+            requests.get(test_url, timeout=6, proxies=proxy, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
+        except Exception as conn_err:
+            if thread and thread.getStore('stop'):
+                return None
+            clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if user_info else "Desconocido"
+            filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
+            
+            error_msg_user = (
+                f"<b>❌ ¡Moodle caída o sin respuesta!</b>\n\n"
+                f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                f"<b>⚠️ Detalle:</b> <b>La plataforma Moodle no responde (Servidor caído o tiempo de espera agotado)</b>"
+            )
+            bot.editMessageText(message, error_msg_user, parse_mode='html')
+            
+            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                try:
+                    mensaje_log = (f"<b>❌ ¡Moodle caída / sin respuesta!</b>\n"
+                                   f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                   f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                                   f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                                   f"<b>⚠️ Detalle:</b> <b>La plataforma Moodle no responde a las solicitudes</b>")
+                    bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+                except Exception as e:
+                    print(f"Error al notificar Moodle caída al grupo: {e}")
+            return "LOGIN_FAILED"
         
         client = MoodleClient(user_info['moodle_user'],
                               user_info['moodle_password'],
@@ -585,7 +617,6 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         if thread and thread.getStore('stop'):
             return None
 
-        # Revertido al comportamiento original sin reintentos automáticos de login
         loged = client.login()
         
         if thread and thread.getStore('stop'):
@@ -1064,7 +1095,9 @@ def get_all_cloud_evidences_fast(use_cache=True):
                 continue
         
         try:
-            proxy_parsed = ProxyCloud.parse(proxy)
+            proxy_parsed = ProxyCloud.parse(proxy) if proxy else None
+            requests.get(moodle_host, timeout=5, proxies=proxy_parsed, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
+            
             client = MoodleClient(moodle_user, moodle_password, moodle_host, moodle_repo_id, proxy=proxy_parsed)
             
             if client.login():
@@ -1104,7 +1137,9 @@ def delete_evidence_from_cloud(cloud_config, evidence):
         moodle_repo_id = cloud_config.get('moodle_repo_id', '')
         proxy = cloud_config.get('proxy', '')
         
-        proxy_parsed = ProxyCloud.parse(proxy)
+        proxy_parsed = ProxyCloud.parse(proxy) if proxy else None
+        requests.get(moodle_host, timeout=5, proxies=proxy_parsed, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
+        
         client = MoodleClient(moodle_user, moodle_password, moodle_host, moodle_repo_id, proxy=proxy_parsed)
         
         if client.login():
@@ -1140,7 +1175,9 @@ def delete_all_evidences_from_cloud(cloud_config):
         moodle_repo_id = cloud_config.get('moodle_repo_id', '')
         proxy = cloud_config.get('proxy', '')
         
-        proxy_parsed = ProxyCloud.parse(proxy)
+        proxy_parsed = ProxyCloud.parse(proxy) if proxy else None
+        requests.get(moodle_host, timeout=5, proxies=proxy_parsed, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
+        
         client = MoodleClient(moodle_user, moodle_password, moodle_host, moodle_repo_id, proxy=proxy_parsed)
         
         if client.login():
@@ -1229,7 +1266,9 @@ class AdminEvidenceManager:
                 moodle_repo_id = cloud_config.get('moodle_repo_id', '')
                 proxy = cloud_config.get('proxy', '')
                 
-                proxy_parsed = ProxyCloud.parse(proxy)
+                proxy_parsed = ProxyCloud.parse(proxy) if proxy else None
+                requests.get(moodle_host, timeout=5, proxies=proxy_parsed, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
+                
                 client = MoodleClient(moodle_user, moodle_password, moodle_host, moodle_repo_id, proxy=proxy_parsed)
                 
                 if client.login():
@@ -2757,7 +2796,13 @@ def onmessage(update,bot:ObigramClient):
             return
         
         elif '/files' == msgText:
-            proxy = ProxyCloud.parse(user_info['proxy'])
+            proxy = ProxyCloud.parse(user_info['proxy']) if user_info.get('proxy') else None
+            try:
+                requests.get(user_info['moodle_host'], timeout=5, proxies=proxy, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
+            except:
+                bot.editMessageText(message, f'<b>❌ La nube <code>{user_info["moodle_host"]}</code> no responde o está caída.</b>', parse_mode='html')
+                return
+
             client = MoodleClient(user_info['moodle_user'],
                                    user_info['moodle_password'],
                                    user_info['moodle_host'],
@@ -2793,7 +2838,7 @@ def onmessage(update,bot:ObigramClient):
         elif '/txt_' in msgText:
             try:
                 findex = int(str(msgText).split('_')[1])
-                proxy = ProxyCloud.parse(user_info['proxy'])
+                proxy = ProxyCloud.parse(user_info['proxy']) if user_info.get('proxy') else None
                 client = MoodleClient(user_info['moodle_user'],
                                        user_info['moodle_password'],
                                        user_info['moodle_host'],
@@ -2833,7 +2878,7 @@ def onmessage(update,bot:ObigramClient):
         elif '/del_' in msgText:
             try:
                 findex = int(str(msgText).split('_')[1])
-                proxy = ProxyCloud.parse(user_info['proxy'])
+                proxy = ProxyCloud.parse(user_info['proxy']) if user_info.get('proxy') else None
                 client = MoodleClient(user_info['moodle_user'],
                                        user_info['moodle_password'],
                                        user_info['moodle_host'],
@@ -2914,7 +2959,7 @@ def onmessage(update,bot:ObigramClient):
                 
         elif '/delall' in msgText:
             try:
-                proxy = ProxyCloud.parse(user_info['proxy'])
+                proxy = ProxyCloud.parse(user_info['proxy']) if user_info.get('proxy') else None
                 client = MoodleClient(user_info['moodle_user'],
                                        user_info['moodle_password'],
                                        user_info['moodle_host'],
