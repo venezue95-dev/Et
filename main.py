@@ -121,7 +121,7 @@ AVAILABLE_CLOUDS = [
         "moodle_repo_id": 5,
         "moodle_user": "eliel15",
         "moodle_password": "ElielEliel1515.",
-        "zips": 250,
+        "zips": 100,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
@@ -570,7 +570,15 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                               user_info['moodle_host'],
                               user_info['moodle_repo_id'],
                               proxy=proxy)
+        
+        if thread and thread.getStore('stop'):
+            return None
+
         loged = client.login()
+        
+        if thread and thread.getStore('stop'):
+            return None
+
         if loged:
             evidences = client.getEvidences()
             
@@ -624,6 +632,8 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             except:pass
             return draftlist
         else:
+            if thread and thread.getStore('stop'):
+                return None
             bot.editMessageText(message,'<b>➥ Error en la página ✗</b>', parse_mode='html')
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
