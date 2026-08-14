@@ -237,7 +237,7 @@ def format_file_size(size_bytes):
 # ==============================
 # FUNCIÓN PARA REACCIONAR A MENSAJES
 # ==============================
-def send_reaction(chat_id, message_id, emoji="📥"):
+def send_reaction(chat_id, message_id, emoji="😁"):
     """Envía una reacción de emoji a un mensaje específico"""
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/setMessageReaction"
@@ -2970,7 +2970,7 @@ def onmessage(update,bot:ObigramClient):
                 
         elif 'http' in msgText:
             # Reaccionar al mensaje del usuario al recibir su enlace (ej: flecha abajo para descarga)
-            send_reaction(chat_id, update.message.message_id, "📥")
+            send_reaction(chat_id, update.message.message_id, "😁")
             
             url = msgText
             file_size = 0
@@ -3001,7 +3001,7 @@ def onmessage(update,bot:ObigramClient):
                 MAX_DAILY_LIMIT = 1024 * 1024 * 1024  # 1 GB
                 
                 if current_daily_size + file_size > MAX_DAILY_LIMIT:
-                    send_reaction(chat_id, update.message.message_id, "🚫")
+                    send_reaction(chat_id, update.message.message_id, "💩")
                     if current_daily_size == 0:
                         limit_msg = (
                             f"<b>🚫 Límite diario excedido</b>\n\n"
