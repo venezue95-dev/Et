@@ -235,9 +235,9 @@ def format_file_size(size_bytes):
     return f"{formatted} TB"
 
 # ==============================
-# FUNCIÓN PARA REACCIONAR A MENSAJES
+# FUNCIÓN PARA REACCIONAR A MENSAJES (SOLO ENLACES Y LÍMITES)
 # ==============================
-def send_reaction(chat_id, message_id, emoji="👍"):
+def send_reaction(chat_id, message_id, emoji="⚡"):
     """Envía una reacción de emoji oficial y soportada a un mensaje específico"""
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/setMessageReaction"
@@ -585,26 +585,8 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         if thread and thread.getStore('stop'):
             return None
 
-        # --- SISTEMA DE REINTENTOS PARA LA CONEXIÓN/LOGIN A MOODLE ---
-        loged = False
-        login_retries = 3
-        for attempt in range(login_retries):
-            if thread and thread.getStore('stop'):
-                return None
-            try:
-                if attempt > 0:
-                    try:
-                        bot.editMessageText(message, f"<b>⚠️ Moodle ocupado, reintentando conexión... ({attempt+1}/{login_retries})</b>", parse_mode='html')
-                    except: pass
-                    time.sleep(3)
-                
-                if client.login():
-                    loged = True
-                    break
-            except Exception as e:
-                if attempt == login_retries - 1:
-                    raise e
-                time.sleep(3)
+        # Revertido al comportamiento original sin reintentos automáticos de login
+        loged = client.login()
         
         if thread and thread.getStore('stop'):
             return None
@@ -1548,7 +1530,6 @@ def onmessage(update,bot:ObigramClient):
             jdb.save()
 
         if '/cancel_' in msgText:
-            send_reaction(chat_id, update.message.message_id, "👎")
             try:
                 cmd = str(msgText).split('_',2)
                 tid = cmd[1]
@@ -1878,7 +1859,6 @@ def onmessage(update,bot:ObigramClient):
                 CHANGING_CLOUD_USERS.discard(username)
 
         if '/cambiar' in msgText:
-            send_reaction(chat_id, update.message.message_id, "👀")
             clean_cmd = msgText.replace('/cambiar_', ' ').replace('/cambiar', ' ').strip()
             if clean_cmd.isdigit():
                 num = int(clean_cmd)
@@ -1920,7 +1900,6 @@ def onmessage(update,bot:ObigramClient):
             return
 
         if '/start' in msgText:
-            send_reaction(chat_id, update.message.message_id, "🔥")
             if username.lower() == ADMIN_USERNAME.lower():
                 admin_current_cloud = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
                 start_msg = f"""
@@ -1995,7 +1974,6 @@ def onmessage(update,bot:ObigramClient):
             return
 
         if '/status' == msgText:
-            send_reaction(chat_id, update.message.message_id, "👀")
             if username in ACTIVE_STATUS_CHECKS:
                 bot.editMessageText(message, "<b>⏳ Ya hay una verificación de estado en curso. Por favor, espera a que termine.</b>", parse_mode='html')
                 return
@@ -2040,7 +2018,6 @@ def onmessage(update,bot:ObigramClient):
 
         if username.lower() == ADMIN_USERNAME.lower():
             if msgText.startswith('/mantenimiento'):
-                send_reaction(chat_id, update.message.message_id, "⚡")
                 if 'on' in msgText.lower():
                     MAINTENANCE_MODE = True
                 elif 'off' in msgText.lower():
@@ -2075,7 +2052,6 @@ def onmessage(update,bot:ObigramClient):
                 return
                 
             elif msgText == '/procesos':
-                send_reaction(chat_id, update.message.message_id, "👀")
                 if not ACTIVE_PROCESSES:
                     bot.editMessageText(message, "<b>✅ No hay procesos activos en este momento.</b>", parse_mode='html')
                     return
@@ -2109,7 +2085,6 @@ def onmessage(update,bot:ObigramClient):
 
         if username.lower() == ADMIN_USERNAME.lower():
             if msgText == '/admin':
-                send_reaction(chat_id, update.message.message_id, "🔥")
                 stats = memory_stats.get_all_stats()
                 total_size_formatted = format_file_size(stats['total_size_uploaded'])
                 current_date = format_cuba_date()
@@ -2752,7 +2727,6 @@ def onmessage(update,bot:ObigramClient):
         # ============================================
         
         if '/mystats' in msgText:
-            send_reaction(chat_id, update.message.message_id, "💯")
             user_stats = memory_stats.get_user_stats(username)
             if user_stats:
                 total_size_formatted = format_file_size(user_stats['total_size'])
@@ -2783,7 +2757,6 @@ def onmessage(update,bot:ObigramClient):
             return
         
         elif '/files' == msgText:
-            send_reaction(chat_id, update.message.message_id, "👀")
             proxy = ProxyCloud.parse(user_info['proxy'])
             client = MoodleClient(user_info['moodle_user'],
                                    user_info['moodle_password'],
@@ -2818,7 +2791,6 @@ def onmessage(update,bot:ObigramClient):
                 bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
                 
         elif '/txt_' in msgText:
-            send_reaction(chat_id, update.message.message_id, "👀")
             try:
                 findex = int(str(msgText).split('_')[1])
                 proxy = ProxyCloud.parse(user_info['proxy'])
@@ -2859,7 +2831,6 @@ def onmessage(update,bot:ObigramClient):
                 bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
              
         elif '/del_' in msgText:
-            send_reaction(chat_id, update.message.message_id, "👍")
             try:
                 findex = int(str(msgText).split('_')[1])
                 proxy = ProxyCloud.parse(user_info['proxy'])
@@ -2942,7 +2913,6 @@ def onmessage(update,bot:ObigramClient):
                 bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                 
         elif '/delall' in msgText:
-            send_reaction(chat_id, update.message.message_id, "👍")
             try:
                 proxy = ProxyCloud.parse(user_info['proxy'])
                 client = MoodleClient(user_info['moodle_user'],
@@ -3029,7 +2999,7 @@ def onmessage(update,bot:ObigramClient):
                 MAX_DAILY_LIMIT = 1024 * 1024 * 1024  # 1 GB
                 
                 if current_daily_size + file_size > MAX_DAILY_LIMIT:
-                    send_reaction(chat_id, update.message.message_id, "👎")
+                    send_reaction(chat_id, update.message.message_id, "💩")
                     if current_daily_size == 0:
                         limit_msg = (
                             f"<b>🚫 Límite diario excedido</b>\n\n"
@@ -3067,7 +3037,8 @@ def onmessage(update,bot:ObigramClient):
                             print(f"Error al notificar bloqueo por límite diario al grupo: {e}")
                     return
             
-            send_reaction(chat_id, update.message.message_id, "🔥")
+            # Reacción con rayo para enlace aceptado
+            send_reaction(chat_id, update.message.message_id, "⚡")
 
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
