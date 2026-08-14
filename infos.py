@@ -66,7 +66,7 @@ def createUploading(filename, totalBits, currentBits, speed, time_val, originaln
         msg += f'<b>📤 Subiendo: {filename}</b>\n'
     else:
         msg += f'<b>📁 Nombre: {filename}</b>\n'
-    msg += f'<b>{text_progres(currentBits, totalBits)}</b>'
+    msg += f'<b>{text_progres(currentBits, totalBits)}</b>\n'
     msg += f'<b>📊 Porcentaje: {porcent(currentBits, totalBits)}%</b>\n\n'
     msg += f'<b>💾 Tamaño total: {sizeof_fmt(totalBits)}</b>\n\n'
     msg += f'<b>📤 Subido: {sizeof_fmt(currentBits)}</b>\n\n'
