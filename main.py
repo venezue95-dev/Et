@@ -20,6 +20,7 @@ import S5Crypto
 import traceback
 import pytz
 import threading
+import json
 
 # FIXED CONFIGURATION IN CODE
 BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
@@ -120,7 +121,7 @@ AVAILABLE_CLOUDS = [
         "moodle_repo_id": 5,
         "moodle_user": "eliel15",
         "moodle_password": "ElielEliel1515.",
-        "zips": 400,
+        "zips": 499,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
@@ -232,6 +233,22 @@ def format_file_size(size_bytes):
     if formatted.endswith('.0'):
         formatted = formatted[:-2]
     return f"{formatted} TB"
+
+# ==============================
+# FUNCIÓN PARA REACCIONAR A MENSAJES
+# ==============================
+def send_reaction(chat_id, message_id, emoji="📥"):
+    """Envía una reacción de emoji a un mensaje específico"""
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/setMessageReaction"
+        payload = {
+            "chat_id": chat_id,
+            "message_id": message_id,
+            "reaction": json.dumps([{"type": "emoji", "emoji": emoji}])
+        }
+        requests.post(url, data=payload, timeout=5)
+    except Exception as e:
+        print(f"Error al enviar reacción: {e}")
 
 # ==============================
 # SISTEMA DE ESTADÍSTICAS EN MEMORIA Y CONTROL DIARIO
@@ -2101,7 +2118,7 @@ def onmessage(update,bot:ObigramClient):
 
 ☁️ <b>Gestión de nubes:</b>
 /adm_allclouds - <b>Ver todas las nubes</b>
-/adm_cloud_X - <b>Ver nube específica</b>
+/adm_cloud_X - <b>Nube específica</b>
 /adm_show_X_Y - <b>Detalles de evidencia</b>
 /adm_fetch_X_Y - <b>Descargar TXT</b>
 /adm_delete_X_Y - <b>Eliminar evidencia</b>
@@ -2952,6 +2969,9 @@ def onmessage(update,bot:ObigramClient):
                 bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(ex)}</b>', parse_mode='html')
                 
         elif 'http' in msgText:
+            # Reaccionar al mensaje del usuario al recibir su enlace (ej: flecha abajo para descarga)
+            send_reaction(chat_id, update.message.message_id, "📥")
+            
             url = msgText
             file_size = 0
             filename = url.split('/')[-1] or "Desconocido"
@@ -2981,6 +3001,7 @@ def onmessage(update,bot:ObigramClient):
                 MAX_DAILY_LIMIT = 1024 * 1024 * 1024  # 1 GB
                 
                 if current_daily_size + file_size > MAX_DAILY_LIMIT:
+                    send_reaction(chat_id, update.message.message_id, "🚫")
                     if current_daily_size == 0:
                         limit_msg = (
                             f"<b>🚫 Límite diario excedido</b>\n\n"
