@@ -18,7 +18,6 @@ from urllib.parse import unquote
 import requests
 import S5Crypto
 import traceback
-import random
 import pytz
 import threading
 
@@ -384,37 +383,6 @@ class MemoryStats:
 
 memory_stats = MemoryStats()
 
-def get_random_large_file_message():
-    """Retorna un mensaje chistoso aleatorio para archivos grandes"""
-    messages = [
-        "¡Uy! Este archivo pesa más que mis ganas de trabajar los lunes 📦",
-        "¿Seguro que no estás subiendo toda la temporada de tu serie favorita? 🎬",
-        "Archivo detectado: XXL. Mi bandeja de entrada necesita hacer dieta 🍔",
-        "¡500MB alert! Esto es más grande que mi capacidad de decisión en un restaurante 🍕",
-        "Tu archivo necesita su propio código postal para viajar por internet 📮",
-        "Vaya, con este peso hasta el bot necesita ir al gimnasio 💪",
-        "¡Archivo XXL detectado! Preparando equipo de escalada para subirlo 🧗",
-        "Este archivo es tan grande que necesita su propia habitación en la nube ☁️",
-        "¿Esto es un archivo o un elefante digital disfrazado? 🐘",
-        "¡Alerta de megabyte! Tu archivo podría tener su propia órbita 🛰️",
-        "Archivo pesado detectado: activando modo grúa industrial 🏗️",
-        "Este archivo hace que mi servidor sude bytes 💦",
-        "¡Tamaño máximo superado! Necesitaré un café extra para esto ☕",
-        "Tu archivo es más grande que mi lista de excusas para no hacer ejercicio 🏃",
-        "Detectado: Archivo XXL. Preparando refuerzos estructurales 🏗️",
-        "¡Vaya! Este archivo es tan grande que necesita pasaporte para viajar 🌍",
-        "Con este peso, hasta la nube digital va a necesitar paraguas ☂️",
-        "¡500MB detectados! ¿Traes la biblioteca de Alejandría en un ZIP? 📚",
-        "Tu archivo tiene más MB que yo tengo neuronas después del café 🧠",
-        "¡Alerta! Archivo de tamaño épico detectado. Activando modo Hulk 💚",
-        "Este archivo es más pesado que mis remordimientos del lunes 🎭",
-        "¡Uy! Con este tamaño hasta internet va a sudar la gota gorda 💧",
-        "¿Seguro que no estás subiendo un elefante en formato MP4? 🐘📹",
-        "Archivo XXL: Mi conexión acaba de pedir aumento de sueldo 💰",
-        "¡500MB! Hasta los píxeles están haciendo dieta en este archivo 🥗"
-    ]
-    return random.choice(messages)
-
 def expand_user_groups():
     """Convierte 'usuario1,usuario2':config a 'usuario1':config, 'usuario2':config"""
     expanded = {}
@@ -638,28 +606,26 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             if thread and thread.getStore('stop'):
                 return None
             
-            # Error detallado para el usuario (igual que el grupo)
             clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if user_info else "Desconocido"
             filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
             error_msg_user = (
-                f"<b>❌ ¡Error en la subida!</b>\n\n"
-                f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                f"<b>❌ ¡Error en la página!</b>\n\n"
                 f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                f"<b>⚠️ Detalle:</b> <b>Error en la autenticación o página de Moodle durante la subida</b>"
+                f"<b>⚠️ Detalle:</b> <b>Error en la autenticación o página de Moodle</b>"
             )
             bot.editMessageText(message, error_msg_user, parse_mode='html')
             
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
-                    mensaje_log = (f"<b>❌ ¡Error en la subida!</b>\n"
+                    mensaje_log = (f"<b>❌ ¡Error en la página!</b>\n"
                                    f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                                    f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
                                    f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                                   f"<b>⚠️ Detalle:</b> <b>Error en la autenticación o página de Moodle durante la subida</b>")
+                                   f"<b>⚠️ Detalle:</b> <b>Error en la autenticación o página de Moodle</b>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar error de página al grupo: {e}")
-            return None
+            return "LOGIN_FAILED"
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
@@ -673,7 +639,6 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         clean_host = u_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if u_info else "Desconocido"
         filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
 
-        # Error detallado también para el usuario
         error_msg_user = (
             f"<b>❌ ¡Error en la subida!</b>\n\n"
             f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
@@ -730,7 +695,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 mult_file.close()
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
             
-            # Escritura en chunks con verificación de cancelación en tiempo real
             arcname = os.path.basename(file)
             zinfo = zipfile.ZipInfo.from_file(file, arcname)
             zinfo.compress_type = zipfile.ZIP_DEFLATED
@@ -742,7 +706,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                         zip.close()
                         mult_file.close()
                         raise Exception("Tarea detenida por mantenimiento o cancelación")
-                    chunk = src.read(1024 * 1024) # 1 MB por bloque
+                    chunk = src.read(1024 * 1024)
                     if not chunk:
                         break
                     dest.write(chunk)
@@ -774,6 +738,8 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
 
         visible_evidname = ''
         files = []
+        if client == "LOGIN_FAILED":
+            return
         if client:
             original_evidname = str(file).split('.')[0]
             visible_evidname = original_evidname
@@ -2964,9 +2930,7 @@ def onmessage(update,bot:ObigramClient):
                 
         elif 'http' in msgText:
             url = msgText
-            funny_message_sent = None
             file_size = 0
-            file_size_mb = 0
             filename = url.split('/')[-1] or "Desconocido"
             
             try:
@@ -2978,21 +2942,15 @@ def onmessage(update,bot:ObigramClient):
                 
                 response = requests.head(url, allow_redirects=True, timeout=5, headers=headers)
                 file_size = int(response.headers.get('content-length', 0))
-                file_size_mb = file_size / (1024 * 1024)
                 
                 cd = response.headers.get('content-disposition')
                 if cd and 'filename=' in cd:
                     filename = cd.split('filename=')[1].strip('"\'')
                 else:
                     filename = unquote(filename)
-                
-                if file_size_mb > 500:
-                    funny_message = get_random_large_file_message()
-                    warning_msg = bot.sendMessage(chat_id, f"<b>⚠️ {funny_message}</b>\n\n<b>❌ Cojoneee, ¿tú piensas que esto es una nube artificial o qué? ¿Para qué quieres subir {file_size_mb:.2f} MB?</b>\n\n<b>⬆️ Bueno, lo subiré 😡</b>", parse_mode='html')
-                    funny_message_sent = warning_msg
             except: pass
 
-            # --- VERIFICACIÓN DE LÍMITE DIARIO DE 1 GB (EN VIVO ANTES DE DESCARGAR, EXCEPTO ADMIN) ---
+            # --- VERIFICACIÓN DE LÍMITE DIARIO DE 1 GB (EXCEPTO ADMIN) ---
             if username.lower() != ADMIN_USERNAME.lower():
                 memory_stats.check_and_update_daily_reset(username)
                 user_st = memory_stats.get_user_stats(username)
@@ -3000,21 +2958,36 @@ def onmessage(update,bot:ObigramClient):
                 MAX_DAILY_LIMIT = 1024 * 1024 * 1024  # 1 GB
                 
                 if current_daily_size + file_size > MAX_DAILY_LIMIT:
-                    limit_msg = (
-                        f"<b>🚫 Límite diario alcanzado</b>\n\n"
-                        f"<b>Estimado usuario @{username}, ha alcanzado su límite de uso diario de 1 GB. "
-                        f"No es posible procesar este archivo de {format_file_size(file_size)} ya que excedería su cuota permitida. "
-                        f"Su cuota se restablecerá automáticamente al cambiar el día.</b>"
-                    )
+                    if current_daily_size == 0:
+                        limit_msg = (
+                            f"<b>🚫 Límite diario excedido</b>\n\n"
+                            f"<b>Estimado usuario @{username}, el archivo que intenta procesar pesa {format_file_size(file_size)}, "
+                            f"lo cual excede el límite diario permitido de 1 GB. "
+                            f"No es posible procesar este archivo.</b>"
+                        )
+                        group_limit_msg = (
+                            f"<b>🚫 Límite diario excedido en el grupo</b>\n"
+                            f"<b>El usuario @{username} intentó procesar un archivo de {format_file_size(file_size)}, "
+                            f"superando por sí solo el límite de 1 GB diario. "
+                            f"La solicitud ha sido bloqueada automáticamente.</b>"
+                        )
+                    else:
+                        limit_msg = (
+                            f"<b>🚫 Límite diario alcanzado</b>\n\n"
+                            f"<b>Estimado usuario @{username}, ya ha consumido {format_file_size(current_daily_size)} de su cuota diaria de 1 GB. "
+                            f"Intentar procesar este archivo de {format_file_size(file_size)} excedería su límite permitido. "
+                            f"Su cuota se restablecerá automáticamente al cambiar el día.</b>"
+                        )
+                        group_limit_msg = (
+                            f"<b>🚫 Límite diario excedido en el grupo</b>\n"
+                            f"<b>El usuario @{username} ha llegado a su límite de 1 GB diario (consumo previo: {format_file_size(current_daily_size)}) e intentó procesar un archivo de {format_file_size(file_size)}. "
+                            f"La solicitud ha sido bloqueada automáticamente.</b>"
+                        )
+
                     bot.editMessageText(message, limit_msg, parse_mode='html')
                     
                     if LOG_GROUP_ID != 0:
                         try:
-                            group_limit_msg = (
-                                f"<b>🚫 Límite diario excedido en el grupo</b>\n"
-                                f"<b>El usuario @{username} ha llegado a su límite de 1 GB diario e intentó procesar un archivo de {format_file_size(file_size)}. "
-                                f"La solicitud ha sido bloqueada automáticamente.</b>"
-                            )
                             bot.sendMessage(LOG_GROUP_ID, group_limit_msg, parse_mode='html')
                         except Exception as e:
                             print(f"Error al notificar bloqueo por límite diario al grupo: {e}")
@@ -3030,9 +3003,6 @@ def onmessage(update,bot:ObigramClient):
                     print(f"Error al notificar enlace: {e}")
             
             ddl(update,bot,message,url,file_name='',thread=thread,jdb=jdb)
-            
-            if funny_message_sent:
-                delete_message_after_delay(bot, funny_message_sent.chat.id, funny_message_sent.message_id, 8)
         else:
             bot.editMessageText(message,'<b>➲ No se pudo procesar ✗ </b>', parse_mode='html')
             
