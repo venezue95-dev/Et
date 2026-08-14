@@ -120,7 +120,7 @@ AVAILABLE_CLOUDS = [
         "moodle_repo_id": 5,
         "moodle_user": "eliel15",
         "moodle_password": "ElielEliel1515.",
-        "zips": 100,
+        "zips": 300,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
@@ -2966,10 +2966,10 @@ def onmessage(update,bot:ObigramClient):
                             f"No es posible procesar este archivo.</b>"
                         )
                         group_limit_msg = (
-                            f"<b>🚫 Límite diario excedido</b>\n"
-                            f"<b>El usuario @{username} intentó procesar un archivo de {format_file_size(file_size)}, "
-                            f"superando por sí solo el límite de 1 GB diario. "
-                            f"La solicitud ha sido bloqueada automáticamente.</b>"
+                            f"<b>🚫 ¡Límite diario excedido!</b>\n"
+                            f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                            f"<b>⚖️ Archivo:</b> <b>{format_file_size(file_size)}</b>\n"
+                            f"<b>⚠️ Detalle:</b> <b>Supera por sí solo el límite de 1 GB diario (bloqueado automáticamente)</b>"
                         )
                     else:
                         limit_msg = (
@@ -2979,9 +2979,11 @@ def onmessage(update,bot:ObigramClient):
                             f"Su cuota se restablecerá automáticamente al cambiar el día.</b>"
                         )
                         group_limit_msg = (
-                            f"<b>🚫 Límite diario excedido</b>\n"
-                            f"<b>El usuario @{username} ha llegado a su límite de 1 GB diario (consumo previo: {format_file_size(current_daily_size)}) e intentó procesar un archivo de {format_file_size(file_size)}. "
-                            f"La solicitud ha sido bloqueada automáticamente.</b>"
+                            f"<b>🚫 ¡Cuota diaria superada!</b>\n"
+                            f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                            f"<b>📊 Consumo previo:</b> <b>{format_file_size(current_daily_size)}</b>\n"
+                            f"<b>⚖️ Archivo intentado:</b> <b>{format_file_size(file_size)}</b>\n"
+                            f"<b>⚠️ Detalle:</b> <b>La suma excede el límite de 1 GB diario (bloqueado automáticamente)</b>"
                         )
 
                     bot.editMessageText(message, limit_msg, parse_mode='html')
