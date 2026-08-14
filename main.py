@@ -202,15 +202,21 @@ def format_cuba_datetime(dt=None):
     return f"{formatted_date} {hour}:{minute_ampm}"
 
 def format_file_size(size_bytes):
-    """Formatea bytes a KB, MB o GB automáticamente"""
+    """Formatea bytes a KB, MB o GB automáticamente sin decimales .0 innecesarios"""
     if size_bytes < 1024:
         return f"{size_bytes} B"
     elif size_bytes < 1024 * 1024:
-        return f"{size_bytes / 1024:.1f} KB"
+        val = size_bytes / 1024
+        return f"{int(val)} KB" if val.is_integer() else f"{val:.1f} KB"
     elif size_bytes < 1024 * 1024 * 1024:
-        return f"{size_bytes / (1024 * 1024):.1f} MB"
+        val = size_bytes / (1024 * 1024)
+        return f"{int(val)} MB" if val.is_integer() else f"{val:.1f} MB"
     else:
-        return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
+        val = size_bytes / (1024 * 1024 * 1024)
+        if val.is_integer():
+            return f"{int(val)} GB"
+        else:
+            return f"{val:.2f}".rstrip('0').rstrip('.') + " GB"
 
 # ==============================
 # SISTEMA DE ESTADÍSTICAS EN MEMORIA Y CONTROL DIARIO
@@ -432,11 +438,13 @@ def update_process(thread_id, username, filename, action, current, total):
         percent = (current / total) * 100 if total > 0 else 0
         if percent > 100: percent = 100
         
+        fmt_percent = f"{int(percent)}%" if percent.is_integer() else f"{percent:.1f}%"
+        
         ACTIVE_PROCESSES[thread_id] = {
             'user': username,
             'file': filename,
             'action': action,
-            'percent': f"{percent:.1f}%",
+            'percent': fmt_percent,
             'last_update': time.time()
         }
     except: pass
@@ -2696,7 +2704,7 @@ def onmessage(update,bot:ObigramClient):
 👤 <b>Usuario:</b> <b>@{username}</b>
 📤 <b>Subidas:</b> <b>{user_stats['uploads']}</b>
 🗑️ <b>Eliminaciones:</b> <b>{user_stats['deletes']}</b>
-💾 <b>Espacio usado hoy:</b> <b>{daily_size_formatted} / 1.0 GB</b>
+💾 <b>Espacio usado hoy:</b> <b>{daily_size_formatted} / 1 GB</b>
 💾 <b>Espacio histórico:</b> <b>{total_size_formatted}</b>
 📅 <b>Última actividad:</b> <b>{user_stats['last_activity']}</b>
 ────────────────────────
@@ -2708,7 +2716,7 @@ def onmessage(update,bot:ObigramClient):
 👤 <b>Usuario:</b> <b>@{username}</b>
 📤 <b>Subidas:</b> <b>0</b>
 🗑️ <b>Eliminaciones:</b> <b>0</b>
-💾 <b>Espacio usado hoy:</b> <b>0 B / 1.0 GB</b>
+💾 <b>Espacio usado hoy:</b> <b>0 B / 1 GB</b>
 ────────────────────────
 ℹ️ <b>Aún no tienes actividad registrada.</b>
                 """
@@ -2969,7 +2977,7 @@ def onmessage(update,bot:ObigramClient):
                             f"<b>🚫 ¡Límite diario excedido!</b>\n"
                             f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                             f"<b>⚖️ Archivo:</b> <b>{format_file_size(file_size)}</b>\n"
-                            f"<b>⚠️ Detalle:</b> <b>Supera por sí solo el límite de 1 GB diario (bloqueado automáticamente)</b>"
+                            f"<b>⚠️ Detalle:</b> <b>Supera el límite de 1 GB diario</b>"
                         )
                     else:
                         limit_msg = (
@@ -2983,7 +2991,7 @@ def onmessage(update,bot:ObigramClient):
                             f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                             f"<b>📊 Consumo previo:</b> <b>{format_file_size(current_daily_size)}</b>\n"
                             f"<b>⚖️ Archivo intentado:</b> <b>{format_file_size(file_size)}</b>\n"
-                            f"<b>⚠️ Detalle:</b> <b>La suma excede el límite de 1 GB diario (bloqueado automáticamente)</b>"
+                            f"<b>⚠️ Detalle:</b> <b>La suma excede el límite de 1 GB diario</b>"
                         )
 
                     bot.editMessageText(message, limit_msg, parse_mode='html')
