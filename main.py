@@ -235,7 +235,7 @@ def format_file_size(size_bytes):
     return f"{formatted} TB"
 
 # ==============================
-# FUNCIÓN PARA REACCIONAR A MENSAJES (SOLO ENLACES Y LÍMITES)
+# FUNCIONES PARA REACCIONES Y STICKERS
 # ==============================
 def send_reaction(chat_id, message_id, emoji="⚡"):
     """Envía una reacción de emoji oficial y soportada a un mensaje específico"""
@@ -249,6 +249,18 @@ def send_reaction(chat_id, message_id, emoji="⚡"):
         requests.post(url, data=payload, timeout=5)
     except Exception as e:
         print(f"Error al enviar reacción: {e}")
+
+def send_sticker(chat_id, sticker_id):
+    """Envía un sticker oficial usando el file_id de Telegram"""
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendSticker"
+        payload = {
+            "chat_id": chat_id,
+            "sticker": sticker_id
+        }
+        requests.post(url, data=payload, timeout=5)
+    except Exception as e:
+        print(f"Error al enviar sticker: {e}")
 
 # ==============================
 # SISTEMA DE ESTADÍSTICAS EN MEMORIA Y CONTROL DIARIO
@@ -444,7 +456,6 @@ def check_single_cloud(cloud_config):
     is_online = False
     try:
         proxy_parsed = ProxyCloud.parse(proxy) if proxy else None
-        # Pre-chequeo rápido con timeout de 5 segundos
         requests.get(moodle_host, timeout=5, proxies=proxy_parsed, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
         
         client = MoodleClient(moodle_user, moodle_password, moodle_host, moodle_repo_id, proxy=proxy_parsed)
@@ -579,30 +590,72 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         user_info = jdb.get_user(username)
         proxy = ProxyCloud.parse(user_info['proxy']) if user_info and user_info.get('proxy') else None
         
-        # VERIFICACIÓN RÁPIDA DE CONECTIVIDAD (Falla rápido si la Moodle está caída)
+        # VERIFICACIÓN RÁPIDA DE CONECTIVIDAD (Falla rápido y con mensajes mejorados si la Moodle está caída)
         try:
             test_url = user_info['moodle_host']
             requests.get(test_url, timeout=6, proxies=proxy, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
-        except Exception as conn_err:
+        except requests.exceptions.Timeout:
             if thread and thread.getStore('stop'):
                 return None
             clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if user_info else "Desconocido"
             filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
+            error_desc = "Tiempo de espera agotado (Timeout). El servidor tardó demasiado en responder."
             
             error_msg_user = (
-                f"<b>❌ ¡Moodle caída o sin respuesta!</b>\n\n"
-                f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                f"<b>⚠️ Detalle:</b> <b>La plataforma Moodle no responde (Servidor caído o tiempo de espera agotado)</b>"
+                f"<b>❌ ¡Error de Conexión con Moodle!</b>\n"
+                f"────────────────────────\n"
+                f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
+                f"📄 <b>Archivo:</b> <b>{filename_fail}</b>\n"
+                f"⚠️ <b>Detalle:</b> {error_desc}\n"
+                f"────────────────────────\n"
+                f"💡 <i>Usa /status para revisar el estado o /cambiar para elegir otra nube.</i>"
             )
             bot.editMessageText(message, error_msg_user, parse_mode='html')
             
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
-                    mensaje_log = (f"<b>❌ ¡Moodle caída / sin respuesta!</b>\n"
-                                   f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
-                                   f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
-                                   f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                                   f"<b>⚠️ Detalle:</b> <b>La plataforma Moodle no responde a las solicitudes</b>")
+                    mensaje_log = (
+                        f"<b>❌ ¡Error de Conexión / Moodle Caída!</b>\n"
+                        f"────────────────────────\n"
+                        f"👤 <b>Usuario:</b> <b>@{username}</b>\n"
+                        f"📄 <b>Archivo:</b> <b>{filename_fail}</b>\n"
+                        f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
+                        f"⚠️ <b>Detalle:</b> {error_desc}\n"
+                        f"────────────────────────"
+                    )
+                    bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+                except Exception as e:
+                    print(f"Error al notificar Moodle caída al grupo: {e}")
+            return "LOGIN_FAILED"
+        except Exception as conn_err:
+            if thread and thread.getStore('stop'):
+                return None
+            clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if user_info else "Desconocido"
+            filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
+            error_desc = "La plataforma Moodle no responde (Servidor caído o inaccesible)."
+            
+            error_msg_user = (
+                f"<b>❌ ¡Error de Conexión con Moodle!</b>\n"
+                f"────────────────────────\n"
+                f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
+                f"📄 <b>Archivo:</b> <b>{filename_fail}</b>\n"
+                f"⚠️ <b>Detalle:</b> {error_desc}\n"
+                f"────────────────────────\n"
+                f"💡 <i>Usa /status para revisar el estado o /cambiar para elegir otra nube.</i>"
+            )
+            bot.editMessageText(message, error_msg_user, parse_mode='html')
+            
+            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                try:
+                    mensaje_log = (
+                        f"<b>❌ ¡Error de Conexión / Moodle Caída!</b>\n"
+                        f"────────────────────────\n"
+                        f"👤 <b>Usuario:</b> <b>@{username}</b>\n"
+                        f"📄 <b>Archivo:</b> <b>{filename_fail}</b>\n"
+                        f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
+                        f"⚠️ <b>Detalle:</b> {error_desc}\n"
+                        f"────────────────────────"
+                    )
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar Moodle caída al grupo: {e}")
@@ -819,7 +872,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             
             txtname = visible_evidname + '.txt'
             try:
-                proxy = ProxyCloud.parse(getUser['proxy'])
+                proxy = ProxyCloud.parse(getUser['proxy']) if getUser.get('proxy') else None
                 moodle_client = MoodleClient(getUser['moodle_user'],
                                              getUser['moodle_password'],
                                              getUser['moodle_host'],
@@ -892,6 +945,9 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 txtname = str(file).split('/')[-1].split('.')[0] + '.txt'
                 send_to_group_flag = False if username.lower() == ADMIN_USERNAME.lower() else True
                 sendTxt(txtname, files, update, bot, send_to_group=send_to_group_flag, user_info=getUser)
+            
+            # Envío de sticker de subida completada (luego del txt)
+            send_sticker(message.chat.id, "CAACAgIAAxkBAAERtVdqftXIP92DzxW1CET5sKG1Cmz-ngAC-GEAAqoDsEo6knlbESIRLT0E")
         else:
             if thread and thread.getStore('stop'):
                 pass
@@ -2010,6 +2066,7 @@ def onmessage(update,bot:ObigramClient):
                 """
             
             bot.editMessageText(message, start_msg, parse_mode='html')
+            send_sticker(chat_id, "CAACAgIAAxkBAAERtVNqftR0B6MIHlclhZaurR-kGZ0UEAACmSoAAsr8AAFJsZ-yQveq3Vk9BA")
             return
 
         if '/status' == msgText:
@@ -3074,6 +3131,7 @@ def onmessage(update,bot:ObigramClient):
                         )
 
                     bot.editMessageText(message, limit_msg, parse_mode='html')
+                    send_sticker(chat_id, "CAACAgEAAxkBAAERtVVqftTgCp3w1dNVyHF3ColqeXu0qAACAQIAAlhvqUY0zEK11-MYLz0E")
                     
                     if LOG_GROUP_ID != 0:
                         try:
