@@ -120,7 +120,7 @@ AVAILABLE_CLOUDS = [
         "moodle_repo_id": 5,
         "moodle_user": "eliel15",
         "moodle_password": "ElielEliel1515.",
-        "zips": 499,
+        "zips": 400,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
@@ -205,18 +205,33 @@ def format_file_size(size_bytes):
     """Formatea bytes a KB, MB o GB automáticamente sin decimales .0 innecesarios"""
     if size_bytes < 1024:
         return f"{size_bytes} B"
-    elif size_bytes < 1024 * 1024:
-        val = size_bytes / 1024
-        return f"{int(val)} KB" if val.is_integer() else f"{val:.1f} KB"
-    elif size_bytes < 1024 * 1024 * 1024:
-        val = size_bytes / (1024 * 1024)
-        return f"{int(val)} MB" if val.is_integer() else f"{val:.1f} MB"
-    else:
-        val = size_bytes / (1024 * 1024 * 1024)
-        if val.is_integer():
-            return f"{int(val)} GB"
-        else:
-            return f"{val:.2f}".rstrip('0').rstrip('.') + " GB"
+    
+    val = size_bytes / 1024.0
+    if val < 1024:
+        formatted = f"{val:.1f}"
+        if formatted.endswith('.0'):
+            formatted = formatted[:-2]
+        return f"{formatted} KB"
+    
+    val /= 1024.0
+    if val < 1024:
+        formatted = f"{val:.1f}"
+        if formatted.endswith('.0'):
+            formatted = formatted[:-2]
+        return f"{formatted} MB"
+    
+    val /= 1024.0
+    if val < 1024:
+        formatted = f"{val:.1f}"
+        if formatted.endswith('.0'):
+            formatted = formatted[:-2]
+        return f"{formatted} GB"
+    
+    val /= 1024.0
+    formatted = f"{val:.1f}"
+    if formatted.endswith('.0'):
+        formatted = formatted[:-2]
+    return f"{formatted} TB"
 
 # ==============================
 # SISTEMA DE ESTADÍSTICAS EN MEMORIA Y CONTROL DIARIO
