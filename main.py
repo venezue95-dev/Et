@@ -2966,7 +2966,7 @@ def onmessage(update,bot:ObigramClient):
                             f"No es posible procesar este archivo.</b>"
                         )
                         group_limit_msg = (
-                            f"<b>🚫 Límite diario excedido en el grupo</b>\n"
+                            f"<b>🚫 Límite diario excedido</b>\n"
                             f"<b>El usuario @{username} intentó procesar un archivo de {format_file_size(file_size)}, "
                             f"superando por sí solo el límite de 1 GB diario. "
                             f"La solicitud ha sido bloqueada automáticamente.</b>"
@@ -2979,7 +2979,7 @@ def onmessage(update,bot:ObigramClient):
                             f"Su cuota se restablecerá automáticamente al cambiar el día.</b>"
                         )
                         group_limit_msg = (
-                            f"<b>🚫 Límite diario excedido en el grupo</b>\n"
+                            f"<b>🚫 Límite diario excedido</b>\n"
                             f"<b>El usuario @{username} ha llegado a su límite de 1 GB diario (consumo previo: {format_file_size(current_daily_size)}) e intentó procesar un archivo de {format_file_size(file_size)}. "
                             f"La solicitud ha sido bloqueada automáticamente.</b>"
                         )
