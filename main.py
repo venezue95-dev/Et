@@ -958,7 +958,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 sendTxt(txtname, files, update, bot, send_to_group=send_to_group_flag, user_info=getUser)
             
             # Envío de sticker de subida completada (luego del txt)
-            send_sticker(message.chat.id, "CAACAgQAAxkBAAERt1BqgN9pvn3Ff-qTpvDp3mS4C4ynNAACsQwAAleHWFL6sO5L6Y7w-z0E")
+            send_sticker(message.chat.id, "CAACAgEAAxkBAAERt2BqgOvSogknxmG1bcXLpDb51NmK-QACugYAApxYCUQZ4X3hfHudZz0E")
         else:
             if thread and thread.getStore('stop'):
                 pass
@@ -2066,7 +2066,7 @@ def onmessage(update,bot:ObigramClient):
                 """
             
             bot.editMessageText(message, start_msg, parse_mode='html')
-            send_sticker(chat_id, "CAACAgQAAxkBAAERt0xqgNulCyd2qeia_K4cDJ3FGijmeAAC_gwAAgzcWFKCwqDoeNh7Oz0E")
+            send_sticker(chat_id, "CAACAgEAAxkBAAERt2JqgOwNVjNMJBXP1xV8xm94ZxFD1AACuwYAApxYCUTYdND9QAYbrz0E")
             return
 
         if '/status' == msgText:
@@ -3107,7 +3107,7 @@ def onmessage(update,bot:ObigramClient):
                         )
 
                     bot.editMessageText(message, limit_msg, parse_mode='html')
-                    send_sticker(chat_id, "CAACAgQAAxkBAAERt05qgN8IblIO_YXG33FqKFckYvFoQQACbwsAAn7zWFJpXbg5BFXVIT0E")
+                    send_sticker(chat_id, "CAACAgEAAxkBAAERt2RqgO4UTNoH_wABZDl9WyVqXeys9r4AAr0GAAKcWAlE8LK9ZRtBqQE9BA")
                     
                     if LOG_GROUP_ID != 0:
                         try:
