@@ -958,7 +958,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 sendTxt(txtname, files, update, bot, send_to_group=send_to_group_flag, user_info=getUser)
             
             # Envío de sticker de subida completada (luego del txt)
-            send_sticker(message.chat.id, "CAACAgEAAxkBAAEhqYRqgPD7r2U9T4GW6v9TVuBZVpFkjwACugYAApxYCUQMAAG3UohIbds9BA")
+            send_sticker(message.chat.id, "CAACAgEAAxkBAAIoXGqA9r31O2plFhlz_RG3tuYEg-_JAAK6BgACnFgJRDiBixe0VxapPQQ")
         else:
             if thread and thread.getStore('stop'):
                 pass
@@ -1624,12 +1624,6 @@ def onmessage(update,bot:ObigramClient):
             jdb.save_data_user(username, user_info)
             jdb.save()
 
-        # Captura automática de file_id para stickers enviados al bot
-        if update.message.sticker:
-            sticker_id = update.message.sticker.file_id
-            bot.sendMessage(chat_id, f"<code>{sticker_id}</code>", parse_mode='html')
-            return
-
         if '/cancel_' in msgText:
             try:
                 cmd = str(msgText).split('_',2)
@@ -2072,7 +2066,7 @@ def onmessage(update,bot:ObigramClient):
                 """
             
             bot.editMessageText(message, start_msg, parse_mode='html')
-            send_sticker(chat_id, "CAACAgEAAxkBAAEhqXBqgO_oF6Qs0uw2JqlxkMFU8C7KQwACuwYAApxYCURE5EM7B74WWj0E")
+            send_sticker(chat_id, "CAACAgEAAxkBAAIoVGqA9obyhoMJe62uOFPzvoFk6vwpAAK7BgACnFgJROtfXZ-KKr1vPQQ")
             return
 
         if '/status' == msgText:
@@ -3113,7 +3107,7 @@ def onmessage(update,bot:ObigramClient):
                         )
 
                     bot.editMessageText(message, limit_msg, parse_mode='html')
-                    send_sticker(chat_id, "CAACAgEAAxkBAAEhqXxqgPC22yOahksd9BXlDkB2qx6FnAACvQYAApxYCUTcOHTT7Bfgyj0E")
+                    send_sticker(chat_id, "CAACAgEAAxkBAAIoWmqA9ruIyyqZw_C2PTIr47iOS-6MAAK9BgACnFgJRF49GlLpEVF9PQQ")
                     
                     if LOG_GROUP_ID != 0:
                         try:
