@@ -148,7 +148,7 @@ PRE_CONFIGURATED_USERS = {
     "gatitoo_miauu,usuario_nuevo2": AVAILABLE_CLOUDS[4],
     "Satoru_2115,usuario_nuevo4": AVAILABLE_CLOUDS[5],
     "usuario_uclv1,usuario_uclv2": AVAILABLE_CLOUDS[6],
-        "usuario1,usuario2": AVAILABLE_CLOUDS[7]
+    "usuario1,usuario2": AVAILABLE_CLOUDS[7]
 }
 
 # ==============================
@@ -882,27 +882,35 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                                              getUser['moodle_repo_id'],
                                              proxy=proxy)
                 if moodle_client.login():
-                    evidences = moodle_client.getEvidences()
-                    
+                    # SISTEMA DE REINTENTO PARA LIDIAR CON EL RETRASO DE INDEXACIÓN DE MOODLE
+                    files = []
                     evidence_index = -1
-                    for idx, ev in enumerate(evidences):
-                        if ev['name'] == internal_evidname:
-                            files = ev['files']
-                            for i in range(len(files)):
-                                url = files[i]['directurl']
-                                if '?forcedownload=1' in url:
-                                    url = url.replace('?forcedownload=1', '')
-                                elif '&forcedownload=1' in url:
-                                    url = url.replace('&forcedownload=1', '')
-                                if '&token=' in url and '?' not in url:
-                                    url = url.replace('&token=', '?token=', 1)
-                                files[i]['directurl'] = url
-                            evidence_index = idx
+                    for attempt in range(3):
+                        evidences = moodle_client.getEvidences()
+                        for idx, ev in enumerate(evidences):
+                            if ev['name'] == internal_evidname:
+                                files = ev.get('files', [])
+                                if files:
+                                    evidence_index = idx
+                                    break
+                        if files:
                             break
+                        time.sleep(2)
+                    
+                    if files:
+                        for i in range(len(files)):
+                            url = files[i]['directurl']
+                            if '?forcedownload=1' in url:
+                                url = url.replace('?forcedownload=1', '')
+                            elif '&forcedownload=1' in url:
+                                url = url.replace('&forcedownload=1', '')
+                            if '&token=' in url and '?' not in url:
+                                url = url.replace('&token=', '?token=', 1)
+                            files[i]['directurl'] = url
                     
                     moodle_client.logout()
                     
-                    findex = evidence_index if evidence_index != -1 else len(evidences) - 1
+                    findex = evidence_index if evidence_index != -1 else 0
             except Exception as e:
                 print(f"Error obteniendo índice de evidencia: {e}")
                 findex = 0
@@ -950,7 +958,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 sendTxt(txtname, files, update, bot, send_to_group=send_to_group_flag, user_info=getUser)
             
             # Envío de sticker de subida completada (luego del txt)
-            send_sticker(message.chat.id, "CAACAgEAAxkBAAERt0hqgNjIpHY3V3MUaHYSw8lsClnSnAAC-wUAAnEdoUbNKjGeMVpj9z0E")
+            send_sticker(message.chat.id, "CAACAgQAAxkBAAERt1BqgN9pvn3Ff-qTpvDp3mS4C4ynNAACsQwAAleHWFL6sO5L6Y7w-z0E")
         else:
             if thread and thread.getStore('stop'):
                 pass
@@ -3099,7 +3107,7 @@ def onmessage(update,bot:ObigramClient):
                         )
 
                     bot.editMessageText(message, limit_msg, parse_mode='html')
-                    send_sticker(chat_id, "CAACAgEAAxkBAAERt0ZqgNbVZNKwJnhsXq4iisCEm2er-AACrAQAAk-zwUTvOTirTDxYmz0E")
+                    send_sticker(chat_id, "CAACAgQAAxkBAAERt05qgN8IblIO_YXG33FqKFckYvFoQQACbwsAAn7zWFJpXbg5BFXVIT0E")
                     
                     if LOG_GROUP_ID != 0:
                         try:
