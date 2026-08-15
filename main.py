@@ -1623,12 +1623,12 @@ def onmessage(update,bot:ObigramClient):
             user_info['chat_id'] = chat_id
             jdb.save_data_user(username, user_info)
             jdb.save()
-            
-                    if update.message.sticker:
+
+        # Captura automática de file_id para stickers enviados al bot
+        if update.message.sticker:
             sticker_id = update.message.sticker.file_id
-            bot.sendMessage(chat_id, f"<b>Tu file_id del sticker es:</b>\n\n<code>{sticker_id}</code>", parse_mode='html')
+            bot.sendMessage(chat_id, f"<code>{sticker_id}</code>", parse_mode='html')
             return
-            
 
         if '/cancel_' in msgText:
             try:
