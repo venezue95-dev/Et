@@ -441,7 +441,7 @@ class MemoryStats:
     def clear_all_data(self):
         """Limpia todos los datos"""
         self.reset_stats()
-        return "<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> Todos los datos han sido eliminados</b>"
+        return "<b>✅ Todos los datos han sido eliminados</b>"
 
 memory_stats = MemoryStats()
 
@@ -558,7 +558,7 @@ def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
             downloader.stop()
             raise Exception("Tarea detenida por mantenimiento o cancelación")
         
-        update_process(thread.id, username, filename, '<tg-emoji id="5368324170671202286">📥</tg-emoji> Descargando', currentBits, totalBits)
+        update_process(thread.id, username, filename, '📥 Descargando', currentBits, totalBits)
         
         downloadingInfo = infos.createDownloading(filename,totalBits,currentBits,speed,time,tid=thread.id)
         bot.editMessageText(message, downloadingInfo, parse_mode='html')
@@ -576,7 +576,7 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
         if thread and thread.getStore('stop'):
             raise Exception("Tarea detenida por mantenimiento o cancelación")
         
-        update_process(thread.id, username, filename, '<tg-emoji id="5368324170671202286">📤</tg-emoji> Subiendo', currentBits, totalBits)
+        update_process(thread.id, username, filename, '📤 Subiendo', currentBits, totalBits)
         
         tid_str = thread.id if thread else ''
         uploadingInfo = infos.createUploading(filename, totalBits, currentBits, speed, time, originalfile, tid=tid_str)
@@ -586,7 +586,7 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
 
 def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jdb=None):
     try:
-        prep_msg = '<b><tg-emoji id="5368324170671202286">⬆️</tg-emoji> Preparando para subir <tg-emoji id="5368324170671202286">☁️</tg-emoji> ●●○</b>'
+        prep_msg = '<b>⬆️ Preparando para subir ☁ ●●○</b>'
         if thread:
             prep_msg += f"\n\n/cancel_{thread.id}"
         bot.editMessageText(message, prep_msg, parse_mode='html')
@@ -595,7 +595,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         if thread:
             if thread.getStore('stop'):
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
-            update_process(thread.id, username, os.path.basename(str(filename)), '<tg-emoji id="5368324170671202286">⬆️</tg-emoji> Preparando para subir', 0, 100)
+            update_process(thread.id, username, os.path.basename(str(filename)), '⬆️ Preparando para subir', 0, 100)
             
         evidence = None
         fileid = None
@@ -614,21 +614,21 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             error_desc = "<b>Tiempo de espera agotado. El servidor tardó demasiado en responder.</b>"
             
             error_msg_user = (
-                f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error de conexión con Moodle (Timeout)!</b>\n\n"
-                f"<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube:</b> <code>{clean_host}</code>\n"
-                f"<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>Detalle:</b> {error_desc}\n\n"
-                f"<tg-emoji id=\"5368324170671202286\">💡</tg-emoji> <i>Usa /status para revisar el estado o /cambiar para elegir otra nube.</i>"
+                f"<b>❌ ¡Error de conexión con Moodle (Timeout)!</b>\n\n"
+                f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
+                f"⚠️ <b>Detalle:</b> {error_desc}\n\n"
+                f"💡 <i>Usa /status para revisar el estado o /cambiar para elegir otra nube.</i>"
             )
             bot.editMessageText(message, error_msg_user, parse_mode='html')
             
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     mensaje_log = (
-                        f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error de Conexión (Timeout)!</b>\n\n"
-                        f"<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>@{username}</b>\n"
-                        f"<tg-emoji id=\"5368324170671202286\">📄</tg-emoji> <b>Nombre:</b> <b>{filename_fail}</b>\n"
-                        f"<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube:</b> <code>{clean_host}</code>\n"
-                        f"<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>Detalle:</b> {error_desc}"
+                        f"<b>❌ ¡Error de Conexión (Timeout)!</b>\n\n"
+                        f"👤 <b>Usuario:</b> <b>@{username}</b>\n"
+                        f"📄 <b>Nombre:</b> <b>{filename_fail}</b>\n"
+                        f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
+                        f"⚠️ <b>Detalle:</b> {error_desc}"
                     )
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
@@ -642,21 +642,21 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             error_desc = "<b>La plataforma Moodle no responde (Servidor caído o inaccesible).</b>"
             
             error_msg_user = (
-                f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error de conexión con Moodle (Servidor Caído)!</b>\n\n"
-                f"<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube:</b> <code>{clean_host}</code>\n"
-                f"<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>Detalle:</b> {error_desc}\n\n"
-                f"<tg-emoji id=\"5368324170671202286\">💡</tg-emoji> <i>Usa /status para revisar el estado o /cambiar para elegir otra nube.</i>"
+                f"<b>❌ ¡Error de conexión con Moodle (Servidor Caído)!</b>\n\n"
+                f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
+                f"⚠️ <b>Detalle:</b> {error_desc}\n\n"
+                f"💡 <i>Usa /status para revisar el estado o /cambiar para elegir otra nube.</i>"
             )
             bot.editMessageText(message, error_msg_user, parse_mode='html')
             
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     mensaje_log = (
-                        f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error de Conexión (Servidor Caído)!</b>\n\n"
-                        f"<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>@{username}</b>\n"
-                        f"<tg-emoji id=\"5368324170671202286\">📄</tg-emoji> <b>Nombre:</b> <b>{filename_fail}</b>\n"
-                        f"<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube:</b> <code>{clean_host}</code>\n"
-                        f"<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>Detalle:</b> {error_desc}"
+                        f"<b>❌ ¡Error de Conexión (Servidor Caído)!</b>\n\n"
+                        f"👤 <b>Usuario:</b> <b>@{username}</b>\n"
+                        f"📄 <b>Nombre:</b> <b>{filename_fail}</b>\n"
+                        f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
+                        f"⚠️ <b>Detalle:</b> {error_desc}"
                     )
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
@@ -737,19 +737,19 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
             error_desc = "<b>Error en la autenticación o credenciales incorrectas.</b>"
             error_msg_user = (
-                f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error de Autenticación en Moodle!</b>\n\n"
-                f"<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube:</b> <code>{clean_host}</code>\n"
-                f"<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>Detalle:</b> {error_desc}"
+                f"<b>❌ ¡Error de Autenticación en Moodle!</b>\n\n"
+                f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
+                f"⚠️ <b>Detalle:</b> {error_desc}"
             )
             bot.editMessageText(message, error_msg_user, parse_mode='html')
             
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
-                    mensaje_log = (f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error de Autenticación en Moodle!</b>\n\n"
-                                   f"<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <b>@{username}</b>\n"
-                                   f"<b><tg-emoji id=\"5368324170671202286\">📄</tg-emoji> Nombre:</b> <b>{filename_fail}</b>\n"
-                                   f"<b><tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> Nube:</b> <code>{clean_host}</code>\n"
-                                   f"<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> Detalle:</b> {error_desc}")
+                    mensaje_log = (f"<b>❌ ¡Error de Autenticación en Moodle!</b>\n\n"
+                                   f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                   f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                                   f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                                   f"<b>⚠️ Detalle:</b> {error_desc}")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar error de página al grupo: {e}")
@@ -757,7 +757,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
-                bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">➲</tg-emoji> Tarea cancelada <tg-emoji id=\"5368324170671202286\">✗</tg-emoji> </b>', parse_mode='html')
+                bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
             except:
                 pass
             return None
@@ -768,20 +768,20 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
 
         error_msg_user = (
-            f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error en la subida!</b>\n\n"
-            f"<tg-emoji id=\"5368324170671202286\">📄</tg-emoji> <b>Nombre:</b> <b>{filename_fail}</b>\n"
-            f"<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube:</b> <code>{clean_host}</code>\n"
-            f"<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>Detalle:</b> <b>Fallo en la subida del archivo: {error_detail}</b>"
+            f"<b>❌ ¡Error en la subida!</b>\n\n"
+            f"📄 <b>Nombre:</b> <b>{filename_fail}</b>\n"
+            f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
+            f"⚠️ <b>Detalle:</b> <b>Fallo en la subida del archivo: {error_detail}</b>"
         )
         bot.editMessageText(message, error_msg_user, parse_mode='html')
 
         if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
             try:
-                mensaje_log = (f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error en la subida!</b>\n\n"
-                               f"<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <b>@{username}</b>\n"
-                               f"<b><tg-emoji id=\"5368324170671202286\">📄</tg-emoji> Nombre:</b> <b>{filename_fail}</b>\n"
-                               f"<b><tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> Nube:</b> <code>{clean_host}</code>\n"
-                               f"<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> Detalle:</b> <b>Fallo en la subida del archivo: {error_detail}</b>")
+                mensaje_log = (f"<b>❌ ¡Error en la subida!</b>\n\n"
+                               f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                               f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                               f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                               f"<b>⚠️ Detalle:</b> <b>Fallo en la subida del archivo: {error_detail}</b>")
                 bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
             except Exception as e:
                 print(f"Error al notificar error de subida al grupo: {e}")
@@ -812,7 +812,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             if thread:
                 if thread.getStore('stop'):
                     raise Exception("Tarea detenida por mantenimiento o cancelación")
-                update_process(thread.id, username, os.path.basename(file), '<tg-emoji id="5368324170671202286">🗜️</tg-emoji> Comprimiendo', 0, 100)
+                update_process(thread.id, username, os.path.basename(file), '🗜️ Comprimiendo', 0, 100)
             
             zipname = str(file).split('.')[0] + createID()
             mult_file = zipfile.MultiFile(zipname,max_file_size)
@@ -928,7 +928,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 if 'uclv.edu.cu' in host or 'fundacion.uh.cu' in host:
                     m_user = getUser.get('moodle_user', '')
                     m_pass = getUser.get('moodle_password', '')
-                    extra_msg = f"\n<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n\n<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <code>{m_user}</code>\n<b><tg-emoji id=\"5368324170671202286\">🔑</tg-emoji> Contraseña:</b> <code>{m_pass}</code>\n"
+                    extra_msg = f"\n<b>⚠️ Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n\n<b>👤 Usuario:</b> <code>{m_user}</code>\n<b>🔑 Contraseña:</b> <code>{m_pass}</code>\n"
 
             bot.sendMessage(message.chat.id, finishInfo + '\n' + extra_msg + '\n' + filesInfo, parse_mode='html')
             
@@ -943,11 +943,11 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                    mensaje_log = (f"<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> ¡Subida completada!</b>\n\n"
-                                   f"<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <b>@{username}</b>\n"
-                                   f"<b><tg-emoji id=\"5368324170671202286\">📄</tg-emoji> Nombre:</b> <b>{filename_clean}</b>\n"
-                                   f"<b><tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> Peso:</b> <b>{format_file_size(file_size)}</b>\n"
-                                   f"<b><tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> Nube:</b> <code>{clean_host}</code>")
+                    mensaje_log = (f"<b>✅ ¡Subida completada!</b>\n\n"
+                                   f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                   f"<b>📄 Nombre:</b> <b>{filename_clean}</b>\n"
+                                   f"<b>⚖️ Peso:</b> <b>{format_file_size(file_size)}</b>\n"
+                                   f"<b>☁️ Nube:</b> <code>{clean_host}</code>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar subida al grupo: {e}")
@@ -965,15 +965,15 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             else:
                 clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if getUser else "Desconocido"
                 error_page_msg = (
-                    f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error de Autenticación en Moodle!</b>\n\n"
-                    f"<b><tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> Nube:</b> <code>{clean_host}</code>\n"
-                    f"<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> Detalle:</b> <b>Error en la autenticación o credenciales incorrectas</b>"
+                    f"<b>❌ ¡Error de Autenticación en Moodle!</b>\n\n"
+                    f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                    f"<b>⚠️ Detalle:</b> <b>Error en la autenticación o credenciales incorrectas</b>"
                 )
                 bot.editMessageText(message, error_page_msg, parse_mode='html')
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
-                bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">➲</tg-emoji> Tarea cancelada <tg-emoji id=\"5368324170671202286\">✗</tg-emoji> </b>', parse_mode='html')
+                bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
             except:
                 pass
             return
@@ -985,20 +985,20 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         filename_fail = os.path.basename(file) if file else "Desconocido"
         
         error_msg_user = (
-            f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error en la {phase}!</b>\n\n"
-            f"<b><tg-emoji id=\"5368324170671202286\">📄</tg-emoji> Nombre:</b> <b>{filename_fail}</b>\n"
-            f"<b><tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> Nube:</b> <code>{clean_host}</code>\n"
-            f"<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> Detalle:</b> <b>Fallo en la {phase} del archivo: {error_detail}</b>"
+            f"<b>❌ ¡Error en la {phase}!</b>\n\n"
+            f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+            f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+            f"<b>⚠️ Detalle:</b> <b>Fallo en la {phase} del archivo: {error_detail}</b>"
         )
         bot.editMessageText(message, error_msg_user, parse_mode='html')
         
         if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
             try:
-                mensaje_log = (f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error en la {phase}!</b>\n\n"
-                               f"<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <b>@{username}</b>\n"
-                               f"<b><tg-emoji id=\"5368324170671202286\">📄</tg-emoji> Nombre:</b> <b>{filename_fail}</b>\n"
-                               f"<b><tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> Nube:</b> <code>{clean_host}</code>\n"
-                               f"<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> Detalle:</b> <b>Fallo en la {phase} del archivo: {error_detail}</b>")
+                mensaje_log = (f"<b>❌ ¡Error en la {phase}!</b>\n\n"
+                               f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                               f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                               f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                               f"<b>⚠️ Detalle:</b> <b>Fallo en la {phase} del archivo: {error_detail}</b>")
                 bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
             except Exception as e:
                 print(f"Error al notificar error de proceso al grupo: {e}")
@@ -1018,10 +1018,10 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                     break
                 if attempt > 0:
                     try:
-                        bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> Error de conexión, reintentando... (Intento {attempt+1}/{retries})</b>", parse_mode='html')
+                        bot.editMessageText(message, f"<b>⚠️ Error de conexión, reintentando... (Intento {attempt+1}/{retries})</b>", parse_mode='html')
                     except: pass
                     if thread:
-                        update_process(thread.id, username, "Descarga", '<tg-emoji id="5368324170671202286">🔄</tg-emoji> Reintentando', 0, 100)
+                        update_process(thread.id, username, "Descarga", f'🔄 Reintentando ({attempt+1}/{retries})', 0, 100)
                 
                 file = downloader.download_url(url, progressfunc=downloadFile, args=(bot,message,thread,username))
                 if file:
@@ -1034,10 +1034,10 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                     filename_fail = url.split('/')[-1] or "Desconocido"
 
                     error_msg_user = (
-                        f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error en la descarga!</b>\n\n"
-                        f"<b><tg-emoji id=\"5368324170671202286\">📄</tg-emoji> Nombre:</b> <b>{filename_fail}</b>\n"
-                        f"<b><tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> Nube:</b> <code>{clean_host}</code>\n"
-                        f"<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> Detalle:</b> <b>Fallo en la descarga del enlace tras {retries} intentos: {error_detail}</b>"
+                        f"<b>❌ ¡Error en la descarga!</b>\n\n"
+                        f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                        f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                        f"<b>⚠️ Detalle:</b> <b>Fallo en la descarga del enlace tras {retries} intentos: {error_detail}</b>"
                     )
                     try:
                         bot.editMessageText(message, error_msg_user, parse_mode='html')
@@ -1045,11 +1045,11 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                     
                     if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                         try:
-                            mensaje_log = (f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Error en la descarga!</b>\n\n"
-                                           f"<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <b>@{username}</b>\n"
-                                           f"<b><tg-emoji id=\"5368324170671202286\">📄</tg-emoji> Nombre:</b> <b>{filename_fail}</b>\n"
-                                           f"<b><tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> Nube:</b> <code>{clean_host}</code>\n"
-                                           f"<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> Detalle:</b> <b>Fallo en la descarga del enlace: {error_detail}</b>")
+                            mensaje_log = (f"<b>❌ ¡Error en la descarga!</b>\n\n"
+                                           f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                           f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
+                                           f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                                           f"<b>⚠️ Detalle:</b> <b>Fallo en la descarga del enlace: {error_detail}</b>")
                             bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                         except Exception as e:
                             print(f"Error al notificar error de descarga al grupo: {e}")
@@ -1062,13 +1062,13 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                 processFile(update,bot,message,file,thread=thread,jdb=jdb)
             else:
                 try:
-                    bot.editMessageText(message,'<b><tg-emoji id=\"5368324170671202286\">➥</tg-emoji> Error en la descarga <tg-emoji id=\"5368324170671202286\">✗</tg-emoji></b>', parse_mode='html')
+                    bot.editMessageText(message,'<b>➥ Error en la descarga ✗</b>', parse_mode='html')
                 except:
-                    bot.editMessageText(message,'<b><tg-emoji id=\"5368324170671202286\">➥</tg-emoji> Error en la descarga <tg-emoji id=\"5368324170671202286\">✗</tg-emoji></b>', parse_mode='html')
+                    bot.editMessageText(message,'<b>➥ Error en la descarga ✗</b>', parse_mode='html')
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
-                bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">➲</tg-emoji> Tarea cancelada <tg-emoji id=\"5368324170671202286\">✗</tg-emoji> </b>', parse_mode='html')
+                bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
             except:
                 pass
         else:
@@ -1414,14 +1414,14 @@ def show_updated_cloud(bot, message, cloud_idx):
         if not evidences:
             short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
             empty_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">📭</tg-emoji> Nube vacía</b>
+<b>📭 Nube vacía</b>
 
-<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> Eliminación completa</b>
-<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube:</b> <code>{short_name}</code>
+<b>✅ Eliminación completa</b>
+☁️ <b>Nube:</b> <code>{short_name}</code>
 
-<tg-emoji id=\"5368324170671202286\">🎉</tg-emoji> <b>¡Has eliminado todas las evidencias de esta nube!</b>
+🎉 <b>¡Has eliminado todas las evidencias de esta nube!</b>
 
-<tg-emoji id=\"5368324170671202286\">🔄</tg-emoji> <b>Regresando a todas las nubes...</b>
+🔄 <b>Regresando a todas las nubes...</b>
             """
             bot.editMessageText(message, empty_msg, parse_mode='html')
             time.sleep(1.5)
@@ -1431,8 +1431,8 @@ def show_updated_cloud(bot, message, cloud_idx):
         short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
         
         list_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">📋</tg-emoji> Nube actualizada</b>
-<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube:</b> <code>{short_name}</code>
+<b>📋 Nube actualizada</b>
+☁️ <b>Nube:</b> <code>{short_name}</code>
 
 """
         for idx, evidence in enumerate(evidences):
@@ -1457,19 +1457,19 @@ def show_updated_cloud(bot, message, cloud_idx):
             if len(clean_name) > 35:
                 list_msg += "..."
             list_msg += f"<b>{user_str}</b>\n"
-            list_msg += f"   <tg-emoji id=\"5368324170671202286\">📁</tg-emoji> <b>Archivos:</b> <b>{evidence['files_count']}</b>\n"
-            list_msg += f"   <tg-emoji id=\"5368324170671202286\">👁️</tg-emoji> <b>Ver:</b> /adm_show_{cloud_idx}_{idx}\n"
-            list_msg += f"   <tg-emoji id=\"5368324170671202286\">📄</tg-emoji> <b>TXT:</b> /adm_fetch_{cloud_idx}_{idx}\n"
-            list_msg += f"   <tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> <b>Borrar:</b> /adm_delete_{cloud_idx}_{idx}\n\n"
+            list_msg += f"   📁 <b>Archivos:</b> <b>{evidence['files_count']}</b>\n"
+            list_msg += f"   👁️ <b>Ver:</b> /adm_show_{cloud_idx}_{idx}\n"
+            list_msg += f"   📄 <b>TXT:</b> /adm_fetch_{cloud_idx}_{idx}\n"
+            list_msg += f"   🗑️ <b>Borrar:</b> /adm_delete_{cloud_idx}_{idx}\n\n"
         
         total_evidences = len(evidences)
         total_files = sum(e['files_count'] for e in evidences)
         
         list_msg += f"""
-<tg-emoji id=\"5368324170671202286\">🔧</tg-emoji> <b>Acciones masivas:</b>
+🔧 <b>Acciones masivas:</b>
 /adm_wipe_{cloud_idx} - <b>Eliminación masiva</b>
 
-<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>Resumen:</b>
+📊 <b>Resumen:</b>
 • <b>Evidencias:</b> <b>{total_evidences}</b>
 • <b>Archivos:</b> <b>{total_files}</b>
         """
@@ -1478,8 +1478,8 @@ def show_updated_cloud(bot, message, cloud_idx):
         
     except Exception as e:
         error_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al actualizar</b>
-<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>No se pudo mostrar la nube actualizada.</b>
+<b>❌ Error al actualizar</b>
+⚠️ <b>No se pudo mostrar la nube actualizada.</b>
         """
         bot.editMessageText(message, error_msg, parse_mode='html')
 
@@ -1496,25 +1496,25 @@ def show_updated_all_clouds(bot, message):
         
         if total_evidences == 0:
             empty_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">👑</tg-emoji> Todas las nubes actualizadas</b>
-<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>Resumen general:</b>
+<b>👑 Todas las nubes actualizadas</b>
+📊 <b>Resumen general:</b>
 • <b>Nubes:</b> <b>{total_clouds}</b>
 • <b>Evidencias totales:</b> <b>0</b>
 • <b>Archivos totales:</b> <b>0</b>
 
-<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> Todas las nubes están vacías</b>
+<b>✅ Todas las nubes están vacías</b>
             """
             bot.editMessageText(message, empty_msg, parse_mode='html')
             return
         
         menu_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">👑</tg-emoji> Todas las nubes actualizadas</b>
-<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>Resumen general:</b>
+<b>👑 Todas las nubes actualizadas</b>
+📊 <b>Resumen general:</b>
 • <b>Nubes:</b> <b>{total_clouds}</b>
 • <b>Evidencias totales:</b> <b>{total_evidences}</b>
 • <b>Archivos totales:</b> <b>{total_files}</b>
 
-<tg-emoji id=\"5368324170671202286\">📋</tg-emoji> <b>Nubes disponibles:</b>"""
+📋 <b>Nubes disponibles:</b>"""
         
         cloud_index = 0
         for cloud_name, evidences in admin_evidence_manager.clouds_dict.items():
@@ -1522,25 +1522,25 @@ def show_updated_all_clouds(bot, message):
             short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
             
             menu_msg += f"\n\n<b>{cloud_index}.</b> <code>{short_name}</code>"
-            menu_msg += f"\n   <tg-emoji id=\"5368324170671202286\">📁</tg-emoji> <b>{len(evidences)} evidencias, {cloud_files} archivos</b>"
-            menu_msg += f"\n   <tg-emoji id=\"5368324170671202286\">🔍</tg-emoji> /adm_cloud_{cloud_index}"
+            menu_msg += f"\n   📁 <b>{len(evidences)} evidencias, {cloud_files} archivos</b>"
+            menu_msg += f"\n   🔍 /adm_cloud_{cloud_index}"
             
             if len(evidences) > 0:
-                menu_msg += f"\n   <tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> /adm_wipe_{cloud_index}"
+                menu_msg += f"\n   🗑️ /adm_wipe_{cloud_index}"
             
             cloud_index += 1
         
         if total_evidences > 0:
             menu_msg += f"""
 
-<tg-emoji id=\"5368324170671202286\">🔧</tg-emoji> <b>Opciones masivas:</b>
-/adm_nuke - <tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>Eliminación masiva</b>
+🔧 <b>Opciones masivas:</b>
+/adm_nuke - ⚠️ <b>Eliminación masiva</b>
         """
         
         bot.editMessageText(message, menu_msg, parse_mode='html')
         
     except Exception as e:
-        bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al mostrar nubes actualizadas:</b> <b>{str(e)}</b>', parse_mode='html')
+        bot.editMessageText(message, f'<b>❌ Error al mostrar nubes actualizadas:</b> <b>{str(e)}</b>', parse_mode='html')
 
 def show_loading_progress(bot, message, step, total_steps=3):
     progress_chars = ['○', '◔', '◑', '◕', '●']
@@ -1548,9 +1548,9 @@ def show_loading_progress(bot, message, step, total_steps=3):
     bar = progress_chars[progress] if progress < len(progress_chars) else progress_chars[-1]
     
     loading_msgs = [
-        "<tg-emoji id=\"5368324170671202286\">🔄</tg-emoji> <b>Conectando con las nubes...</b>",
-        "<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>Procesando datos...</b>",
-        "<tg-emoji id=\"5368324170671202286\">✅</tg-emoji> <b>Actualizando información...</b>"
+        "🔄 <b>Conectando con las nubes...</b>",
+        "📊 <b>Procesando datos...</b>",
+        "✅ <b>Actualizando información...</b>"
     ]
     
     msg = loading_msgs[step-1] if step <= len(loading_msgs) else f"<b>Procesando... ({step}/{total_steps})</b>"
@@ -1578,7 +1578,7 @@ def onmessage(update,bot:ObigramClient):
             if username.lower() == ADMIN_USERNAME.lower():
                 has_access = True
             elif username.lower() in {b.lower() for b in BANNED_USERS}:
-                bot.sendMessage(chat_id, '<b><tg-emoji id=\"5368324170671202286\">🚫</tg-emoji> Has sido baneado y no puedes usar este bot.</b>', parse_mode='html')
+                bot.sendMessage(chat_id, '<b>🚫 Has sido baneado y no puedes usar este bot.</b>', parse_mode='html')
                 return
             elif username.lower() in {u.lower() for u in REMOVED_USERS}:
                 has_access = False
@@ -1591,14 +1591,14 @@ def onmessage(update,bot:ObigramClient):
                     has_access = True
 
         if not has_access:
-            bot.sendMessage(chat_id, '<b><tg-emoji id=\"5368324170671202286\">➲</tg-emoji> No tienes acceso a este bot <tg-emoji id=\"5368324170671202286\">✗</tg-emoji></b>', parse_mode='html')
+            bot.sendMessage(chat_id, '<b>➲ No tienes acceso a este bot ✗</b>', parse_mode='html')
             return
 
         if MAINTENANCE_MODE and username.lower() != ADMIN_USERNAME.lower():
             bot.sendMessage(chat_id, 
-                "<tg-emoji id=\"5368324170671202286\">🛠️</tg-emoji> <b>¡Sistema en mantenimiento temporal!</b>\n\n"
-                "<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>El bot se encuentra actualmente bajo labores de optimización y mantenimiento.</b>\n"
-                "<tg-emoji id=\"5368324170671202286\">⏳</tg-emoji> <b>Por favor, intenta de nuevo más tarde. Disculpa las molestias ocasionadas.</b>", 
+                "🛠️ <b>¡Sistema en mantenimiento temporal!</b>\n\n"
+                "⚠️ <b>El bot se encuentra actualmente bajo labores de optimización y mantenimiento.</b>\n"
+                "⏳ <b>Por favor, intenta de nuevo más tarde. Disculpa las molestias ocasionadas.</b>", 
                 parse_mode='html')
             return
         
@@ -1639,14 +1639,14 @@ def onmessage(update,bot:ObigramClient):
                 
                 clean_process(tid)
                 time.sleep(1)
-                bot.editMessageText(msg,'<b><tg-emoji id=\"5368324170671202286\">➲</tg-emoji> Tarea cancelada <tg-emoji id=\"5368324170671202286\">✗</tg-emoji> </b>', parse_mode='html')
+                bot.editMessageText(msg,'<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
                 
                 if LOG_GROUP_ID != 0 and proc_user.lower() != ADMIN_USERNAME.lower():
                     try:
-                        mensaje_log = (f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> ¡Proceso cancelado!</b>\n\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <b>@{proc_user}</b>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">🛠️</tg-emoji> Acción:</b> <b>{proc_action}</b>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">📄</tg-emoji> Nombre:</b> <b>{proc_file}</b>")
+                        mensaje_log = (f"<b>❌ ¡Proceso cancelado!</b>\n\n"
+                                       f"<b>👤 Usuario:</b> <b>@{proc_user}</b>\n"
+                                       f"<b>🛠️ Acción:</b> <b>{proc_action}</b>\n"
+                                       f"<b>📄 Nombre:</b> <b>{proc_file}</b>")
                         bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                     except Exception as e:
                         print(f"Error al notificar cancelación al grupo: {e}")
@@ -1655,7 +1655,7 @@ def onmessage(update,bot:ObigramClient):
                 print(str(ex))
             return
 
-        message = bot.sendMessage(chat_id,'<b><tg-emoji id=\"5368324170671202286\">➲</tg-emoji> Procesando <tg-emoji id=\"5368324170671202286\">✪</tg-emoji> ●●○</b>', parse_mode='html')
+        message = bot.sendMessage(chat_id,'<b>➲ Procesando ✪ ●●○</b>', parse_mode='html')
         thread.store('msg',message)
 
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/add '):
@@ -1672,11 +1672,11 @@ def onmessage(update,bot:ObigramClient):
                             usernames = [u for u in usernames if u]
                             
                             if not usernames:
-                                bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto.</b>\n<tg-emoji id=\"5368324170671202286\">💡</tg-emoji> <b>Uso correcto:</b> /add usuario1,usuario2 1", parse_mode='html')
+                                bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /add usuario1,usuario2 1", parse_mode='html')
                                 return
 
                             if any(u.lower() == ADMIN_USERNAME.lower() for u in usernames):
-                                bot.editMessageText(message, f'<tg-emoji id=\"5368324170671202286\">🛡️</tg-emoji> <b>Acción denegada:</b> <b>No es posible agregar al usuario administrador (@{ADMIN_USERNAME}).</b>', parse_mode='html')
+                                bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> <b>No es posible agregar al usuario administrador (@{ADMIN_USERNAME}).</b>', parse_mode='html')
                                 return
 
                             banned_lower = {b.lower() for b in BANNED_USERS}
@@ -1685,9 +1685,9 @@ def onmessage(update,bot:ObigramClient):
                                 is_plural_banned = len(banned_found) > 1
                                 banned_str = ", ".join([f"@{u}" for u in banned_found])
                                 if is_plural_banned:
-                                    bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Los usuarios</b> {banned_str} <b>están baneados y no se pueden agregar.</b>", parse_mode='html')
+                                    bot.editMessageText(message, f"<b>❌ Los usuarios</b> {banned_str} <b>están baneados y no se pueden agregar.</b>", parse_mode='html')
                                 else:
-                                    bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> El usuario</b> {banned_str} <b>está baneado y no se puede agregar.</b>", parse_mode='html')
+                                    bot.editMessageText(message, f"<b>❌ El usuario</b> {banned_str} <b>está baneado y no se puede agregar.</b>", parse_mode='html')
                                 return
 
                             already_has_access = []
@@ -1702,9 +1702,9 @@ def onmessage(update,bot:ObigramClient):
                                 is_plural_access = len(already_has_access) > 1
                                 access_str = ", ".join([f"@{u}" for u in already_has_access])
                                 if is_plural_access:
-                                    bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Los usuarios</b> {access_str} <b>ya tienen acceso al bot.</b>", parse_mode='html')
+                                    bot.editMessageText(message, f"<b>❌ Los usuarios</b> {access_str} <b>ya tienen acceso al bot.</b>", parse_mode='html')
                                 else:
-                                    bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> El usuario</b> {access_str} <b>ya tiene acceso al bot.</b>", parse_mode='html')
+                                    bot.editMessageText(message, f"<b>❌ El usuario</b> {access_str} <b>ya tiene acceso al bot.</b>", parse_mode='html')
                                 return
 
                             is_plural_users = len(usernames) > 1
@@ -1721,23 +1721,23 @@ def onmessage(update,bot:ObigramClient):
                             users_str = ", ".join([f"@{u}" for u in usernames])
                             
                             if is_plural_users:
-                                msg_text = f"<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> ¡Usuarios agregados con éxito!</b>\n\n<tg-emoji id=\"5368324170671202286\">👥</tg-emoji> <b>Usuarios:</b> <b>{users_str}</b>\n<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube asignada:</b> <code>{short_host}</code>\n<tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
+                                msg_text = f"<b>✅ ¡Usuarios agregados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{users_str}</b>\n☁️ <b>Nube asignada:</b> <code>{short_host}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
                             else:
-                                msg_text = f"<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> ¡Usuario agregado con éxito!</b>\n\n<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>{users_str}</b>\n<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube asignada:</b> <code>{short_host}</code>\n<tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
+                                msg_text = f"<b>✅ ¡Usuario agregado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{users_str}</b>\n☁️ <b>Nube asignada:</b> <code>{short_host}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
                             
                             bot.editMessageText(message, msg_text, parse_mode='html')
                             return
                         else:
-                            bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Número de nube inválido.</b>\n<tg-emoji id=\"5368324170671202286\">💡</tg-emoji> <b>Debe ser un número del 1 al {len(AVAILABLE_CLOUDS)}.</b>", parse_mode='html')
+                            bot.editMessageText(message, f"<b>❌ Número de nube inválido.</b>\n💡 <b>Debe ser un número del 1 al {len(AVAILABLE_CLOUDS)}.</b>", parse_mode='html')
                             return
                     else:
-                        bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto.</b>\n<tg-emoji id=\"5368324170671202286\">💡</tg-emoji> <b>Uso correcto:</b> /add usuario1,usuario2 1", parse_mode='html')
+                        bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /add usuario1,usuario2 1", parse_mode='html')
                         return
                 else:
-                    bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto.</b>\n<tg-emoji id=\"5368324170671202286\">💡</tg-emoji> <b>Uso correcto:</b> /add usuario1,usuario2 1", parse_mode='html')
+                    bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /add usuario1,usuario2 1", parse_mode='html')
                     return
             except Exception as e:
-                bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al agregar usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
+                bot.editMessageText(message, f"<b>❌ Error al agregar usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
             return
 
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/remove '):
@@ -1747,11 +1747,11 @@ def onmessage(update,bot:ObigramClient):
                 usernames = [u for u in usernames if u]
                 
                 if not usernames:
-                    bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto.</b>\n<tg-emoji id=\"5368324170671202286\">💡</tg-emoji> <b>Uso correcto:</b> /remove usuario1,usuario2", parse_mode='html')
+                    bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /remove usuario1,usuario2", parse_mode='html')
                     return
                 
                 if any(u.lower() == ADMIN_USERNAME.lower() for u in usernames):
-                    bot.editMessageText(message, f"<tg-emoji id=\"5368324170671202286\">🛡️</tg-emoji> <b>Acción denegada:</b> <b>No es posible quitar al usuario administrador (@{ADMIN_USERNAME}).</b>", parse_mode='html')
+                    bot.editMessageText(message, f"🛡️ <b>Acción denegada:</b> <b>No es posible quitar al usuario administrador (@{ADMIN_USERNAME}).</b>", parse_mode='html')
                     return
                 
                 removed_users = []
@@ -1790,18 +1790,18 @@ def onmessage(update,bot:ObigramClient):
                 response_text = ""
                 if removed_users:
                     if is_plural:
-                        response_text += f"<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> ¡Usuarios eliminados con éxito!</b>\n\n<tg-emoji id=\"5368324170671202286\">👥</tg-emoji> <b>Usuarios:</b> <b>{users_str}</b>"
+                        response_text += f"<b>✅ ¡Usuarios eliminados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{users_str}</b>"
                     else:
-                        response_text += f"<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> ¡Usuario eliminado con éxito!</b>\n\n<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>{users_str}</b>"
+                        response_text += f"<b>✅ ¡Usuario eliminado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{users_str}</b>"
                 
                 if not_found_users:
                     not_found_str = ", ".join([f"@{u}" for u in not_found_users])
-                    response_text += f"\n\n<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>No se encontraron en el sistema:</b> <b>{not_found_str}</b>"
+                    response_text += f"\n\n⚠️ <b>No se encontraron en el sistema:</b> <b>{not_found_str}</b>"
                 
                 bot.editMessageText(message, response_text, parse_mode='html')
                 return
             except Exception as e:
-                bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al quitar usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
+                bot.editMessageText(message, f"<b>❌ Error al quitar usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
             return
 
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/ban '):
@@ -1811,11 +1811,11 @@ def onmessage(update,bot:ObigramClient):
                 targets = [u for u in targets if u]
                 
                 if not targets:
-                    bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto.</b>\n<tg-emoji id=\"5368324170671202286\">💡</tg-emoji> <b>Uso correcto:</b> /ban usuario1,usuario2", parse_mode='html')
+                    bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /ban usuario1,usuario2", parse_mode='html')
                     return
                 
                 if any(t.lower() == ADMIN_USERNAME.lower() for t in targets):
-                    bot.editMessageText(message, f'<tg-emoji id=\"5368324170671202286\">🛡️</tg-emoji> <b>Acción denegada:</b> <b>No es posible banear al usuario administrador (@{ADMIN_USERNAME}).</b>', parse_mode='html')
+                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> <b>No es posible banear al usuario administrador (@{ADMIN_USERNAME}).</b>', parse_mode='html')
                     return
                 
                 success_targets = []
@@ -1841,22 +1841,22 @@ def onmessage(update,bot:ObigramClient):
                 response_text = ""
                 if success_targets:
                     if is_plural:
-                        response_text += f"<b><tg-emoji id=\"5368324170671202286\">🚫</tg-emoji> ¡Usuarios baneados con éxito!</b>\n\n<tg-emoji id=\"5368324170671202286\">👥</tg-emoji> <b>Usuarios:</b> <b>{targets_str}</b>"
+                        response_text += f"<b>🚫 ¡Usuarios baneados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{targets_str}</b>"
                     else:
-                        response_text += f"<b><tg-emoji id=\"5368324170671202286\">🚫</tg-emoji> ¡Usuario baneado con éxito!</b>\n\n<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>{targets_str}</b>"
+                        response_text += f"<b>🚫 ¡Usuario baneado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{targets_str}</b>"
                 
                 if already_banned:
                     ab_str = ", ".join([f"@{u}" for u in already_banned])
-                    response_text += f"\n\n<tg-emoji id=\"5368324170671202286\">ℹ️</tg-emoji> <b>Ya se encontraban baneados:</b> <b>{ab_str}</b>"
+                    response_text += f"\n\nℹ️ <b>Ya se encontraban baneados:</b> <b>{ab_str}</b>"
                 
                 if not_found:
                     nf_str = ", ".join([f"@{u}" for u in not_found])
-                    response_text += f"\n\n<tg-emoji id=\"5368324170671202286\">❌</tg-emoji> <b>No existen en el sistema:</b> <b>{nf_str}</b>"
+                    response_text += f"\n\n❌ <b>No existen en el sistema:</b> <b>{nf_str}</b>"
                 
                 bot.editMessageText(message, response_text, parse_mode='html')
                 return
             except Exception as e:
-                bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al banear usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
+                bot.editMessageText(message, f"<b>❌ Error al banear usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
             return
 
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/unban '):
@@ -1866,11 +1866,11 @@ def onmessage(update,bot:ObigramClient):
                 targets = [u for u in targets if u]
                 
                 if not targets:
-                    bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto.</b>\n<tg-emoji id=\"5368324170671202286\">💡</tg-emoji> <b>Uso correcto:</b> /unban usuario1,usuario2", parse_mode='html')
+                    bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /unban usuario1,usuario2", parse_mode='html')
                     return
                 
                 if any(t.lower() == ADMIN_USERNAME.lower() for t in targets):
-                    bot.editMessageText(message, f'<tg-emoji id=\"5368324170671202286\">🛡️</tg-emoji> <b>Acción denegada:</b> <b>El usuario administrador (@{ADMIN_USERNAME}) no puede ser objetivo de este comando.</b>', parse_mode='html')
+                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> <b>El usuario administrador (@{ADMIN_USERNAME}) no puede ser objetivo de este comando.</b>', parse_mode='html')
                     return
                 
                 success_targets = []
@@ -1896,22 +1896,22 @@ def onmessage(update,bot:ObigramClient):
                 response_text = ""
                 if success_targets:
                     if is_plural:
-                        response_text += f"<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> ¡Usuarios desbaneados con éxito!</b>\n\n<tg-emoji id=\"5368324170671202286\">👥</tg-emoji> <b>Usuarios:</b> <b>{targets_str}</b>"
+                        response_text += f"<b>✅ ¡Usuarios desbaneados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{targets_str}</b>"
                     else:
-                        response_text += f"<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> ¡Usuario desbaneado con éxito!</b>\n\n<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>{targets_str}</b>"
+                        response_text += f"<b>✅ ¡Usuario desbaneado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{targets_str}</b>"
                 
                 if not_banned:
                     nb_str = ", ".join([f"@{u}" for u in not_banned])
-                    response_text += f"\n\n<tg-emoji id=\"5368324170671202286\">ℹ️</tg-emoji> <b>No estaban baneados:</b> <b>{nb_str}</b>"
+                    response_text += f"\n\nℹ️ <b>No estaban baneados:</b> <b>{nb_str}</b>"
                 
                 if not_found:
                     nf_str = ", ".join([f"@{u}" for u in not_found])
-                    response_text += f"\n\n<tg-emoji id=\"5368324170671202286\">❌</tg-emoji> <b>No existen en el sistema:</b> <b>{nf_str}</b>"
+                    response_text += f"\n\n❌ <b>No existen en el sistema:</b> <b>{nf_str}</b>"
                 
                 bot.editMessageText(message, response_text, parse_mode='html')
                 return
             except Exception as e:
-                bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al desbanear usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
+                bot.editMessageText(message, f"<b>❌ Error al desbanear usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
             return
 
         if username in CHANGING_CLOUD_USERS:
@@ -1924,7 +1924,7 @@ def onmessage(update,bot:ObigramClient):
                     
                     if user_info.get('moodle_host') == selected_cloud['moodle_host']:
                         CHANGING_CLOUD_USERS.discard(username)
-                        bot.editMessageText(message, f"<tg-emoji id=\"5368324170671202286\">ℹ️</tg-emoji> <b>Ya estás usando esta nube</b>\n\n<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube actual:</b> <code>{short_name}</code>\n<tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
+                        bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                         return
                     
                     for key, val in selected_cloud.items():
@@ -1933,21 +1933,21 @@ def onmessage(update,bot:ObigramClient):
                     jdb.save()
                     CHANGING_CLOUD_USERS.discard(username)
                     
-                    bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> ¡Nube cambiada exitosamente!</b>\n\n<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nueva nube:</b> <code>{short_name}</code>\n<tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
+                    bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                     
                     if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                         try:
-                            msg_log = (f"<b><tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> ¡Cambio de nube!</b>\n\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <b>@{username}</b>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">🔄</tg-emoji> Anterior:</b> <code>{old_host}</code>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">🆕</tg-emoji> Nueva:</b> <code>{short_name}</code>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> Límite:</b> <b>{selected_cloud['zips']} MB</b>")
+                            msg_log = (f"<b>☁️ ¡Cambio de nube!</b>\n\n"
+                                       f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                       f"<b>🔄 Anterior:</b> <code>{old_host}</code>\n"
+                                       f"<b>🆕 Nueva:</b> <code>{short_name}</code>\n"
+                                       f"<b>⚖️ Límite:</b> <b>{selected_cloud['zips']} MB</b>")
                             bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
                         except Exception as e:
                             print(f"Error al notificar cambio de nube al grupo: {e}")
                     return
                 else:
-                    bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Número inválido. Envía un número del 1 al {len(AVAILABLE_CLOUDS)}.</b>", parse_mode='html')
+                    bot.editMessageText(message, f"<b>❌ Número inválido. Envía un número del 1 al {len(AVAILABLE_CLOUDS)}.</b>", parse_mode='html')
                     CHANGING_CLOUD_USERS.discard(username)
                     return
             else:
@@ -1963,32 +1963,32 @@ def onmessage(update,bot:ObigramClient):
                     old_host = user_info.get('moodle_host', '').replace('https://', '').replace('http://', '').strip('/')
                     
                     if user_info.get('moodle_host') == selected_cloud['moodle_host']:
-                        bot.editMessageText(message, f"<tg-emoji id=\"5368324170671202286\">ℹ️</tg-emoji> <b>Ya estás usando esta nube</b>\n\n<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube actual:</b> <code>{short_name}</code>\n<tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
+                        bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                         return
                     
                     for key, val in selected_cloud.items():
                         user_info[key] = val
                     jdb.save_data_user(username, user_info)
                     jdb.save()
-                    bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> ¡Nube cambiada exitosamente!</b>\n\n<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nueva nube:</b> <code>{short_name}</code>\n<tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
+                    bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                     
                     if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                         try:
-                            msg_log = (f"<b><tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> ¡Cambio de nube!</b>\n\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <b>@{username}</b>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">🔄</tg-emoji> Anterior:</b> <code>{old_host}</code>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">🆕</tg-emoji> Nueva:</b> <code>{short_name}</code>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> Límite:</b> <b>{selected_cloud['zips']} MB</b>")
+                            msg_log = (f"<b>☁️ ¡Cambio de nube!</b>\n\n"
+                                       f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                       f"<b>🔄 Anterior:</b> <code>{old_host}</code>\n"
+                                       f"<b>🆕 Nueva:</b> <code>{short_name}</code>\n"
+                                       f"<b>⚖️ Límite:</b> <b>{selected_cloud['zips']} MB</b>")
                             bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
                         except Exception as e:
                             print(f"Error al notificar cambio de nube al grupo: {e}")
                     return
             
-            menu_msg = "<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Selecciona tu nueva nube</b>\n\n"
+            menu_msg = "☁️ <b>Selecciona tu nueva nube</b>\n\n"
             for i, c in enumerate(AVAILABLE_CLOUDS, 1):
                 short = c['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                menu_msg += f"<b>{i}.</b> <code>{short}</code>\n   <tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> <b>Límite:</b> <b>{c['zips']} MB</b>\n\n"
-            menu_msg += f"<tg-emoji id=\"5368324170671202286\">💡</tg-emoji> <b>Envía solo el número</b> (1 al {len(AVAILABLE_CLOUDS)})."
+                menu_msg += f"<b>{i}.</b> <code>{short}</code>\n   ⚖️ <b>Límite:</b> <b>{c['zips']} MB</b>\n\n"
+            menu_msg += f"💡 <b>Envía solo el número</b> (1 al {len(AVAILABLE_CLOUDS)})."
             
             CHANGING_CLOUD_USERS.add(username)
             bot.editMessageText(message, menu_msg, parse_mode='html')
@@ -1998,28 +1998,28 @@ def onmessage(update,bot:ObigramClient):
             if username.lower() == ADMIN_USERNAME.lower():
                 admin_current_cloud = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
                 start_msg = f"""
-<tg-emoji id=\"5368324170671202286\">👑</tg-emoji> <b>Usuario Administrador</b>
+👑 <b>Usuario Administrador</b>
 
-<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>@{username}</b>
-<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube actual:</b> <code>{admin_current_cloud}</code>
-<tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> <b>Límite:</b> <b>{user_info["zips"]} MB</b>
-<tg-emoji id=\"5368324170671202286\">🔧</tg-emoji> <b>Rol:</b> <b>Administrador</b>
+👤 <b>Usuario:</b> <b>@{username}</b>
+☁️ <b>Nube actual:</b> <code>{admin_current_cloud}</code>
+⚖️ <b>Límite:</b> <b>{user_info["zips"]} MB</b>
+🔧 <b>Rol:</b> <b>Administrador</b>
 
-<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>Nota importante:</b>
+⚠️ <b>Nota importante:</b>
 • <b>Acceso total a todas las nubes</b>
 • <b>Gestión de evidencias globales</b>
 
-<tg-emoji id=\"5368324170671202286\">🎯</tg-emoji> <b>Comandos principales:</b>
+🎯 <b>Comandos principales:</b>
 /admin - <b>Panel de administración</b>
-/status - <b>Estado de las nubes <tg-emoji id=\"5368324170671202286\">🟢</tg-emoji>/<tg-emoji id=\"5368324170671202286\">🔴</tg-emoji></b>
-/procesos - <b>Procesos en tiempo real <tg-emoji id=\"5368324170671202286\">🚀</tg-emoji></b>
-/mantenimiento - <b>Modo mantenimiento <tg-emoji id=\"5368324170671202286\">🛠️</tg-emoji></b>
-/add - <b>Agregar usuario y nube <tg-emoji id=\"5368324170671202286\">➕</tg-emoji></b>
-/remove - <b>Quitar usuario del bot <tg-emoji id=\"5368324170671202286\">➖</tg-emoji></b>
-/ban - <b>Banear usuario <tg-emoji id=\"5368324170671202286\">🚫</tg-emoji></b>
-/unban - <b>Desbanear usuario <tg-emoji id=\"5368324170671202286\">✅</tg-emoji></b>
+/status - <b>Estado de las nubes 🟢/🔴</b>
+/procesos - <b>Procesos en tiempo real 🚀</b>
+/mantenimiento - <b>Modo mantenimiento 🛠️</b>
+/add - <b>Agregar usuario y nube ➕</b>
+/remove - <b>Quitar usuario del bot ➖</b>
+/ban - <b>Banear usuario 🚫</b>
+/unban - <b>Desbanear usuario ✅</b>
 
-<tg-emoji id=\"5368324170671202286\">📈</tg-emoji> <b>Estadísticas y gestión:</b>
+📈 <b>Estadísticas y gestión:</b>
 /adm_logs - <b>Logs del sistema</b>
 /adm_users - <b>Estadísticas por usuario</b>
 /adm_userclouds - <b>Ver nubes y usuarios</b>
@@ -2027,17 +2027,17 @@ def onmessage(update,bot:ObigramClient):
 /adm_deletes - <b>Últimas eliminaciones</b>
 /adm_cleardata - <b>Limpiar estadísticas</b>
 
-<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Gestión de nubes:</b>
+☁️ <b>Gestión de nubes:</b>
 /adm_allclouds - <b>Ver todas las nubes</b>
 /adm_cloud_X - <b>Nube específica</b>
 /adm_show_X_Y - <b>Detalles de evidencia</b>
 /adm_fetch_X_Y - <b>Descargar TXT</b>
 /adm_delete_X_Y - <b>Eliminar evidencia</b>
 /adm_wipe_X - <b>Limpiar nube X</b>
-/adm_nuke - <b>Eliminación masiva <tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji></b>
+/adm_nuke - <b>Eliminación masiva ⚠️</b>
 
-<tg-emoji id=\"5368324170671202286\">🔧</tg-emoji> <b>Tus comandos personales:</b>
-/cambiar - <b>Cambiar de nube (1 al {len(AVAILABLE_CLOUDS)}) <tg-emoji id=\"5368324170671202286\">🔄</tg-emoji></b>
+🔧 <b>Tus comandos personales:</b>
+/cambiar - <b>Cambiar de nube (1 al {len(AVAILABLE_CLOUDS)}) 🔄</b>
 /files - <b>Ver tus evidencias</b>
 /txt_X - <b>Ver TXT de tu evidencia</b>
 /del_X - <b>Eliminar tu evidencia</b>
@@ -2047,17 +2047,17 @@ def onmessage(update,bot:ObigramClient):
             else:
                 current_cloud_short = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
                 start_msg = f"""
-<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario Regular</b>
+👤 <b>Usuario Regular</b>
 
-<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>@{username}</b>
-<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube actual:</b> <code>{current_cloud_short}</code>
-<tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> <b>Límite:</b> <b>{user_info["zips"]} MB</b>
-<tg-emoji id=\"5368324170671202286\">📁</tg-emoji> <b>Evidence:</b> <b>Activado</b>
+👤 <b>Usuario:</b> <b>@{username}</b>
+☁️ <b>Nube actual:</b> <code>{current_cloud_short}</code>
+⚖️ <b>Límite:</b> <b>{user_info["zips"]} MB</b>
+📁 <b>Evidence:</b> <b>Activado</b>
 
-<tg-emoji id=\"5368324170671202286\">🔧</tg-emoji> <b>Tus comandos:</b>
+🔧 <b>Tus comandos:</b>
 /start - <b>Ver esta información</b>
-/cambiar - <b>Cambiar de nube (1 al {len(AVAILABLE_CLOUDS)}) <tg-emoji id=\"5368324170671202286\">🔄</tg-emoji></b>
-/status - <b>Estado de tu nube <tg-emoji id=\"5368324170671202286\">🟢</tg-emoji>/<tg-emoji id=\"5368324170671202286\">🔴</tg-emoji></b>
+/cambiar - <b>Cambiar de nube (1 al {len(AVAILABLE_CLOUDS)}) 🔄</b>
+/status - <b>Estado de tu nube 🟢/🔴</b>
 /files - <b>Ver tus evidencias</b>
 /txt_X - <b>Ver TXT de evidencia X</b>
 /del_X - <b>Eliminar evidencia X</b>
@@ -2071,13 +2071,13 @@ def onmessage(update,bot:ObigramClient):
 
         if '/status' == msgText:
             if username in ACTIVE_STATUS_CHECKS:
-                bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">⏳</tg-emoji> Ya hay una verificación de estado en curso. Por favor, espera a que termine.</b>", parse_mode='html')
+                bot.editMessageText(message, "<b>⏳ Ya hay una verificación de estado en curso. Por favor, espera a que termine.</b>", parse_mode='html')
                 return
             
             ACTIVE_STATUS_CHECKS.add(username)
             try:
                 if username.lower() == ADMIN_USERNAME.lower():
-                    bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">🔍</tg-emoji> Verificando nubes una a una...</b>", parse_mode='html')
+                    bot.editMessageText(message, "<b>🔍 Verificando nubes una a una...</b>", parse_mode='html')
                     unique_configs = []
                     checked_hosts = set()
                     for cfg in AVAILABLE_CLOUDS:
@@ -2090,9 +2090,9 @@ def onmessage(update,bot:ObigramClient):
                     total_clouds = len(unique_configs)
                     for idx, cfg in enumerate(unique_configs):
                         s = check_single_cloud(cfg)
-                        icon = "<tg-emoji id=\"5368324170671202286\">🟢</tg-emoji> En línea" if s['online'] else "<tg-emoji id=\"5368324170671202286\">🔴</tg-emoji> Fuera de línea"
+                        icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
                         clean_url = s['url'].replace('https://', '').replace('http://', '').strip('/')
-                        status_msg = f"<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <code>{clean_url}</code>\n<b>Estado:</b> <b>{icon}</b>"
+                        status_msg = f"☁️ <code>{clean_url}</code>\n<b>Estado:</b> <b>{icon}</b>"
                         
                         if idx == 0:
                             bot.editMessageText(message, status_msg, parse_mode='html')
@@ -2100,14 +2100,14 @@ def onmessage(update,bot:ObigramClient):
                             time.sleep(0.4)
                             bot.sendMessage(chat_id, status_msg, parse_mode='html')
                 else:
-                    bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">🔍</tg-emoji> Verificando estado de tu nube...</b>", parse_mode='html')
+                    bot.editMessageText(message, "<b>🔍 Verificando estado de tu nube...</b>", parse_mode='html')
                     s = check_single_cloud(user_info)
-                    icon = "<tg-emoji id=\"5368324170671202286\">🟢</tg-emoji> En línea" if s['online'] else "<tg-emoji id=\"5368324170671202286\">🔴</tg-emoji> Fuera de línea"
+                    icon = "🟢 En línea" if s['online'] else "🔴 Fuera de línea"
                     clean_url = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
-                    status_msg = f"<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <code>{clean_url}</code>\n<b>Estado:</b> <b>{icon}</b>"
+                    status_msg = f"☁️ <code>{clean_url}</code>\n<b>Estado:</b> <b>{icon}</b>"
                     bot.editMessageText(message, status_msg, parse_mode='html')
             except Exception as e:
-                bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al comprobar el estado de la nube:</b> <b>{str(e)}</b>", parse_mode='html')
+                bot.editMessageText(message, f"<b>❌ Error al comprobar el estado de la nube:</b> <b>{str(e)}</b>", parse_mode='html')
             finally:
                 ACTIVE_STATUS_CHECKS.discard(username)
             return
@@ -2121,7 +2121,7 @@ def onmessage(update,bot:ObigramClient):
                 else:
                     MAINTENANCE_MODE = not MAINTENANCE_MODE
                 
-                estado = "ACTIVADO <tg-emoji id=\"5368324170671202286\">🔴</tg-emoji>" if MAINTENANCE_MODE else "DESACTIVADO <tg-emoji id=\"5368324170671202286\">🟢</tg-emoji>"
+                estado = "ACTIVADO 🔴" if MAINTENANCE_MODE else "DESACTIVADO 🟢"
                 
                 cancel_count = 0
                 if MAINTENANCE_MODE:
@@ -2135,7 +2135,7 @@ def onmessage(update,bot:ObigramClient):
                                 active_msg = tcancel.getStore('msg')
                                 if active_msg:
                                     try:
-                                        bot.editMessageText(active_msg, '<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> Tarea cancelada automáticamente por inicio de mantenimiento del sistema <tg-emoji id=\"5368324170671202286\">✗</tg-emoji></b>', parse_mode='html')
+                                        bot.editMessageText(active_msg, '<b>⚠️ Tarea cancelada automáticamente por inicio de mantenimiento del sistema ✗</b>', parse_mode='html')
                                     except:
                                         pass
                             clean_process(tid)
@@ -2143,38 +2143,38 @@ def onmessage(update,bot:ObigramClient):
                         except:
                             pass
                 
-                aviso_cancelados = f"\n<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>Se cancelaron y notificaron {cancel_count} proceso(s) activo(s) (excepto administrador).</b>" if cancel_count > 0 else ""
-                bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">🛠️</tg-emoji> Modo mantenimiento:</b> <b>{estado}</b>{aviso_cancelados}', parse_mode='html')
+                aviso_cancelados = f"\n⚠️ <b>Se cancelaron y notificaron {cancel_count} proceso(s) activo(s) (excepto administrador).</b>" if cancel_count > 0 else ""
+                bot.editMessageText(message, f'<b>🛠️ Modo mantenimiento:</b> <b>{estado}</b>{aviso_cancelados}', parse_mode='html')
                 return
                 
             elif msgText == '/procesos':
                 if not ACTIVE_PROCESSES:
-                    bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> No hay procesos activos en este momento.</b>", parse_mode='html')
+                    bot.editMessageText(message, "<b>✅ No hay procesos activos en este momento.</b>", parse_mode='html')
                     return
                 
-                proc_msg = "<tg-emoji id=\"5368324170671202286\">🔄</tg-emoji> <b>Procesos activos en tiempo real</b>\n\n"
+                proc_msg = "🔄 <b>Procesos activos en tiempo real</b>\n\n"
                 procesos_borrar = []
                 
                 for tid, p in ACTIVE_PROCESSES.items():
                     tiempo_activo = int(time.time() - p['last_update'])
-                    stalled_warning = " <tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>(Posiblemente trabado)</b>" if tiempo_activo > 30 and ('📥 Descargando' in p['action'] or '⬆️ Preparando' in p['action']) else ""
+                    stalled_warning = " ⚠️ <b>(Posiblemente trabado)</b>" if tiempo_activo > 30 and ('📥 Descargando' in p['action'] or '⬆️ Preparando' in p['action']) else ""
                     
                     if tiempo_activo > 60:
                         procesos_borrar.append(tid)
                         continue
                     
-                    proc_msg += f"<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>@{p['user']}</b>\n"
-                    proc_msg += f"<tg-emoji id=\"5368324170671202286\">🛠️</tg-emoji> <b>Acción:</b> <b>{p['action']}</b>{stalled_warning}\n"
-                    proc_msg += f"<tg-emoji id=\"5368324170671202286\">📄</tg-emoji> <b>Nombre:</b> <b>{p['file']}</b>\n"
+                    proc_msg += f"👤 <b>Usuario:</b> <b>@{p['user']}</b>\n"
+                    proc_msg += f"🛠️ <b>Acción:</b> <b>{p['action']}</b>{stalled_warning}\n"
+                    proc_msg += f"📄 <b>Nombre:</b> <b>{p['file']}</b>\n"
                     if '🗜️ Comprimiendo' not in p['action'] and '⬆️ Preparando' not in p['action']:
-                        proc_msg += f"<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>Progreso:</b> <b>{p['percent']}</b>\n"
+                        proc_msg += f"📊 <b>Progreso:</b> <b>{p['percent']}</b>\n"
                     proc_msg += f"\n"
                 
                 for tid in procesos_borrar:
                     clean_process(tid)
                 
                 if len(ACTIVE_PROCESSES) == 0:
-                    bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> No hay procesos activos en este momento.</b>", parse_mode='html')
+                    bot.editMessageText(message, "<b>✅ No hay procesos activos en este momento.</b>", parse_mode='html')
                 else:
                     bot.editMessageText(message, proc_msg, parse_mode="html")
                 return
@@ -2187,25 +2187,25 @@ def onmessage(update,bot:ObigramClient):
                 
                 if memory_stats.has_any_data():
                     admin_msg = f"""
-<tg-emoji id=\"5368324170671202286\">👑</tg-emoji> <b>Panel de administrador</b>
-<tg-emoji id=\"5368324170671202286\">📅</tg-emoji> <b>Fecha:</b> <b>{current_date}</b>
+👑 <b>Panel de administrador</b>
+📅 <b>Fecha:</b> <b>{current_date}</b>
 
-<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>Estadísticas globales:</b>
+📊 <b>Estadísticas globales:</b>
 • <b>Subidas totales:</b> <b>{stats['total_uploads']}</b>
 • <b>Eliminaciones totales:</b> <b>{stats['total_deletes']}</b>
 • <b>Espacio total subido:</b> <b>{total_size_formatted}</b>
 • <b>Nubes configuradas:</b> <b>{len(AVAILABLE_CLOUDS)}</b>
 
-<tg-emoji id=\"5368324170671202286\">🚀</tg-emoji> <b>Comandos rápidos:</b>
-/status - <b>Estado de las nubes <tg-emoji id=\"5368324170671202286\">🟢</tg-emoji>/<tg-emoji id=\"5368324170671202286\">🔴</tg-emoji></b>
-/procesos - <b>Procesos activos <tg-emoji id=\"5368324170671202286\">🚀</tg-emoji></b>
-/mantenimiento - <b>Activar/Desactivar <tg-emoji id=\"5368324170671202286\">🛠️</tg-emoji></b>
-/add - <b>Agregar usuario y nube <tg-emoji id=\"5368324170671202286\">➕</tg-emoji></b>
-/remove - <b>Quitar usuario del bot <tg-emoji id=\"5368324170671202286\">➖</tg-emoji></b>
-/ban - <b>Banear usuario <tg-emoji id=\"5368324170671202286\">🚫</tg-emoji></b>
-/unban - <b>Desbanear usuario <tg-emoji id=\"5368324170671202286\">✅</tg-emoji></b>
+🚀 <b>Comandos rápidos:</b>
+/status - <b>Estado de las nubes 🟢/🔴</b>
+/procesos - <b>Procesos activos 🚀</b>
+/mantenimiento - <b>Activar/Desactivar 🛠️</b>
+/add - <b>Agregar usuario y nube ➕</b>
+/remove - <b>Quitar usuario del bot ➖</b>
+/ban - <b>Banear usuario 🚫</b>
+/unban - <b>Desbanear usuario ✅</b>
 
-<tg-emoji id=\"5368324170671202286\">📈</tg-emoji> <b>Estadísticas y usuarios:</b>
+📈 <b>Estadísticas y usuarios:</b>
 /adm_logs - <b>Ver últimos logs</b>
 /adm_users - <b>Estadísticas por usuario</b>
 /adm_userclouds - <b>Ver nubes y usuarios</b>
@@ -2213,56 +2213,56 @@ def onmessage(update,bot:ObigramClient):
 /adm_deletes - <b>Últimas eliminaciones</b>
 /adm_cleardata - <b>Limpiar todos los datos</b>
 
-<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Gestión de nubes:</b>
+☁️ <b>Gestión de nubes:</b>
 /adm_allclouds - <b>Ver todas las nubes</b>
 /adm_cloud_X - <b>Nube específica</b>
 /adm_show_X_Y - <b>Detalles de evidencia</b>
 /adm_fetch_X_Y - <b>Descargar TXT</b>
 /adm_delete_X_Y - <b>Eliminar evidencia</b>
 /adm_wipe_X - <b>Limpiar nube X</b>
-/adm_nuke - <b>Eliminación masiva <tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji></b>
+/adm_nuke - <b>Eliminación masiva ⚠️</b>
 
-<tg-emoji id=\"5368324170671202286\">🔧</tg-emoji> <b>Otros:</b>
+🔧 <b>Otros:</b>
 /start - <b>Información de usuario</b>
 
-<tg-emoji id=\"5368324170671202286\">🕐</tg-emoji> <b>Hora Cuba:</b> <b>{format_cuba_datetime()}</b>
+🕐 <b>Hora Cuba:</b> <b>{format_cuba_datetime()}</b>
                     """
                 else:
                     admin_msg = f"""
-<tg-emoji id=\"5368324170671202286\">👑</tg-emoji> <b>Panel de administrador</b>
-<tg-emoji id=\"5368324170671202286\">📅</tg-emoji> <b>Fecha:</b> <b>{current_date}</b>
+👑 <b>Panel de administrador</b>
+📅 <b>Fecha:</b> <b>{current_date}</b>
 
-<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>No hay datos registrados</b>
+⚠️ <b>No hay datos registrados</b>
 <b>Aún no se ha realizado ninguna acción en el bot.</b>
 
-<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>Nubes configuradas:</b> <b>{len(AVAILABLE_CLOUDS)}</b>
+📊 <b>Nubes configuradas:</b> <b>{len(AVAILABLE_CLOUDS)}</b>
 
-<tg-emoji id=\"5368324170671202286\">🚀</tg-emoji> <b>Comandos rápidos:</b>
-/status - <b>Estado de las nubes <tg-emoji id=\"5368324170671202286\">🟢</tg-emoji>/<tg-emoji id=\"5368324170671202286\">🔴</tg-emoji></b>
-/procesos - <b>Procesos activos <tg-emoji id=\"5368324170671202286\">🚀</tg-emoji></b>
-/mantenimiento - <b>Activar/Desactivar <tg-emoji id=\"5368324170671202286\">🛠️</tg-emoji></b>
-/add - <b>Agregar usuario y nube <tg-emoji id=\"5368324170671202286\">➕</tg-emoji></b>
-/remove - <b>Quitar usuario del bot <tg-emoji id=\"5368324170671202286\">➖</tg-emoji></b>
-/ban - <b>Banear usuario <tg-emoji id=\"5368324170671202286\">🚫</tg-emoji></b>
-/unban - <b>Desbanear usuario <tg-emoji id=\"5368324170671202286\">✅</tg-emoji></b>
+🚀 <b>Comandos rápidos:</b>
+/status - <b>Estado de las nubes 🟢/🔴</b>
+/procesos - <b>Procesos activos 🚀</b>
+/mantenimiento - <b>Activar/Desactivar 🛠️</b>
+/add - <b>Agregar usuario y nube ➕</b>
+/remove - <b>Quitar usuario del bot ➖</b>
+/ban - <b>Banear usuario 🚫</b>
+/unban - <b>Desbanear usuario ✅</b>
 
-<tg-emoji id=\"5368324170671202286\">📈</tg-emoji> <b>Estadísticas y usuarios:</b>
+📈 <b>Estadísticas y usuarios:</b>
 /adm_logs - <b>Ver últimos logs</b>
 /adm_users - <b>Estadísticas por usuario</b>
 /adm_userclouds - <b>Ver nubes y usuarios</b>
 /adm_uploads - <b>Últimas subidas</b>
 /adm_deletes - <b>Últimas eliminaciones</b>
 
-<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Gestión de nubes:</b>
+☁️ <b>Gestión de nubes:</b>
 /adm_allclouds - <b>Ver todas las nubes</b>
 /adm_cloud_X - <b>Ver nube específica</b>
 /adm_show_X_Y - <b>Detalles de evidencia</b>
 /adm_fetch_X_Y - <b>Descargar TXT</b>
 
-<tg-emoji id=\"5368324170671202286\">🔧</tg-emoji> <b>Otros:</b>
+🔧 <b>Otros:</b>
 /start - <b>Información de usuario</b>
 
-<tg-emoji id=\"5368324170671202286\">🕐</tg-emoji> <b>Hora Cuba:</b> <b>{format_cuba_datetime()}</b>
+🕐 <b>Hora Cuba:</b> <b>{format_cuba_datetime()}</b>
                     """
                 
                 bot.editMessageText(message, admin_msg, parse_mode='html')
@@ -2271,7 +2271,7 @@ def onmessage(update,bot:ObigramClient):
             elif '/adm_' in msgText:
                 if msgText == '/adm_userclouds':
                     try:
-                        uclouds_msg = "<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Gestión de nubes y usuarios</b>\n\n"
+                        uclouds_msg = "☁️ <b>Gestión de nubes y usuarios</b>\n\n"
                         
                         for idx, cloud_cfg in enumerate(AVAILABLE_CLOUDS, 1):
                             target_host = cloud_cfg.get('moodle_host', '')
@@ -2289,13 +2289,13 @@ def onmessage(update,bot:ObigramClient):
                             
                             users_str = ", ".join(assigned_users) if assigned_users else "Ninguno"
                             
-                            uclouds_msg += f"<tg-emoji id=\"5368324170671202286\">🌐</tg-emoji> <b>Nube {idx}:</b> <code>{short}</code>\n"
-                            uclouds_msg += f"<tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> <b>Límite:</b> <b>{zips} MB</b>\n"
-                            uclouds_msg += f"<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuarios:</b> <b>{users_str}</b>\n\n"
+                            uclouds_msg += f"🌐 <b>Nube {idx}:</b> <code>{short}</code>\n"
+                            uclouds_msg += f"⚖️ <b>Límite:</b> <b>{zips} MB</b>\n"
+                            uclouds_msg += f"👤 <b>Usuarios:</b> <b>{users_str}</b>\n\n"
                         
                         send_long_message(bot, chat_id, uclouds_msg, original_message=message, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al obtener nubes y usuarios:</b> <b>{str(e)}</b>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error al obtener nubes y usuarios:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
 
                 elif '/adm_allclouds' in msgText:
@@ -2306,13 +2306,13 @@ def onmessage(update,bot:ObigramClient):
                         
                         if total_evidences == 0:
                             empty_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">👑</tg-emoji> Todas las nubes</b>
-<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>Resumen general:</b>
+<b>👑 Todas las nubes</b>
+📊 <b>Resumen general:</b>
 • <b>Nubes configuradas:</b> <b>{len(AVAILABLE_CLOUDS)}</b>
 • <b>Evidencias totales:</b> <b>0</b>
 • <b>Archivos totales:</b> <b>0</b>
 
-<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> Todas las nubes están vacías</b>
+<b>✅ Todas las nubes están vacías</b>
                             """
                             bot.editMessageText(message, empty_msg, parse_mode='html')
                             return
@@ -2325,13 +2325,13 @@ def onmessage(update,bot:ObigramClient):
                                 total_files += ev['files_count']
                         
                         menu_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">👑</tg-emoji> Gestión de todas las nubes</b>
-<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>Resumen general:</b>
+👑 <b>Gestión de todas las nubes</b>
+📊 <b>Resumen general:</b>
 • <b>Nubes:</b> <b>{total_clouds}</b>
 • <b>Evidencias totales:</b> <b>{total_evidences}</b>
 • <b>Archivos totales:</b> <b>{total_files}</b>
 
-<tg-emoji id=\"5368324170671202286\">📋</tg-emoji> <b>Nubes disponibles:</b>"""
+📋 <b>Nubes disponibles:</b>"""
                         
                         cloud_index = 0
                         for cloud_name, evidences in admin_evidence_manager.clouds_dict.items():
@@ -2339,11 +2339,11 @@ def onmessage(update,bot:ObigramClient):
                             short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
                             
                             menu_msg += f"\n\n<b>{cloud_index}.</b> <code>{short_name}</code>"
-                            menu_msg += f"\n   <tg-emoji id=\"5368324170671202286\">📁</tg-emoji> <b>{len(evidences)} evidencias, {cloud_files} archivos</b>"
-                            menu_msg += f"\n   <tg-emoji id=\"5368324170671202286\">🔍</tg-emoji> /adm_cloud_{cloud_index}"
+                            menu_msg += f"\n   📁 <b>{len(evidences)} evidencias, {cloud_files} archivos</b>"
+                            menu_msg += f"\n   🔍 /adm_cloud_{cloud_index}"
                             
                             if len(evidences) > 0:
-                                menu_msg += f"\n   <tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> /adm_wipe_{cloud_index}"
+                                menu_msg += f"\n   🗑️ /adm_wipe_{cloud_index}"
                             
                             cloud_index += 1
                         
@@ -2352,34 +2352,34 @@ def onmessage(update,bot:ObigramClient):
                         if total_evidences > 0:
                             menu_msg += f"""
 
-<tg-emoji id=\"5368324170671202286\">🔧</tg-emoji> <b>OPCIONES MASIVAS:</b>
-/adm_nuke - <tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>Eliminación masiva</b>
+🔧 <b>OPCIONES MASIVAS:</b>
+/adm_nuke - ⚠️ <b>Eliminación masiva</b>
 
-<tg-emoji id=\"5368324170671202286\">ℹ️</tg-emoji> <b>Usa</b> /adm_cloud_X <b>para ver evidencias</b>
+ℹ️ <b>Usa</b> /adm_cloud_X <b>para ver evidencias</b>
                             """
                         else:
                             menu_msg += f"""
 
-<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> Todas las nubes están vacías</b>
+<b>✅ Todas las nubes están vacías</b>
                             """
                         
                         bot.editMessageText(message, menu_msg, parse_mode='html')
                         
                     except Exception as e:
-                        bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error:</b> <b>{str(e)}</b>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_cloud_' in msgText:
                     try:
                         cloud_idx = extract_one_param_simple(msgText, '/adm_cloud_')
                         if cloud_idx is None:
-                            bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto. Use:</b> /adm_cloud_0', parse_mode='html')
+                            bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /adm_cloud_0', parse_mode='html')
                             return
                         
                         admin_evidence_manager.refresh_data()
                         
                         if cloud_idx < 0 or cloud_idx >= len(admin_evidence_manager.clouds_dict):
-                            bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Índice inválido. Máximo:</b> <b>{len(admin_evidence_manager.clouds_dict)-1}</b>', parse_mode='html')
+                            bot.editMessageText(message, f'<b>❌ Índice inválido. Máximo:</b> <b>{len(admin_evidence_manager.clouds_dict)-1}</b>', parse_mode='html')
                             return
                         
                         cloud_name = list(admin_evidence_manager.clouds_dict.keys())[cloud_idx]
@@ -2388,16 +2388,16 @@ def onmessage(update,bot:ObigramClient):
                         
                         if not evidences:
                             empty_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">📭</tg-emoji> NUBE VACÍA</b>
-<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <code>{short_name}</code>
-<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>No hay evidencias en esta nube.</b>
+<b>📭 NUBE VACÍA</b>
+☁️ <code>{short_name}</code>
+📊 <b>No hay evidencias en esta nube.</b>
                             """
                             bot.editMessageText(message, empty_msg, parse_mode='html')
                             return
                         
                         list_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">📋</tg-emoji> EVIDENCIAS DE LA NUBE</b>
-<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <code>{short_name}</code>
+<b>📋 EVIDENCIAS DE LA NUBE</b>
+☁️ <code>{short_name}</code>
 
 """
                         for idx, evidence in enumerate(evidences):
@@ -2422,19 +2422,19 @@ def onmessage(update,bot:ObigramClient):
                             if len(clean_name) > 35:
                                 list_msg += "..."
                             list_msg += f"<b>{user_str}</b>\n"
-                            list_msg += f"   <tg-emoji id=\"5368324170671202286\">📁</tg-emoji> <b>Archivos:</b> <b>{evidence['files_count']}</b>\n"
-                            list_msg += f"   <tg-emoji id=\"5368324170671202286\">👁️</tg-emoji> <b>Ver:</b> /adm_show_{cloud_idx}_{idx}\n"
-                            list_msg += f"   <tg-emoji id=\"5368324170671202286\">📄</tg-emoji> <b>TXT:</b> /adm_fetch_{cloud_idx}_{idx}\n"
-                            list_msg += f"   <tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> <b>Borrar:</b> /adm_delete_{cloud_idx}_{idx}\n\n"
+                            list_msg += f"   📁 <b>Archivos:</b> <b>{evidence['files_count']}</b>\n"
+                            list_msg += f"   👁️ <b>Ver:</b> /adm_show_{cloud_idx}_{idx}\n"
+                            list_msg += f"   📄 <b>TXT:</b> /adm_fetch_{cloud_idx}_{idx}\n"
+                            list_msg += f"   🗑️ <b>Borrar:</b> /adm_delete_{cloud_idx}_{idx}\n\n"
                         
                         total_evidences = len(evidences)
                         total_files = sum(e['files_count'] for e in evidences)
                         
                         list_msg += f"""
-<tg-emoji id=\"5368324170671202286\">🔧</tg-emoji> <b>ACCIÓN MASIVA:</b>
+🔧 <b>ACCIÓN MASIVA:</b>
 /adm_wipe_{cloud_idx} - <b>Eliminación masiva</b>
 
-<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>RESUMEN:</b>
+📊 <b>RESUMEN:</b>
 • <b>Evidencias:</b> <b>{total_evidences}</b>
 • <b>Archivos:</b> <b>{total_files}</b>
                         """
@@ -2442,14 +2442,14 @@ def onmessage(update,bot:ObigramClient):
                         send_long_message(bot, message.chat.id, list_msg, original_message=message, parse_mode='html')
                         
                     except Exception as e:
-                        bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error:</b> <b>{str(e)}</b>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_show_' in msgText:
                     try:
                         params = extract_two_params_simple(msgText, '/adm_show_')
                         if params is None:
-                            bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto. Use:</b> /adm_show_0_1', parse_mode='html')
+                            bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /adm_show_0_1', parse_mode='html')
                             return
                         
                         cloud_idx, evid_idx = params
@@ -2467,31 +2467,31 @@ def onmessage(update,bot:ObigramClient):
                                     break
                             
                             show_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">👁️</tg-emoji> Detalles de evidencia</b>
-<tg-emoji id=\"5368324170671202286\">📝</tg-emoji> <b>Nombre:</b> <b>{clean_name}</b>
-<tg-emoji id=\"5368324170671202286\">📁</tg-emoji> <b>Archivos:</b> <b>{evidence['files_count']}</b>
-<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube:</b> <code>{short_name}</code>
+<b>👁️ Detalles de evidencia</b>
+📝 <b>Nombre:</b> <b>{clean_name}</b>
+📁 <b>Archivos:</b> <b>{evidence['files_count']}</b>
+☁️ <b>Nube:</b> <code>{short_name}</code>
 
-<tg-emoji id=\"5368324170671202286\">🔧</tg-emoji> <b>ACCIONES:</b>
-<tg-emoji id=\"5368324170671202286\">📄</tg-emoji> /adm_fetch_{cloud_idx}_{evid_idx} - <b>TXT</b>
-<tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> /adm_delete_{cloud_idx}_{evid_idx} - <b>Eliminar</b>
+🔧 <b>ACCIONES:</b>
+📄 /adm_fetch_{cloud_idx}_{evid_idx} - <b>TXT</b>
+🗑️ /adm_delete_{cloud_idx}_{evid_idx} - <b>Eliminar</b>
                             """
                             bot.editMessageText(message, show_msg, parse_mode='html')
                         else:
-                            bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> No se encontró la evidencia</b>', parse_mode='html')
+                            bot.editMessageText(message, '<b>❌ No se encontró la evidencia</b>', parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error:</b> <b>{str(e)}</b>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_fetch_' in msgText:
                     try:
                         params = extract_two_params_simple(msgText, '/adm_fetch_')
                         if params is None:
-                            bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto. Use:</b> /adm_fetch_0_1', parse_mode='html')
+                            bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /adm_fetch_0_1', parse_mode='html')
                             return
                         
                         cloud_idx, evid_idx = params
-                        bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">📄</tg-emoji> Obteniendo archivo TXT...</b>', parse_mode='html')
+                        bot.editMessageText(message, '<b>📄 Obteniendo archivo TXT...</b>', parse_mode='html')
                         files = admin_evidence_manager.get_txt_for_evidence(cloud_idx, evid_idx)
                         
                         if files:
@@ -2519,30 +2519,30 @@ def onmessage(update,bot:ObigramClient):
                                 txt.close()
                                 bot.sendFile(chat_id, txtname)
                                 os.unlink(txtname)
-                                bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> TXT enviado:</b> <b>{clean_name[:50]}</b>', parse_mode='html')
+                                bot.editMessageText(message, f'<b>✅ TXT enviado:</b> <b>{clean_name[:50]}</b>', parse_mode='html')
                             else:
-                                bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> No se encontró la evidencia</b>', parse_mode='html')
+                                bot.editMessageText(message, '<b>❌ No se encontró la evidencia</b>', parse_mode='html')
                         else:
-                            bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> No hay archivos en esta evidencia</b>', parse_mode='html')
+                            bot.editMessageText(message, '<b>❌ No hay archivos en esta evidencia</b>', parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error:</b> <b>{str(e)}</b>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_delete_' in msgText:
                     try:
                         params = extract_two_params_simple(msgText, '/adm_delete_')
                         if params is None:
-                            bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto. Use:</b> /adm_delete_0_1', parse_mode='html')
+                            bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /adm_delete_0_1', parse_mode='html')
                             return
                         
                         cloud_idx, evid_idx = params
-                        bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">🔍</tg-emoji> Verificando datos...</b>', parse_mode='html')
+                        bot.editMessageText(message, '<b>🔍 Verificando datos...</b>', parse_mode='html')
                         
                         admin_evidence_manager.refresh_data()
                         cloud_names = list(admin_evidence_manager.clouds_dict.keys())
                         
                         if cloud_idx < 0 or cloud_idx >= len(cloud_names):
-                            bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Índice de nube inválido</b>', parse_mode='html')
+                            bot.editMessageText(message, '<b>❌ Índice de nube inválido</b>', parse_mode='html')
                             show_updated_all_clouds(bot, message)
                             return
                         
@@ -2550,12 +2550,12 @@ def onmessage(update,bot:ObigramClient):
                         evidences = admin_evidence_manager.clouds_dict.get(cloud_name, [])
                         
                         if not evidences:
-                            bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">📭</tg-emoji> La nube {cloud_idx} ya está vacía</b>', parse_mode='html')
+                            bot.editMessageText(message, f'<b>📭 La nube {cloud_idx} ya está vacía</b>', parse_mode='html')
                             show_updated_all_clouds(bot, message)
                             return
                         
                         if evid_idx < 0 or evid_idx >= len(evidences):
-                            bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Índice de evidencia inválido</b>', parse_mode='html')
+                            bot.editMessageText(message, '<b>❌ Índice de evidencia inválido</b>', parse_mode='html')
                             return
                         
                         evidence = evidences[evid_idx]
@@ -2568,7 +2568,7 @@ def onmessage(update,bot:ObigramClient):
                                 break
                         
                         short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
-                        bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> Eliminando evidencia:</b> <b>{clean_name[:50]}...</b>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>🗑️ Eliminando evidencia:</b> <b>{clean_name[:50]}...</b>', parse_mode='html')
                         
                         success, ev_name, files_count = delete_evidence_from_cloud(
                             evidence['cloud_config'], 
@@ -2583,19 +2583,19 @@ def onmessage(update,bot:ObigramClient):
                                 current_evidences = admin_evidence_manager.clouds_dict.get(cloud_names[cloud_idx], [])
                                 if current_evidences:
                                     result_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> Eliminación exitosa</b>
-<tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> <b>Evidencia:</b> <b>{clean_name[:50]}</b>
-<tg-emoji id=\"5368324170671202286\">📁</tg-emoji> <b>Archivos eliminados:</b> <b>{files_count}</b>
-<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube:</b> <code>{short_name}</code>
+<b>✅ Eliminación exitosa</b>
+🗑️ <b>Evidencia:</b> <b>{clean_name[:50]}</b>
+📁 <b>Archivos eliminados:</b> <b>{files_count}</b>
+☁️ <b>Nube:</b> <code>{short_name}</code>
                                     """
                                     bot.editMessageText(message, result_msg, parse_mode='html')
                                     time.sleep(1)
                                     show_updated_cloud(bot, message, cloud_idx)
                                 else:
                                     result_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> Eliminación completa</b>
-<tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> <b>Última evidencia eliminada</b>
-<tg-emoji id=\"5368324170671202286\">📁</tg-emoji> <b>Archivos borrados:</b> <b>{files_count}</b>
+<b>✅ Eliminación completa</b>
+🗑️ <b>Última evidencia eliminada</b>
+📁 <b>Archivos borrados:</b> <b>{files_count}</b>
                                     """
                                     bot.editMessageText(message, result_msg, parse_mode='html')
                                     time.sleep(1)
@@ -2603,31 +2603,31 @@ def onmessage(update,bot:ObigramClient):
                             else:
                                 show_updated_all_clouds(bot, message)
                         else:
-                            bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al eliminar:</b> <b>{clean_name}</b>', parse_mode='html')
+                            bot.editMessageText(message, f'<b>❌ Error al eliminar:</b> <b>{clean_name}</b>', parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error:</b> <b>{str(e)}</b>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_wipe_' in msgText:
                     try:
                         cloud_idx = extract_one_param_simple(msgText, '/adm_wipe_')
                         if cloud_idx is None:
-                            bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto. Use:</b> /adm_wipe_0', parse_mode='html')
+                            bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /adm_wipe_0', parse_mode='html')
                             return
                         
                         if cloud_idx < 0 or cloud_idx >= len(admin_evidence_manager.clouds_dict):
-                            bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Índice inválido. Máximo:</b> <b>{len(admin_evidence_manager.clouds_dict)-1}</b>', parse_mode='html')
+                            bot.editMessageText(message, f'<b>❌ Índice inválido. Máximo:</b> <b>{len(admin_evidence_manager.clouds_dict)-1}</b>', parse_mode='html')
                             return
                         
                         cloud_name = list(admin_evidence_manager.clouds_dict.keys())[cloud_idx]
                         evidences = admin_evidence_manager.clouds_dict[cloud_name]
                         
                         if not evidences:
-                            bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">📭</tg-emoji> La nube {cloud_idx} ya está vacía</b>', parse_mode='html')
+                            bot.editMessageText(message, f'<b>📭 La nube {cloud_idx} ya está vacía</b>', parse_mode='html')
                             return
                         
                         short_name = cloud_name.replace('https://', '').replace('http://', '').strip('/')
-                        bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">💣</tg-emoji> Limpiando nube</b> <code>{short_name}</code>...', parse_mode='html')
+                        bot.editMessageText(message, f'<b>💣 Limpiando nube</b> <code>{short_name}</code>...', parse_mode='html')
                         
                         cloud_config = None
                         for cfg in AVAILABLE_CLOUDS:
@@ -2640,30 +2640,30 @@ def onmessage(update,bot:ObigramClient):
                             if success:
                                 admin_evidence_manager.refresh_data(force=True)
                                 result_msg = f"""
-<b><tg-emoji id=\"5368324170671202286\">💥</tg-emoji> Limpieza exitosa</b>
-<tg-emoji id=\"5368324170671202286\">✅</tg-emoji> <b>Nube:</b> <code>{short_name}</code>
-<tg-emoji id=\"5368324170671202286\">✅</tg-emoji> <b>Evidencias:</b> <b>{deleted_count}</b>
-<tg-emoji id=\"5368324170671202286\">✅</tg-emoji> <b>Archivos:</b> <b>{total_files}</b>
+<b>💥 Limpieza exitosa</b>
+✅ <b>Nube:</b> <code>{short_name}</code>
+✅ <b>Evidencias:</b> <b>{deleted_count}</b>
+✅ <b>Archivos:</b> <b>{total_files}</b>
                                 """
                                 bot.editMessageText(message, result_msg, parse_mode='html')
                                 time.sleep(1)
                                 show_updated_all_clouds(bot, message)
                             else:
-                                bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al limpiar</b> <code>{short_name}</code>', parse_mode='html')
+                                bot.editMessageText(message, f'<b>❌ Error al limpiar</b> <code>{short_name}</code>', parse_mode='html')
                         else:
-                            bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> No se encontró configuración</b>', parse_mode='html')
+                            bot.editMessageText(message, '<b>❌ No se encontró configuración</b>', parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error:</b> <b>{str(e)}</b>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_nuke' in msgText:
                     try:
                         total_evidences = len(admin_evidence_manager.current_list)
                         if total_evidences == 0:
-                            bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">📭</tg-emoji> No hay evidencias para eliminar</b>', parse_mode='html')
+                            bot.editMessageText(message, '<b>📭 No hay evidencias para eliminar</b>', parse_mode='html')
                             return
                         
-                        bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">💣</tg-emoji><tg-emoji id=\"5368324170671202286\">💣</tg-emoji><tg-emoji id=\"5368324170671202286\">💣</tg-emoji> Eliminación masiva...</b>', parse_mode='html')
+                        bot.editMessageText(message, '<b>💣💣💣 Eliminación masiva...</b>', parse_mode='html')
                         results = []
                         deleted_total = 0
                         files_total = 0
@@ -2681,27 +2681,27 @@ def onmessage(update,bot:ObigramClient):
                                 if success:
                                     deleted_total += deleted_count
                                     files_total += total_files
-                                    results.append(f"<tg-emoji id=\"5368324170671202286\">✅</tg-emoji> <code>{short_name}</code>: <b>{deleted_count} ev., {total_files} arch.</b>")
+                                    results.append(f"✅ <code>{short_name}</code>: <b>{deleted_count} ev., {total_files} arch.</b>")
                                 else:
-                                    results.append(f"<tg-emoji id=\"5368324170671202286\">❌</tg-emoji> <code>{short_name}</code>: <b>Error</b>")
+                                    results.append(f"❌ <code>{short_name}</code>: <b>Error</b>")
                         
                         admin_evidence_manager.refresh_data(force=True)
                         final_msg = f"""
-<tg-emoji id=\"5368324170671202286\">💥</tg-emoji> <b>Eliminación masiva completada</b>
-<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>Evidencias:</b> <b>{deleted_total}</b>
-<tg-emoji id=\"5368324170671202286\">📁</tg-emoji> <b>Archivos:</b> <b>{files_total}</b>
+💥 <b>Eliminación masiva completada</b>
+📊 <b>Evidencias:</b> <b>{deleted_total}</b>
+📁 <b>Archivos:</b> <b>{files_total}</b>
 """
                         for result in results:
                             final_msg += f"\n{result}"
                         bot.editMessageText(message, final_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error:</b> <b>{str(e)}</b>', parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_logs' in msgText:
                     try:
                         if not memory_stats.has_any_data():
-                            bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> No hay datos registrados.</b>", parse_mode='html')
+                            bot.editMessageText(message, "<b>⚠️ No hay datos registrados.</b>", parse_mode='html')
                             return
                         
                         limit = 300
@@ -2713,14 +2713,14 @@ def onmessage(update,bot:ObigramClient):
                         uploads = memory_stats.get_recent_uploads(limit)
                         deletes = memory_stats.get_recent_deletes(limit)
                         
-                        logs_msg = "<tg-emoji id=\"5368324170671202286\">📋</tg-emoji> <b>Últimos logs</b>\n\n"
+                        logs_msg = "📋 <b>Últimos logs</b>\n\n"
                         if uploads:
-                            logs_msg += "<tg-emoji id=\"5368324170671202286\">⬆️</tg-emoji> <b>Subidas:</b>\n"
+                            logs_msg += "⬆️ <b>Subidas:</b>\n"
                             for log in uploads:
                                 logs_msg += f"• <b>{log['timestamp']}</b> - <b>@{log['username']}</b>: <b>{log['filename']}</b> (<b>{log['file_size_formatted']}</b>)\n"
                             logs_msg += "\n"
                         if deletes:
-                            logs_msg += "<tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> <b>Eliminaciones:</b>\n"
+                            logs_msg += "🗑️ <b>Eliminaciones:</b>\n"
                             for log in deletes:
                                 if log['type'] == 'delete_all':
                                     logs_msg += f"• <b>{log['timestamp']}</b> - <b>@{log['username']}</b>: <b>Eliminación masiva ({log.get('deleted_evidences', 1)} ev.)</b>\n"
@@ -2728,73 +2728,73 @@ def onmessage(update,bot:ObigramClient):
                                     logs_msg += f"• <b>{log['timestamp']}</b> - <b>@{log['username']}</b>: <b>{log['filename']}</b>\n"
                         
                         if len(logs_msg) > 4000:
-                            logs_msg = logs_msg[:4000] + "\n\n<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>Truncado</b>"
+                            logs_msg = logs_msg[:4000] + "\n\n⚠️ <b>Truncado</b>"
                         bot.editMessageText(message, logs_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al obtener logs:</b> <b>{str(e)}</b>", parse_mode='html')
+                        bot.editMessageText(message, f"<b>❌ Error al obtener logs:</b> <b>{str(e)}</b>", parse_mode='html')
                     return
                 
                 elif '/adm_users' in msgText:
                     try:
                         users = memory_stats.get_all_users()
                         if not users:
-                            bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> No hay usuarios registrados.</b>", parse_mode='html')
+                            bot.editMessageText(message, "<b>⚠️ No hay usuarios registrados.</b>", parse_mode='html')
                             return
                         
-                        users_msg = "<tg-emoji id=\"5368324170671202286\">👥</tg-emoji> <b>Estadísticas por usuario</b>\n\n"
+                        users_msg = "👥 <b>Estadísticas por usuario</b>\n\n"
                         for user, data in sorted(users.items(), key=lambda x: x[1]['uploads'], reverse=True):
                             total_size_formatted = format_file_size(data['total_size'])
-                            users_msg += f"<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>@{user}</b>\n   <tg-emoji id=\"5368324170671202286\">📤</tg-emoji> <b>Subidas:</b> <b>{data['uploads']}</b>\n   <tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> <b>Eliminaciones:</b> <b>{data['deletes']}</b>\n   <tg-emoji id=\"5368324170671202286\">💾</tg-emoji> <b>Espacio:</b> <b>{total_size_formatted}</b>\n\n"
+                            users_msg += f"👤 <b>Usuario:</b> <b>@{user}</b>\n   📤 <b>Subidas:</b> <b>{data['uploads']}</b>\n   🗑️ <b>Eliminaciones:</b> <b>{data['deletes']}</b>\n   💾 <b>Espacio:</b> <b>{total_size_formatted}</b>\n\n"
                         
                         if len(users_msg) > 4000:
-                            users_msg = users_msg[:4000] + "\n\n<tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> <b>Truncado</b>"
+                            users_msg = users_msg[:4000] + "\n\n⚠️ <b>Truncado</b>"
                         bot.editMessageText(message, users_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al obtener usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
+                        bot.editMessageText(message, f"<b>❌ Error al obtener usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
                     return
                 
                 elif '/adm_uploads' in msgText:
                     try:
                         uploads = memory_stats.get_recent_uploads(15)
                         if not uploads:
-                            bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> No hay subidas registradas.</b>", parse_mode='html')
+                            bot.editMessageText(message, "<b>⚠️ No hay subidas registradas.</b>", parse_mode='html')
                             return
                         
-                        uploads_msg = "<tg-emoji id=\"5368324170671202286\">📤</tg-emoji> <b>Últimas subidas</b>\n\n"
+                        uploads_msg = "📤 <b>Últimas subidas</b>\n\n"
                         for i, log in enumerate(uploads, 1):
-                            uploads_msg += f"<b>{i}.</b> <b>{log['filename']}</b>\n   <tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>@{log['username']}</b> | <tg-emoji id=\"5368324170671202286\">📏</tg-emoji> <b>{log['file_size_formatted']}</b>\n\n"
+                            uploads_msg += f"<b>{i}.</b> <b>{log['filename']}</b>\n   👤 <b>@{log['username']}</b> | 📏 <b>{log['file_size_formatted']}</b>\n\n"
                         bot.editMessageText(message, uploads_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al obtener subidas:</b> <b>{str(e)}</b>", parse_mode='html')
+                        bot.editMessageText(message, f"<b>❌ Error al obtener subidas:</b> <b>{str(e)}</b>", parse_mode='html')
                     return
                 
                 elif '/adm_deletes' in msgText:
                     try:
                         deletes = memory_stats.get_recent_deletes(15)
                         if not deletes:
-                            bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> No hay eliminaciones registradas.</b>", parse_mode='html')
+                            bot.editMessageText(message, "<b>⚠️ No hay eliminaciones registradas.</b>", parse_mode='html')
                             return
                         
-                        deletes_msg = "<tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> <b>Últimas eliminaciones</b>\n\n"
+                        deletes_msg = "🗑️ <b>Últimas eliminaciones</b>\n\n"
                         for i, log in enumerate(deletes, 1):
                             if log['type'] == 'delete_all':
-                                deletes_msg += f"<b>{i}.</b> <b>Eliminación masiva</b>\n   <tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>@{log['username']}</b> (<b>{log.get('deleted_evidences', 1)} ev.</b>)\n\n"
+                                deletes_msg += f"<b>{i}.</b> <b>Eliminación masiva</b>\n   👤 <b>@{log['username']}</b> (<b>{log.get('deleted_evidences', 1)} ev.</b>)\n\n"
                             else:
-                                deletes_msg += f"<b>{i}.</b> <b>{log['filename']}</b>\n   <tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>@{log['username']}</b>\n\n"
+                                deletes_msg += f"<b>{i}.</b> <b>{log['filename']}</b>\n   👤 <b>@{log['username']}</b>\n\n"
                         bot.editMessageText(message, deletes_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al obtener eliminaciones:</b> <b>{str(e)}</b>", parse_mode='html')
+                        bot.editMessageText(message, f"<b>❌ Error al obtener eliminaciones:</b> <b>{str(e)}</b>", parse_mode='html')
                     return
                 
                 elif '/adm_cleardata' in msgText:
                     try:
                         if not memory_stats.has_any_data():
-                            bot.editMessageText(message, "<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> No hay datos para limpiar.</b>", parse_mode='html')
+                            bot.editMessageText(message, "<b>⚠️ No hay datos para limpiar.</b>", parse_mode='html')
                             return
                         result = memory_stats.clear_all_data()
                         bot.editMessageText(message, f"<b>{result}</b>", parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error al limpiar datos:</b> <b>{str(e)}</b>", parse_mode='html')
+                        bot.editMessageText(message, f"<b>❌ Error al limpiar datos:</b> <b>{str(e)}</b>", parse_mode='html')
                     return
         
         # ============================================
@@ -2807,23 +2807,23 @@ def onmessage(update,bot:ObigramClient):
                 total_size_formatted = format_file_size(user_stats['total_size'])
                 daily_size_formatted = format_file_size(user_stats.get('daily_size', 0))
                 stats_msg = f"""
-<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>Tus estadísticas</b>
-<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>@{username}</b>
-<tg-emoji id=\"5368324170671202286\">📤</tg-emoji> <b>Subidas:</b> <b>{user_stats['uploads']}</b>
-<tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> <b>Eliminaciones:</b> <b>{user_stats['deletes']}</b>
-<tg-emoji id=\"5368324170671202286\">💾</tg-emoji> <b>Espacio usado hoy:</b> <b>{daily_size_formatted} / 1 GB</b>
-<tg-emoji id=\"5368324170671202286\">💾</tg-emoji> <b>Espacio histórico:</b> <b>{total_size_formatted}</b>
-<tg-emoji id=\"5368324170671202286\">📅</tg-emoji> <b>Última actividad:</b> <b>{user_stats['last_activity']}</b>
+📊 <b>Tus estadísticas</b>
+👤 <b>Usuario:</b> <b>@{username}</b>
+📤 <b>Subidas:</b> <b>{user_stats['uploads']}</b>
+🗑️ <b>Eliminaciones:</b> <b>{user_stats['deletes']}</b>
+💾 <b>Espacio usado hoy:</b> <b>{daily_size_formatted} / 1 GB</b>
+💾 <b>Espacio histórico:</b> <b>{total_size_formatted}</b>
+📅 <b>Última actividad:</b> <b>{user_stats['last_activity']}</b>
                 """
             else:
                 stats_msg = f"""
-<tg-emoji id=\"5368324170671202286\">📊</tg-emoji> <b>Tus estadísticas</b>
-<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>@{username}</b>
-<tg-emoji id=\"5368324170671202286\">📤</tg-emoji> <b>Subidas:</b> <b>0</b>
-<tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> <b>Eliminaciones:</b> <b>0</b>
-<tg-emoji id=\"5368324170671202286\">💾</tg-emoji> <b>Espacio usado hoy:</b> <b>0 B / 1 GB</b>
+📊 <b>Tus estadísticas</b>
+👤 <b>Usuario:</b> <b>@{username}</b>
+📤 <b>Subidas:</b> <b>0</b>
+🗑️ <b>Eliminaciones:</b> <b>0</b>
+💾 <b>Espacio usado hoy:</b> <b>0 B / 1 GB</b>
 
-<tg-emoji id=\"5368324170671202286\">ℹ️</tg-emoji> <b>Aún no tienes actividad registrada.</b>
+ℹ️ <b>Aún no tienes actividad registrada.</b>
                 """
             bot.editMessageText(message, stats_msg, parse_mode='html')
             return
@@ -2833,7 +2833,7 @@ def onmessage(update,bot:ObigramClient):
             try:
                 requests.get(user_info['moodle_host'], timeout=5, proxies=proxy, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
             except:
-                bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> La nube <code>{user_info["moodle_host"]}</code> no responde o está caída.</b>', parse_mode='html')
+                bot.editMessageText(message, f'<b>❌ La nube <code>{user_info["moodle_host"]}</code> no responde o está caída.</b>', parse_mode='html')
                 return
 
             client = MoodleClient(user_info['moodle_user'],
@@ -2857,16 +2857,16 @@ def onmessage(update,bot:ObigramClient):
                         })
                 
                 if len(visible_list) > 0:
-                    files_msg = "<tg-emoji id=\"5368324170671202286\">📁</tg-emoji> <b>Tus evidencias</b>\n\n"
+                    files_msg = "📁 <b>Tus evidencias</b>\n\n"
                     for idx, item in enumerate(visible_list):
                         files_msg += f"• <b>{item['name']}</b> [ <b>{item['file_count']}</b> ]\n  /txt_{idx} | /del_{idx}\n\n"
                     files_msg += f"<b>Total:</b> <b>{len(visible_list)} evidencia(s)</b>"
                     bot.editMessageText(message, files_msg, parse_mode='html')
                 else:
-                    bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">📭</tg-emoji> No hay evidencias disponibles</b>', parse_mode='html')
+                    bot.editMessageText(message, '<b>📭 No hay evidencias disponibles</b>', parse_mode='html')
                 client.logout()
             else:
-                bot.editMessageText(message,'<b><tg-emoji id=\"5368324170671202286\">➲</tg-emoji> Error y causas<tg-emoji id=\"5368324170671202286\">🧐</tg-emoji></b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
+                bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
                 
         elif '/txt_' in msgText:
             try:
@@ -2891,7 +2891,7 @@ def onmessage(update,bot:ObigramClient):
                             })
                     
                     if findex < 0 or findex >= len(visible_list):
-                        bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Índice inválido. Use </b>/files<b> para ver la lista.</b>', parse_mode='html')
+                        bot.editMessageText(message, '<b>❌ Índice inválido. Use </b>/files<b> para ver la lista.</b>', parse_mode='html')
                         client.logout()
                         return
                     
@@ -2900,13 +2900,13 @@ def onmessage(update,bot:ObigramClient):
                     txtname = clean_name + '.txt'
                     sendTxt(txtname, evindex['files'], update, bot, user_info=user_info)
                     client.logout()
-                    bot.editMessageText(message,'<b><tg-emoji id=\"5368324170671202286\">📄</tg-emoji> TXT aquí</b>', parse_mode='html')
+                    bot.editMessageText(message,'<b>📄 TXT aquí</b>', parse_mode='html')
                 else:
-                    bot.editMessageText(message,'<b><tg-emoji id=\"5368324170671202286\">➲</tg-emoji> Error y causas<tg-emoji id=\"5368324170671202286\">🧐</tg-emoji></b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
+                    bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
             except ValueError:
-                bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto. Use:</b> /txt_0', parse_mode='html')
+                bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /txt_0', parse_mode='html')
             except Exception as e:
-                bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error:</b> <b>{str(e)}</b>', parse_mode='html')
+                bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
              
         elif '/del_' in msgText:
             try:
@@ -2932,7 +2932,7 @@ def onmessage(update,bot:ObigramClient):
                             })
                     
                     if findex < 0 or findex >= len(visible_list):
-                        bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Índice inválido. Use </b>/files<b> para ver la lista.</b>', parse_mode='html')
+                        bot.editMessageText(message, '<b>❌ Índice inválido. Use </b>/files<b> para ver la lista.</b>', parse_mode='html')
                         client.logout()
                         return
                     
@@ -2963,32 +2963,32 @@ def onmessage(update,bot:ObigramClient):
                     if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                         try:
                             clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                            msg_log = (f"<b><tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> ¡Evidencia eliminada!</b>\n\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <b>@{username}</b>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">📄</tg-emoji> Evidencia:</b> <b>{evidence_clean_name}</b>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">📁</tg-emoji> Archivos:</b> <b>{file_count}</b>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> Nube:</b> <code>{clean_host}</code>")
+                            msg_log = (f"<b>🗑️ ¡Evidencia eliminada!</b>\n\n"
+                                       f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                       f"<b>📄 Evidencia:</b> <b>{evidence_clean_name}</b>\n"
+                                       f"<b>📁 Archivos:</b> <b>{file_count}</b>\n"
+                                       f"<b>☁️ Nube:</b> <code>{clean_host}</code>")
                             bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
                         except Exception as e:
                             print(f"Error al notificar eliminación al grupo: {e}")
                     
-                    confirmation_msg = f"<tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> <b>Evidencia eliminada:</b> <b>{evidence_clean_name}</b>\n<tg-emoji id=\"5368324170671202286\">📁</tg-emoji> <b>Archivos borrados:</b> <b>{file_count}</b>\n"
+                    confirmation_msg = f"🗑️ <b>Evidencia eliminada:</b> <b>{evidence_clean_name}</b>\n📁 <b>Archivos borrados:</b> <b>{file_count}</b>\n"
                     if len(updated_visible_list) > 0:
-                        confirmation_msg += "<tg-emoji id=\"5368324170671202286\">📋</tg-emoji> <b>Tus evidencias actualizadas:</b>\n\n"
+                        confirmation_msg += "📋 <b>Tus evidencias actualizadas:</b>\n\n"
                         for idx, item in enumerate(updated_visible_list):
                             clean_name = item['clean_name']
                             item_file_count = len(item['original']['files']) if 'files' in item['original'] else 0
                             confirmation_msg += f"• <b>{clean_name}</b> [ <b>{item_file_count}</b> ]\n  /txt_{idx} | /del_{idx}\n\n"
                         bot.editMessageText(message, confirmation_msg, parse_mode='html')
                     else:
-                        confirmation_msg += "<b><tg-emoji id=\"5368324170671202286\">📭</tg-emoji> No hay evidencias disponibles</b>"
+                        confirmation_msg += "<b>📭 No hay evidencias disponibles</b>"
                         bot.editMessageText(message, confirmation_msg, parse_mode='html')
                 else:
-                    bot.editMessageText(message,'<b><tg-emoji id=\"5368324170671202286\">➲</tg-emoji> Error y causas<tg-emoji id=\"5368324170671202286\">🧐</tg-emoji></b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
+                    bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
             except ValueError:
-                bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Formato incorrecto. Use:</b> /del_0', parse_mode='html')
+                bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /del_0', parse_mode='html')
             except Exception as e:
-                bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error:</b> <b>{str(e)}</b>', parse_mode='html')
+                bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                 
         elif '/delall' in msgText:
             try:
@@ -3008,7 +3008,7 @@ def onmessage(update,bot:ObigramClient):
                             user_evidences.append(ev)
                     
                     if not user_evidences:
-                        bot.editMessageText(message, '<b><tg-emoji id=\"5368324170671202286\">📭</tg-emoji> No hay evidencias disponibles</b>', parse_mode='html')
+                        bot.editMessageText(message, '<b>📭 No hay evidencias disponibles</b>', parse_mode='html')
                         client.logout()
                         return
                     
@@ -3031,21 +3031,21 @@ def onmessage(update,bot:ObigramClient):
                     if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                         try:
                             clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                            msg_log = (f"<b><tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji><tg-emoji id=\"5368324170671202286\">💥</tg-emoji> ¡Eliminación masiva!</b>\n\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <b>@{username}</b>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">📊</tg-emoji> Evidencias borradas:</b> <b>{total_evidences}</b>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">📁</tg-emoji> Archivos borrados:</b> <b>{total_files}</b>\n"
-                                       f"<b><tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> Nube:</b> <code>{clean_host}</code>")
+                            msg_log = (f"<b>🗑️💥 ¡Eliminación masiva!</b>\n\n"
+                                       f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                                       f"<b>📊 Evidencias borradas:</b> <b>{total_evidences}</b>\n"
+                                       f"<b>📁 Archivos borrados:</b> <b>{total_files}</b>\n"
+                                       f"<b>☁️ Nube:</b> <code>{clean_host}</code>")
                             bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
                         except Exception as e:
                             print(f"Error al notificar eliminación masiva al grupo: {e}")
                     
-                    deletion_msg = f"<tg-emoji id=\"5368324170671202286\">🗑️</tg-emoji> <b>Eliminación masiva completada</b>\n\n• <b>Evidencias eliminadas:</b> <b>{total_evidences}</b>\n• <b>Archivos borrados:</b> <b>{total_files}</b>\n\n<b><tg-emoji id=\"5368324170671202286\">✅</tg-emoji> ¡Todas tus evidencias han sido eliminadas!</b>"
+                    deletion_msg = f"🗑️ <b>Eliminación masiva completada</b>\n\n• <b>Evidencias eliminadas:</b> <b>{total_evidences}</b>\n• <b>Archivos borrados:</b> <b>{total_files}</b>\n\n<b>✅ ¡Todas tus evidencias han sido eliminadas!</b>"
                     bot.editMessageText(message, deletion_msg, parse_mode='html')
                 else:
-                    bot.editMessageText(message,'<b><tg-emoji id=\"5368324170671202286\">➲</tg-emoji> Error y causas<tg-emoji id=\"5368324170671202286\">🧐</tg-emoji></b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
+                    bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
             except Exception as ex:
-                bot.editMessageText(message, f'<b><tg-emoji id=\"5368324170671202286\">❌</tg-emoji> Error:</b> <b>{str(ex)}</b>', parse_mode='html')
+                bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(ex)}</b>', parse_mode='html')
                 
         elif 'http' in msgText:
             url = msgText
@@ -3080,30 +3080,30 @@ def onmessage(update,bot:ObigramClient):
                     send_reaction(chat_id, update.message.message_id, "💩")
                     if current_daily_size == 0:
                         limit_msg = (
-                            f"<b><tg-emoji id=\"5368324170671202286\">🚫</tg-emoji> Límite diario excedido</b>\n\n"
+                            f"<b>🚫 Límite diario excedido</b>\n\n"
                             f"<b>Estimado usuario @{username}, el archivo que intenta procesar pesa {format_file_size(file_size)}, "
                             f"lo cual excede el límite diario permitido de 1 GB. "
                             f"No es posible procesar este archivo.</b>"
                         )
                         group_limit_msg = (
-                            f"<b><tg-emoji id=\"5368324170671202286\">🚫</tg-emoji> ¡Límite diario excedido!</b>\n\n"
-                            f"<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <b>@{username}</b>\n"
-                            f"<b><tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> Archivo:</b> <b>{format_file_size(file_size)}</b>\n"
-                            f"<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> Detalle:</b> <b>Supera el límite de 1 GB diario</b>"
+                            f"<b>🚫 ¡Límite diario excedido!</b>\n\n"
+                            f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                            f"<b>⚖️ Archivo:</b> <b>{format_file_size(file_size)}</b>\n"
+                            f"<b>⚠️ Detalle:</b> <b>Supera el límite de 1 GB diario</b>"
                         )
                     else:
                         limit_msg = (
-                            f"<b><tg-emoji id=\"5368324170671202286\">🚫</tg-emoji> Límite diario alcanzado</b>\n\n"
+                            f"<b>🚫 Límite diario alcanzado</b>\n\n"
                             f"<b>Estimado usuario @{username}, ya ha consumido {format_file_size(current_daily_size)} de su cuota diaria de 1 GB. "
                             f"Intentar procesar este archivo de {format_file_size(file_size)} excedería su límite permitido. "
                             f"Su cuota se restablecerá automáticamente al cambiar el día.</b>"
                         )
                         group_limit_msg = (
-                            f"<b><tg-emoji id=\"5368324170671202286\">🚫</tg-emoji> ¡Cuota diaria superada!</b>\n\n"
-                            f"<b><tg-emoji id=\"5368324170671202286\">👤</tg-emoji> Usuario:</b> <b>@{username}</b>\n"
-                            f"<b><tg-emoji id=\"5368324170671202286\">📊</tg-emoji> Consumo previo:</b> <b>{format_file_size(current_daily_size)}</b>\n"
-                            f"<b><tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> Archivo intentado:</b> <b>{format_file_size(file_size)}</b>\n"
-                            f"<b><tg-emoji id=\"5368324170671202286\">⚠️</tg-emoji> Detalle:</b> <b>La suma excede el límite de 1 GB diario</b>"
+                            f"<b>🚫 ¡Cuota diaria superada!</b>\n\n"
+                            f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                            f"<b>📊 Consumo previo:</b> <b>{format_file_size(current_daily_size)}</b>\n"
+                            f"<b>⚖️ Archivo intentado:</b> <b>{format_file_size(file_size)}</b>\n"
+                            f"<b>⚠️ Detalle:</b> <b>La suma excede el límite de 1 GB diario</b>"
                         )
 
                     bot.editMessageText(message, limit_msg, parse_mode='html')
@@ -3123,14 +3123,14 @@ def onmessage(update,bot:ObigramClient):
                 try:
                     clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
-                    mensaje_log = (f"<b><tg-emoji id=\"5368324170671202286\">🔔</tg-emoji> ¡Nuevo enlace recibido!</b>\n\n<tg-emoji id=\"5368324170671202286\">👤</tg-emoji> <b>Usuario:</b> <b>@{username}</b>\n<tg-emoji id=\"5368324170671202286\">📄</tg-emoji> <b>Nombre:</b> <b>{filename}</b>\n<tg-emoji id=\"5368324170671202286\">⚖️</tg-emoji> <b>Peso:</b> <b>{tamano_formateado}</b>\n<tg-emoji id=\"5368324170671202286\">🔗</tg-emoji> <b>Enlace:</b> <code>{url}</code>\n<tg-emoji id=\"5368324170671202286\">☁️</tg-emoji> <b>Nube:</b> <code>{clean_host}</code>")
+                    mensaje_log = (f"<b>🔔 ¡Nuevo enlace recibido!</b>\n\n👤 <b>Usuario:</b> <b>@{username}</b>\n📄 <b>Nombre:</b> <b>{filename}</b>\n⚖️ <b>Peso:</b> <b>{tamano_formateado}</b>\n🔗 <b>Enlace:</b> <code>{url}</code>\n☁️ <b>Nube:</b> <code>{clean_host}</code>")
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
                     print(f"Error al notificar enlace: {e}")
             
             ddl(update,bot,message,url,file_name='',thread=thread,jdb=jdb)
         else:
-            bot.editMessageText(message,'<b><tg-emoji id=\"5368324170671202286\">➲</tg-emoji> No se pudo procesar <tg-emoji id=\"5368324170671202286\">✗</tg-emoji> </b>', parse_mode='html')
+            bot.editMessageText(message,'<b>➲ No se pudo procesar ✗ </b>', parse_mode='html')
             
     except Exception as ex:
         print(f"Error general onmessage: {str(ex)}")
