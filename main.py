@@ -47,7 +47,7 @@ except:
 # SEPARATOR FOR USER EVIDENCES
 USER_EVIDENCE_MARKER = " "  # Space as separator
 
-# LISTA DISPONIBLE DE NUBES (1 al 7)
+# LISTA DISPONIBLE DE NUBES (1 al 8)
 AVAILABLE_CLOUDS = [
     {
         "cloudtype": "moodle",
@@ -125,6 +125,17 @@ AVAILABLE_CLOUDS = [
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
+    },
+    {
+        "cloudtype": "moodle",
+        "moodle_host": "https://uvp.ult.edu.cu/",
+        "moodle_repo_id": 5,
+        "moodle_user": "grechel",
+        "moodle_password": "Luacheia77",
+        "zips": 99,
+        "uploadtype": "evidence",
+        "proxy": "",
+        "tokenize": 0
     }
 ]
 
@@ -136,7 +147,8 @@ PRE_CONFIGURATED_USERS = {
     "hola,usuario2": AVAILABLE_CLOUDS[3],
     "gatitoo_miauu,usuario_nuevo2": AVAILABLE_CLOUDS[4],
     "Satoru_2115,usuario_nuevo4": AVAILABLE_CLOUDS[5],
-    "usuario_uclv1,usuario_uclv2": AVAILABLE_CLOUDS[6]
+    "usuario_uclv1,usuario_uclv2": AVAILABLE_CLOUDS[6],
+        "usuario1,usuario2": AVAILABLE_CLOUDS[7]
 }
 
 # ==============================
@@ -1708,7 +1720,7 @@ def onmessage(update,bot:ObigramClient):
                             bot.editMessageText(message, msg_text, parse_mode='html')
                             return
                         else:
-                            bot.editMessageText(message, "<b>❌ Número de nube inválido.</b>\n💡 <b>Debe ser un número del 1 al 7.</b>", parse_mode='html')
+                            bot.editMessageText(message, f"<b>❌ Número de nube inválido.</b>\n💡 <b>Debe ser un número del 1 al {len(AVAILABLE_CLOUDS)}.</b>", parse_mode='html')
                             return
                     else:
                         bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /add usuario1,usuario2 1", parse_mode='html')
@@ -1927,7 +1939,7 @@ def onmessage(update,bot:ObigramClient):
                             print(f"Error al notificar cambio de nube al grupo: {e}")
                     return
                 else:
-                    bot.editMessageText(message, "<b>❌ Número inválido. Envía un número del 1 al 7.</b>", parse_mode='html')
+                    bot.editMessageText(message, f"<b>❌ Número inválido. Envía un número del 1 al {len(AVAILABLE_CLOUDS)}.</b>", parse_mode='html')
                     CHANGING_CLOUD_USERS.discard(username)
                     return
             else:
@@ -1968,7 +1980,7 @@ def onmessage(update,bot:ObigramClient):
             for i, c in enumerate(AVAILABLE_CLOUDS, 1):
                 short = c['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                 menu_msg += f"<b>{i}.</b> <code>{short}</code>\n   ⚖️ <b>Límite:</b> <b>{c['zips']} MB</b>\n\n"
-            menu_msg += "💡 <b>Envía solo el número</b> (1 al 7)."
+            menu_msg += f"💡 <b>Envía solo el número</b> (1 al {len(AVAILABLE_CLOUDS)})."
             
             CHANGING_CLOUD_USERS.add(username)
             bot.editMessageText(message, menu_msg, parse_mode='html')
@@ -2017,7 +2029,7 @@ def onmessage(update,bot:ObigramClient):
 /adm_nuke - <b>Eliminación masiva ⚠️</b>
 
 🔧 <b>Tus comandos personales:</b>
-/cambiar - <b>Cambiar de nube (1 al 7) 🔄</b>
+/cambiar - <b>Cambiar de nube (1 al {len(AVAILABLE_CLOUDS)}) 🔄</b>
 /files - <b>Ver tus evidencias</b>
 /txt_X - <b>Ver TXT de tu evidencia</b>
 /del_X - <b>Eliminar tu evidencia</b>
@@ -2036,7 +2048,7 @@ def onmessage(update,bot:ObigramClient):
 
 🔧 <b>Tus comandos:</b>
 /start - <b>Ver esta información</b>
-/cambiar - <b>Cambiar de nube (1 al 7) 🔄</b>
+/cambiar - <b>Cambiar de nube (1 al {len(AVAILABLE_CLOUDS)}) 🔄</b>
 /status - <b>Estado de tu nube 🟢/🔴</b>
 /files - <b>Ver tus evidencias</b>
 /txt_X - <b>Ver TXT de evidencia X</b>
