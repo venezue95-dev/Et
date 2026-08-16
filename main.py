@@ -882,10 +882,10 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                                              getUser['moodle_repo_id'],
                                              proxy=proxy)
                 if moodle_client.login():
-                    # SISTEMA DE REINTENTO PARA LIDIAR CON EL RETRASO DE INDEXACIÓN DE MOODLE
+                    # SISTEMA DE REINTENTO OPTIMIZADO PARA EVITAR QUE EL TXT VENGA VACÍO
                     files = []
                     evidence_index = -1
-                    for attempt in range(3):
+                    for attempt in range(5):  # 5 intentos con pausas para esperar a Moodle
                         evidences = moodle_client.getEvidences()
                         for idx, ev in enumerate(evidences):
                             if ev['name'] == internal_evidname:
@@ -895,7 +895,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                                     break
                         if files:
                             break
-                        time.sleep(2)
+                        time.sleep(2)  # Pausa de 2 segundos entre reintentos
                     
                     if files:
                         for i in range(len(files)):
@@ -919,6 +919,36 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
 
             bot.deleteMessage(message.chat.id,message.message_id)
+            
+            filename_clean = os.path.basename(file)
+
+            # CONTROL: SI NO HAY ARCHIVOS/TXT, NO ENVIAR EL MENSAJE DE FINALIZACIÓN HABITUAL SINO UN AVISO
+            if not files:
+                warning_user_msg = (
+                    f"<b>⚠️ ¡Archivo subido pero con incidencia en el TXT!</b>\n\n"
+                    f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                    f"<b>📄 Nombre:</b> <b>{filename_clean}</b>\n"
+                    f"<b>⚖️ Peso:</b> <b>{format_file_size(file_size)}</b>\n\n"
+                    f"<i>El archivo se subió correctamente a la nube, pero la plataforma Moodle tardó demasiado en indexar los enlaces directos. Puedes intentar obtener tu TXT más tarde con el comando /files.</i>"
+                )
+                bot.sendMessage(message.chat.id, warning_user_msg, parse_mode='html')
+
+                if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                    try:
+                        clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                        warning_log_msg = (
+                            f"<b>⚠️ ¡Aviso: Subida sin TXT generado!</b>\n\n"
+                            f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
+                            f"<b>📄 Nombre:</b> <b>{filename_clean}</b>\n"
+                            f"<b>⚖️ Peso:</b> <b>{format_file_size(file_size)}</b>\n"
+                            f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
+                            f"<i>El archivo está en la nube pero Moodle no devolvió los enlaces directos a tiempo.</i>"
+                        )
+                        bot.sendMessage(LOG_GROUP_ID, warning_log_msg, parse_mode='html')
+                    except Exception as e:
+                        print(f"Error al notificar aviso de TXT faltante al grupo: {e}")
+                return
+
             finishInfo = infos.createFinishUploading(file,file_size,max_file_size,file_upload_count,file_upload_count,findex)
             filesInfo = infos.createFileMsg(file,files)
             
@@ -932,7 +962,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
 
             bot.sendMessage(message.chat.id, finishInfo + '\n' + extra_msg + '\n' + filesInfo, parse_mode='html')
             
-            filename_clean = os.path.basename(file)
             memory_stats.log_upload(
                 username=username,
                 filename=filename_clean,
@@ -1623,6 +1652,12 @@ def onmessage(update,bot:ObigramClient):
             user_info['chat_id'] = chat_id
             jdb.save_data_user(username, user_info)
             jdb.save()
+
+        # Captura automática de file_id para stickers enviados al bot
+        if update.message.sticker:
+            sticker_id = update.message.sticker.file_id
+            bot.sendMessage(chat_id, f"<code>{sticker_id}</code>", parse_mode='html')
+            return
 
         if '/cancel_' in msgText:
             try:
