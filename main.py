@@ -1,3 +1,5 @@
+Aquí tienes el código completo con todas las correcciones integradas.
+Esta versión incluye la validación estricta post-login (para detectar si el servidor rechaza las credenciales aunque el servidor esté online, evitando el falso positivo), el control inmediato de parada si falla el inicio de sesión para que salga un único mensaje limpio, y todas las protecciones contra errores de tipo NoneType.
 from pyobigram.utils import sizeof_fmt,get_file_size,createID,nice_time
 from pyobigram.client import ObigramClient, inlineQueryResultArticle
 from MoodleClient import MoodleClient
@@ -684,12 +686,19 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
 
         loged = client.login()
         
+        # Validación estricta post-login (Evita falsos positivos si el login da True pero el servidor rechaza las credenciales)
+        evidences = []
+        if loged:
+            try:
+                evidences = client.getEvidences() or []
+            except Exception:
+                loged = False
+                evidences = []
+        
         if thread and thread.getStore('stop'):
             return None
 
         if loged:
-            evidences = client.getEvidences() or []
-            
             original_evidname = str(filename).split('.')[0]
             visible_evidname = original_evidname
             internal_evidname = f"{original_evidname}{USER_EVIDENCE_MARKER}{username}"
@@ -878,7 +887,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if thread and thread.getStore('stop'):
             raise Exception("Tarea detenida por mantenimiento o cancelación")
 
-        # CORRECCIÓN CLAVE: Si falló el login o retornó nulo, salimos inmediatamente sin mostrar errores duplicados
+        # Evita duplicar errores y corta el flujo de inmediato si falló el login o retornó nulo
         if client == "LOGIN_FAILED" or client is None:
             return
 
