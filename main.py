@@ -878,10 +878,12 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if thread and thread.getStore('stop'):
             raise Exception("Tarea detenida por mantenimiento o cancelación")
 
+        # CORRECCIÓN CLAVE: Si falló el login o retornó nulo, salimos inmediatamente sin mostrar errores duplicados
+        if client == "LOGIN_FAILED" or client is None:
+            return
+
         visible_evidname = ''
         files = []
-        if client == "LOGIN_FAILED":
-            return
         if client:
             original_evidname = str(file).split('.')[0]
             visible_evidname = original_evidname
@@ -1003,17 +1005,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                         print(f"Error al notificar fallo de TXT al grupo: {e}")
             
             send_sticker(message.chat.id, "CAACAgEAAxkBAAIoXGqA9r31O2plFhlz_RG3tuYEg-_JAAK6BgACnFgJRDiBixe0VxapPQQ")
-        else:
-            if thread and thread.getStore('stop'):
-                pass
-            else:
-                clean_host = getUser.get('moodle_host', '').replace('https://', '').replace('http://', '').strip('/') if getUser else "Desconocido"
-                error_page_msg = (
-                    f"<b>❌ ¡Error de Autenticación en Moodle!</b>\n\n"
-                    f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                    f"<b>⚠️ Detalle:</b> <b>Error en la autenticación o credenciales incorrectas</b>"
-                )
-                bot.editMessageText(message, error_page_msg, parse_mode='html')
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
