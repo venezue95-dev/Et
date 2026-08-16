@@ -1,5 +1,3 @@
-Aquí tienes el código completo con todas las correcciones integradas.
-Esta versión incluye la validación estricta post-login (para detectar si el servidor rechaza las credenciales aunque el servidor esté online, evitando el falso positivo), el control inmediato de parada si falla el inicio de sesión para que salga un único mensaje limpio, y todas las protecciones contra errores de tipo NoneType.
 from pyobigram.utils import sizeof_fmt,get_file_size,createID,nice_time
 from pyobigram.client import ObigramClient, inlineQueryResultArticle
 from MoodleClient import MoodleClient
