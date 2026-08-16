@@ -587,6 +587,8 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             
         evidence = None
         fileid = None
+        
+        # Obtener configuración del usuario con respaldo seguro (Evita NoneType)
         user_info = jdb.get_user(username) if jdb else None
         if not user_info:
             expanded_users = expand_user_groups()
