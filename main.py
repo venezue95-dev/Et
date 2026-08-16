@@ -885,7 +885,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                     # SISTEMA DE REINTENTO PARA LIDIAR CON EL RETRASO DE INDEXACIÓN DE MOODLE
                     files = []
                     evidence_index = -1
-                    for attempt in range(5):
+                    for attempt in range(3):
                         evidences = moodle_client.getEvidences()
                         for idx, ev in enumerate(evidences):
                             if ev['name'] == internal_evidname:
@@ -895,7 +895,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                                     break
                         if files:
                             break
-                        time.sleep(3)
+                        time.sleep(2)
                     
                     if files:
                         for i in range(len(files)):
@@ -914,20 +914,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             except Exception as e:
                 print(f"Error obteniendo índice de evidencia: {e}")
                 findex = 0
-            
-            # --- USO DE DRAFTLIST COMO RESPALDO RÁPIDO / PRIMARIO ---
-            if not files and isinstance(client, list):
-                for resp_item in client:
-                    if isinstance(resp_item, dict):
-                        url = resp_item.get('url') or resp_item.get('directurl')
-                        if url:
-                            if '?forcedownload=1' in url:
-                                url = url.replace('?forcedownload=1', '')
-                            elif '&forcedownload=1' in url:
-                                url = url.replace('&forcedownload=1', '')
-                            if '&token=' in url and '?' not in url:
-                                url = url.replace('&token=', '?token=', 1)
-                            files.append({'directurl': url})
             
             if thread and thread.getStore('stop'):
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
@@ -970,25 +956,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 txtname = str(file).split('/')[-1].split('.')[0] + '.txt'
                 send_to_group_flag = False if username.lower() == ADMIN_USERNAME.lower() else True
                 sendTxt(txtname, files, update, bot, send_to_group=send_to_group_flag, user_info=getUser)
-            else:
-                bot.sendMessage(
-                    message.chat.id, 
-                    "<b>⚠️ El archivo se subió correctamente, pero el TXT no pudo generarse automáticamente debido a un retraso temporal del servidor Moodle. Puedes obtenerlo usando /files.</b>", 
-                    parse_mode='html'
-                )
-                if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
-                    try:
-                        clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                        group_fallback_msg = (
-                            f"<b>⚠️ ¡Aviso: TXT no generado automáticamente!</b>\n\n"
-                            f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
-                            f"<b>📄 Nombre:</b> <b>{filename_clean}</b>\n"
-                            f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                            f"<b>⚠️ Detalle:</b> <b>El archivo subió correctamente, pero Moodle retrasó la indexación y el TXT no se pudo enviar. El usuario deberá solicitarlo con /files.</b>"
-                        )
-                        bot.sendMessage(LOG_GROUP_ID, group_fallback_msg, parse_mode='html')
-                    except Exception as e:
-                        print(f"Error al notificar fallo de TXT al grupo: {e}")
             
             # Envío de sticker de subida completada (luego del txt)
             send_sticker(message.chat.id, "CAACAgEAAxkBAAIoXGqA9r31O2plFhlz_RG3tuYEg-_JAAK6BgACnFgJRDiBixe0VxapPQQ")
