@@ -67,7 +67,7 @@ AVAILABLE_CLOUDS = [
         "moodle_user": "mayelin.cabrera",
         "moodle_password": "Mayelin*167.",
         "zips": 99,
-        "uploadtype": "evidence",
+        "uploadtype": "blog",
         "proxy": "",
         "tokenize": 0
     },
