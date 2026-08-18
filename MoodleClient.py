@@ -64,16 +64,42 @@ class MoodleClient(object):
     def getsession(self):
         return self.session
 
-    def getUserData(self):
+    def parsejson(self, json_text):
         try:
-            tokenUrl = self.path + 'login/token.php?service=moodle_mobile_app&username=' + urllib.parse.quote(self.username) + '&password=' + urllib.parse.quote(self.password)
-            resp = self.session.get(tokenUrl, proxies=self.proxy, timeout=15)
+            return json.loads(json_text)
+        except Exception:
+            try:
+                cleaned = re.sub(r'^[^{\[]*', '', json_text)
+                cleaned = re.sub(r'[^}\]]*$', '', cleaned)
+                return json.loads(cleaned)
+            except Exception:
+                return {}
+
+    def getUserData(self):
+        """Obtiene el token de WebService usando peticiones POST limpias sin arrastrar cookies de sesión"""
+        try:
+            tokenUrl = f"{self.path}login/token.php"
+            payload = {
+                'username': self.username,
+                'password': self.password,
+                'service': 'moodle_mobile_app'
+            }
+            # Se usa requests directo (sin self.session) para evitar redirecciones al dashboard web
+            resp = requests.post(tokenUrl, data=payload, proxies=self.proxy, timeout=15)
             data = self.parsejson(resp.text)
-            if data and isinstance(data, dict):
+
+            # Fallback por GET si la Moodle no soporta POST en token.php
+            if not data or 'token' not in data:
+                tokenUrlGet = f"{self.path}login/token.php?service=moodle_mobile_app&username={urllib.parse.quote(self.username)}&password={urllib.parse.quote(self.password)}"
+                resp = requests.get(tokenUrlGet, proxies=self.proxy, timeout=15)
+                data = self.parsejson(resp.text)
+
+            if data and isinstance(data, dict) and 'token' in data:
                 data['s5token'] = S5Crypto.tokenize([self.username, self.password])
                 return data
             return None
-        except Exception:
+        except Exception as e:
+            print(f"[Error getUserData]: {e}")
             return None
 
     def getDirectUrl(self, url):
@@ -147,17 +173,6 @@ class MoodleClient(object):
         except Exception:
             return False
 
-    def parsejson(self, json_text):
-        try:
-            return json.loads(json_text)
-        except Exception:
-            try:
-                cleaned = re.sub(r'^[^{\[]*', '', json_text)
-                cleaned = re.sub(r'[^}\]]*$', '', cleaned)
-                return json.loads(cleaned)
-            except Exception:
-                return {}
-
     def getclientid(self, html):
         m = re.search(r'client_id["\']?\s*:\s*["\']([^"\']+)["\']', html)
         if m:
@@ -190,19 +205,19 @@ class MoodleClient(object):
             'client_id': self.getclientid(html)
         }
 
-        # 1. Búsqueda en elemento <object>
+        # 1. <object>
         obj = soup.find('object', attrs={'type': 'text/html'})
         if obj and obj.get('data') and '?' in obj['data']:
             query = self.extractQuery(obj['data'])
             params.update({k: v for k, v in query.items() if v is not None})
             return params
 
-        # 2. Búsqueda en inputs del formulario
+        # 2. Inputs
         itemid_input = soup.find('input', {'name': re.compile(r'itemid|draftitemid|_filemanager')})
         if itemid_input and itemid_input.get('value'):
             params['itemid'] = itemid_input['value']
 
-        # 3. Búsqueda en scripts JavaScript
+        # 3. Scripts JS
         itemid_match = re.search(r'["\']itemid["\']\s*:\s*["\']?(\d+)["\']?', html)
         if itemid_match and not params['itemid']:
             params['itemid'] = itemid_match.group(1)
@@ -525,6 +540,10 @@ class MoodleClient(object):
 
     def upload_file_draft(self, file, progressfunc=None, args=(), tokenize=False):
         try:
+            # Asegurar token activo
+            if not self.userdata or 'token' not in self.userdata:
+                self.userdata = self.getUserData()
+
             file_edit = f'{self.path}user/files.php'
             resp = self.session.get(file_edit, proxies=self.proxy, timeout=15)
             soup = BeautifulSoup(resp.text, 'html.parser')
@@ -576,23 +595,28 @@ class MoodleClient(object):
                 print(f"[Error Moodle Draft]: {data.get('error')}")
                 return None, None
 
-            if 'url' in data:
-                data['url'] = str(data['url']).replace('\\', '')
+            # Construir URL directa
+            if 'url' in data and data['url']:
+                url_str = str(data['url']).replace('\\', '')
             else:
-                data['url'] = f"{self.path}draftfile.php/{params['ctx_id']}/user/draft/{params['itemid']}/{urllib.parse.quote(filename_only)}"
+                ctx = params.get('ctx_id') or '5'
+                itemid = params.get('itemid') or ''
+                url_str = f"{self.path}draftfile.php/{ctx}/user/draft/{itemid}/{urllib.parse.quote(filename_only)}"
 
+            # Aplicar /webservice/ y concatenar token
             if self.userdata and 'token' in self.userdata and not tokenize:
-                url_str = str(data['url'])
                 if '/draftfile.php/' in url_str:
                     url_str = url_str.replace('/draftfile.php/', '/webservice/draftfile.php/')
                 elif '/pluginfile.php/' in url_str:
                     url_str = url_str.replace('/pluginfile.php/', '/webservice/pluginfile.php/')
-                sep = '&' if '?' in url_str else '?'
-                data['url'] = url_str + sep + 'token=' + self.userdata['token']
-            
-            if tokenize and self.userdata:
-                data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata.get('s5token', '')
                 
+                sep = '&' if '?' in url_str else '?'
+                url_str = f"{url_str}{sep}token={self.userdata['token']}"
+            elif tokenize and self.userdata:
+                url_str = self.host_tokenize + S5Crypto.encrypt(url_str) + '/' + self.userdata.get('s5token', '')
+
+            data['url'] = url_str
+            data['filename'] = filename_only
             return params['itemid'], data
 
         except Exception as e:
