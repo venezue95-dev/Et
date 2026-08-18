@@ -21,6 +21,7 @@ import traceback
 import pytz
 import threading
 import json
+import re
 
 # FIXED CONFIGURATION IN CODE
 BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
@@ -202,6 +203,7 @@ def format_cuba_datetime(dt=None):
     return f"{formatted_date} {hour}:{minute_ampm}"
 
 def format_file_size(size_bytes):
+    """Formatea bytes a KB, MB o GB automáticamente sin decimales .0 innecesarios"""
     if size_bytes < 1024:
         return f"{size_bytes} B"
     
@@ -533,7 +535,7 @@ def uploadFile(filename, currentBits, totalBits, speed, time, args):
         raise ex
 
 # =========================================================
-# SUBIDA POLIVALENTE: EVIDENCE, DRAFT Y BLOG
+# SUBIDA COMPLETA: EVIDENCE, DRAFT Y BLOG
 # =========================================================
 def processUploadFiles(filename, filesize, files, update, bot, message, thread=None, jdb=None):
     try:
@@ -633,7 +635,7 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
             tokenize = user_info.get('tokenize', 0) != 0
             resplist = []
 
-            # 1. SUBIDA A DRAFT
+            # 1. MODO DRAFT
             if upload_type == 'draft':
                 for f in files:
                     if thread and thread.getStore('stop'):
@@ -651,7 +653,7 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
                     os.unlink(f)
                 return resplist
 
-            # 2. SUBIDA A BLOG
+            # 2. MODO BLOG
             elif upload_type == 'blog':
                 itemid = None
                 uploaded_info = []
@@ -687,7 +689,7 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
                         resplist.append({'filename': fname, 'url': direct_url})
                 return resplist
 
-            # 3. SUBIDA A EVIDENCE
+            # 3. MODO EVIDENCE
             else:
                 evidences = client.getEvidences()
                 original_evidname = str(filename).split('.')[0]
@@ -864,7 +866,7 @@ def processFile(update, bot, message, file, thread=None, jdb=None):
         if client:
             upload_type = getUser.get('uploadtype', 'evidence')
             
-            # --- PARSEO DE ENLACES PARA DRAFT Y BLOG DIRECTOS ---
+            # --- PARSEO DE ENLACES PARA DRAFT Y BLOG ---
             if upload_type in ['draft', 'blog']:
                 for item in client:
                     if item and 'url' in item:
@@ -966,48 +968,20 @@ def processFile(update, bot, message, file, thread=None, jdb=None):
             
             send_sticker(message.chat.id, "CAACAgEAAxkBAAIoXGqA9r31O2plFhlz_RG3tuYEg-_JAAK6BgACnFgJRDiBixe0VxapPQQ")
         else:
-            if thread and thread.getStore('stop'):
-                pass
-            else:
+            if not (thread and thread.getStore('stop')):
                 clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if getUser else "Desconocido"
-                error_page_msg = (
-                    f"<b>❌ ¡Error de Autenticación en Moodle!</b>\n\n"
-                    f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                    f"<b>⚠️ Detalle:</b> <b>Error en la autenticación o credenciales incorrectas</b>"
-                )
-                bot.editMessageText(message, error_page_msg, parse_mode='html')
+                bot.editMessageText(message, f"<b>❌ ¡Error de Autenticación en Moodle!</b>\n\n<b>☁️ Nube:</b> <code>{clean_host}</code>", parse_mode='html')
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
                 bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
-            except:
-                pass
+            except: pass
             return
 
         error_detail = str(ex) if str(ex) else "Error desconocido"
-        print(f"Proceso detenido o error en {phase}: {ex}")
-        
         clean_host = getUser['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if getUser else "Desconocido"
         filename_fail = os.path.basename(file) if file else "Desconocido"
-        
-        error_msg_user = (
-            f"<b>❌ ¡Error en la {phase}!</b>\n\n"
-            f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
-            f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-            f"<b>⚠️ Detalle:</b> <b>Fallo en la {phase} del archivo: {error_detail}</b>"
-        )
-        bot.editMessageText(message, error_msg_user, parse_mode='html')
-        
-        if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
-            try:
-                mensaje_log = (f"<b>❌ ¡Error en la {phase}!</b>\n\n"
-                               f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
-                               f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
-                               f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                               f"<b>⚠️ Detalle:</b> <b>Fallo en la {phase} del archivo: {error_detail}</b>")
-                bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
-            except Exception as e:
-                print(f"Error al notificar error de proceso al grupo: {e}")
+        bot.editMessageText(message, f"<b>❌ ¡Error en la {phase}!</b>\n\n<b>📄 Nombre:</b> <b>{filename_fail}</b>\n<b>☁️ Nube:</b> <code>{clean_host}</code>\n<b>⚠️ Detalle:</b> <b>{error_detail}</b>", parse_mode='html')
     finally:
         if thread:
             clean_process(thread.id)
@@ -1031,19 +1005,25 @@ def ddl(update, bot, message, url, file_name='', thread=None, jdb=None):
                 
                 file = downloader.download_url(url, progressfunc=downloadFile, args=(bot, message, thread, username))
                 if file:
+                    if file.endswith('.unknown') and file_name and '.' in file_name and not file_name.endswith('.unknown'):
+                        new_file = os.path.splitext(file)[0] + '_' + file_name
+                        try:
+                            os.rename(file, new_file)
+                            file = new_file
+                        except: pass
                     break
             except Exception as ex:
                 error_detail = str(ex) if str(ex) else "Error desconocido"
                 if attempt == retries - 1:
                     u_info = jdb.get_user(username) if jdb else None
                     clean_host = u_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if u_info else "Desconocido"
-                    filename_fail = url.split('/')[-1] or "Desconocido"
+                    filename_fail = file_name or url.split('/')[-1] or "Desconocido"
 
                     error_msg_user = (
                         f"<b>❌ ¡Error en la descarga!</b>\n\n"
                         f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
                         f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                        f"<b>⚠️ Detalle:</b> <b>Fallo en la descarga del enlace tras {retries} intentos: {error_detail}</b>"
+                        f"<b>⚠️ Detalle:</b> <b>Fallo en la descarga tras {retries} intentos: {error_detail}</b>"
                     )
                     try:
                         bot.editMessageText(message, error_msg_user, parse_mode='html')
@@ -1059,7 +1039,6 @@ def ddl(update, bot, message, url, file_name='', thread=None, jdb=None):
                             bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                         except Exception as e:
                             print(f"Error al notificar error de descarga al grupo: {e}")
-                    
                     raise ex
                 time.sleep(3)
         
@@ -1067,16 +1046,12 @@ def ddl(update, bot, message, url, file_name='', thread=None, jdb=None):
             if file:
                 processFile(update, bot, message, file, thread=thread, jdb=jdb)
             else:
-                try:
-                    bot.editMessageText(message, '<b>➥ Error en la descarga ✗</b>', parse_mode='html')
-                except:
-                    bot.editMessageText(message, '<b>➥ Error en la descarga ✗</b>', parse_mode='html')
+                bot.editMessageText(message, '<b>➥ Error en la descarga ✗</b>', parse_mode='html')
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
                 bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
-            except:
-                pass
+            except: pass
         else:
             print(f"Error en ddl: {ex}")
     finally:
@@ -3119,7 +3094,7 @@ def onmessage(update, bot: ObigramClient):
                         
                         client.logout()
                         memory_stats.log_delete_all(username=username, deleted_evidences=0, deleted_files=deleted_count, moodle_host=user_info['moodle_host'])
-                        bot.editMessageText(message, f"🗑️ <b>Borrador vaciado ({deleted_count} archivos borrados)</b>", parse_mode='html')
+                        bot.editMessageText(message, f"🗑️ <b>Borrador vaciado</b>\n\n• <b>Archivos borrados:</b> <b>{deleted_count}</b>", parse_mode='html')
                         return
 
                     # 2. VACIAR BLOGS
@@ -3139,7 +3114,7 @@ def onmessage(update, bot: ObigramClient):
                         
                         client.logout()
                         memory_stats.log_delete_all(username=username, deleted_evidences=deleted_count, deleted_files=deleted_count, moodle_host=user_info['moodle_host'])
-                        bot.editMessageText(message, f"🗑️ <b>Publicaciones de blog eliminadas ({deleted_count})</b>", parse_mode='html')
+                        bot.editMessageText(message, f"🗑️ <b>Publicaciones de blog eliminadas</b>\n\n• <b>Entradas borradas:</b> <b>{deleted_count}</b>", parse_mode='html')
                         return
 
                     # 3. VACIAR EVIDENCE
@@ -3271,7 +3246,7 @@ def onmessage(update, bot: ObigramClient):
                 except Exception as e:
                     print(f"Error al notificar enlace: {e}")
             
-            ddl(update, bot, message, url, file_name='', thread=thread, jdb=jdb)
+            ddl(update, bot, message, url, file_name=filename, thread=thread, jdb=jdb)
         else:
             bot.editMessageText(message, '<b>➲ No se pudo procesar ✗ </b>', parse_mode='html')
             
