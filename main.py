@@ -68,7 +68,7 @@ AVAILABLE_CLOUDS = [
         "moodle_user": "webmaster",
         "moodle_password": "Adminprincipal2216..",
         "zips": 99,
-        "uploadtype": "blog",
+        "uploadtype": "draft",
         "proxy": "",
         "tokenize": 0
     },
