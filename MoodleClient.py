@@ -49,6 +49,9 @@ class MoodleClient(object):
         self.username = user
         self.password = passw
         self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        })
         self.path = 'https://moodle.uclv.edu.cu/'
         self.host_tokenize = 'https://tguploader.url/'
         if host != '':
@@ -75,23 +78,83 @@ class MoodleClient(object):
             except Exception:
                 return {}
 
+    def extractQuery(self, url):
+        retQuery = {}
+        if not url or '?' not in str(url):
+            return retQuery
+        # Limpieza obligatoria de entidades HTML &amp;
+        clean_url = str(url).replace('&amp;', '&')
+        query_str = clean_url.split('?', 1)[1]
+        for q in query_str.split('&'):
+            if '=' in q:
+                k, v = q.split('=', 1)
+                retQuery[k.strip()] = v.strip()
+        return retQuery
+
+    def getclientid(self, html):
+        m = re.search(r'client_id["\']?\s*[:=]\s*["\']([^"\']+)["\']', html)
+        if m:
+            return m.group(1)
+        m2 = re.search(r'filemanager-([a-zA-Z0-9]+)', html)
+        if m2:
+            return m2.group(1)
+        return uuid.uuid4().hex[:10]
+
+    def extract_filemanager_params(self, html, soup):
+        params = {
+            'itemid': '',
+            'ctx_id': '5',
+            'env': 'filemanager',
+            'maxbytes': '0',
+            'areamaxbytes': '-1',
+            'client_id': self.getclientid(html)
+        }
+
+        # 1. Búsqueda prioritaria en etiqueta <object>
+        obj = soup.find('object')
+        if obj and obj.get('data') and '?' in obj['data']:
+            query = self.extractQuery(obj['data'])
+            for key in ['itemid', 'ctx_id', 'client_id', 'env', 'maxbytes', 'areamaxbytes']:
+                if key in query and query[key]:
+                    params[key] = query[key]
+            if params['itemid']:
+                return params
+
+        # 2. Búsqueda en inputs ocultos del formulario (ej. files_filemanager)
+        for inp_name in ['files_filemanager', 'itemid', 'draftitemid']:
+            inp = soup.find('input', {'name': inp_name})
+            if inp and inp.get('value'):
+                params['itemid'] = inp['value']
+                break
+
+        # 3. Búsqueda por regex en código JavaScript embebido
+        if not params['itemid']:
+            m_item = re.search(r'["\']?itemid["\']?\s*[:=]\s*["\']?(\d+)["\']?', html)
+            if m_item:
+                params['itemid'] = m_item.group(1)
+
+        m_ctx = re.search(r'["\']?ctx_id["\']?\s*[:=]\s*["\']?(\d+)["\']?', html)
+        if m_ctx:
+            params['ctx_id'] = m_ctx.group(1)
+
+        return params
+
     def getUserData(self):
-        """Obtiene el token de WebService usando peticiones POST limpias sin arrastrar cookies de sesión"""
         try:
-            tokenUrl = f"{self.path}login/token.php"
-            payload = {
+            params = {
+                'service': 'moodle_mobile_app',
                 'username': self.username,
-                'password': self.password,
-                'service': 'moodle_mobile_app'
+                'password': self.password
             }
-            # Se usa requests directo (sin self.session) para evitar redirecciones al dashboard web
-            resp = requests.post(tokenUrl, data=payload, proxies=self.proxy, timeout=15)
+            tokenUrl = f"{self.path}login/token.php"
+            
+            # Petición con User-Agent de navegador
+            resp = self.session.get(tokenUrl, params=params, proxies=self.proxy, timeout=15)
             data = self.parsejson(resp.text)
 
-            # Fallback por GET si la Moodle no soporta POST en token.php
+            # Fallback por POST si el método GET fue restringido
             if not data or 'token' not in data:
-                tokenUrlGet = f"{self.path}login/token.php?service=moodle_mobile_app&username={urllib.parse.quote(self.username)}&password={urllib.parse.quote(self.password)}"
-                resp = requests.get(tokenUrlGet, proxies=self.proxy, timeout=15)
+                resp = self.session.post(tokenUrl, data=params, proxies=self.proxy, timeout=15)
                 data = self.parsejson(resp.text)
 
             if data and isinstance(data, dict) and 'token' in data:
@@ -172,69 +235,6 @@ class MoodleClient(object):
                 return True
         except Exception:
             return False
-
-    def getclientid(self, html):
-        m = re.search(r'client_id["\']?\s*:\s*["\']([^"\']+)["\']', html)
-        if m:
-            return m.group(1)
-        m2 = re.search(r'filemanager-([a-zA-Z0-9]+)', html)
-        if m2:
-            return m2.group(1)
-        return uuid.uuid4().hex[:10]
-
-    def extractQuery(self, url):
-        retQuery = {}
-        if not url or '?' not in url:
-            return retQuery
-        tokens = str(url).split('?')[1].split('&')
-        for q in tokens:
-            qspl = q.split('=')
-            try:
-                retQuery[qspl[0]] = qspl[1]
-            except Exception:
-                retQuery[qspl[0]] = None
-        return retQuery
-
-    def extract_filemanager_params(self, html, soup):
-        params = {
-            'itemid': '',
-            'ctx_id': '1',
-            'env': 'filemanager',
-            'maxbytes': '0',
-            'areamaxbytes': '-1',
-            'client_id': self.getclientid(html)
-        }
-
-        # 1. <object>
-        obj = soup.find('object', attrs={'type': 'text/html'})
-        if obj and obj.get('data') and '?' in obj['data']:
-            query = self.extractQuery(obj['data'])
-            params.update({k: v for k, v in query.items() if v is not None})
-            return params
-
-        # 2. Inputs
-        itemid_input = soup.find('input', {'name': re.compile(r'itemid|draftitemid|_filemanager')})
-        if itemid_input and itemid_input.get('value'):
-            params['itemid'] = itemid_input['value']
-
-        # 3. Scripts JS
-        itemid_match = re.search(r'["\']itemid["\']\s*:\s*["\']?(\d+)["\']?', html)
-        if itemid_match and not params['itemid']:
-            params['itemid'] = itemid_match.group(1)
-
-        ctx_match = re.search(r'["\']ctx_id["\']\s*:\s*["\']?(\d+)["\']?', html)
-        if ctx_match:
-            params['ctx_id'] = ctx_match.group(1)
-
-        maxbytes_match = re.search(r'["\']maxbytes["\']\s*:\s*["\']?(-?\d+)["\']?', html)
-        if maxbytes_match:
-            params['maxbytes'] = maxbytes_match.group(1)
-
-        areamax_match = re.search(r'["\']areamaxbytes["\']\s*:\s*["\']?(-?\d+)["\']?', html)
-        if areamax_match:
-            params['areamaxbytes'] = areamax_match.group(1)
-
-        return params
 
     def createEvidence(self, name, desc=''):
         evidenceurl = self.path + 'admin/tool/lp/user_evidence_edit.php?userid=' + self.userid
@@ -540,7 +540,6 @@ class MoodleClient(object):
 
     def upload_file_draft(self, file, progressfunc=None, args=(), tokenize=False):
         try:
-            # Asegurar token activo
             if not self.userdata or 'token' not in self.userdata:
                 self.userdata = self.getUserData()
 
@@ -583,7 +582,6 @@ class MoodleClient(object):
                 
                 headers = {
                     "Content-Type": "multipart/form-data; boundary=" + b,
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                     "X-Requested-With": "XMLHttpRequest"
                 }
                 
@@ -595,19 +593,19 @@ class MoodleClient(object):
                 print(f"[Error Moodle Draft]: {data.get('error')}")
                 return None, None
 
-            # Construir URL directa
-            if 'url' in data and data['url']:
+            # Obtener URL directa devuelta por Moodle o construirla limpiamente
+            if isinstance(data, dict) and 'url' in data and data['url']:
                 url_str = str(data['url']).replace('\\', '')
             else:
                 ctx = params.get('ctx_id') or '5'
                 itemid = params.get('itemid') or ''
                 url_str = f"{self.path}draftfile.php/{ctx}/user/draft/{itemid}/{urllib.parse.quote(filename_only)}"
 
-            # Aplicar /webservice/ y concatenar token
+            # Aplicar webservice y token
             if self.userdata and 'token' in self.userdata and not tokenize:
-                if '/draftfile.php/' in url_str:
+                if '/draftfile.php/' in url_str and '/webservice/draftfile.php/' not in url_str:
                     url_str = url_str.replace('/draftfile.php/', '/webservice/draftfile.php/')
-                elif '/pluginfile.php/' in url_str:
+                elif '/pluginfile.php/' in url_str and '/webservice/pluginfile.php/' not in url_str:
                     url_str = url_str.replace('/pluginfile.php/', '/webservice/pluginfile.php/')
                 
                 sep = '&' if '?' in url_str else '?'
