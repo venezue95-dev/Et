@@ -152,7 +152,6 @@ class CloudCache:
         self.last_full_refresh = None
     
     def should_refresh(self, cloud_name=None):
-        """Determina si debe refrescar los datos"""
         if cloud_name is None:
             if self.last_full_refresh is None:
                 return True
@@ -198,12 +197,11 @@ def format_cuba_datetime(dt=None):
     if dt is None:
         dt = get_cuba_time()
     formatted_date = dt.strftime("%d/%m/%y")
-    hour = str(int(dt.strftime("%I")))  # Elimina el cero inicial convirtiendo a entero y string
+    hour = str(int(dt.strftime("%I")))
     minute_ampm = dt.strftime("%M %p")
     return f"{formatted_date} {hour}:{minute_ampm}"
 
 def format_file_size(size_bytes):
-    """Formatea bytes a KB, MB o GB automáticamente sin decimales .0 innecesarios"""
     if size_bytes < 1024:
         return f"{size_bytes} B"
     
@@ -238,7 +236,6 @@ def format_file_size(size_bytes):
 # FUNCIONES PARA REACCIONES Y STICKERS
 # ==============================
 def send_reaction(chat_id, message_id, emoji="⚡"):
-    """Envía una reacción de emoji oficial y soportada a un mensaje específico"""
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/setMessageReaction"
         payload = {
@@ -251,7 +248,6 @@ def send_reaction(chat_id, message_id, emoji="⚡"):
         print(f"Error al enviar reacción: {e}")
 
 def send_sticker(chat_id, sticker_id):
-    """Envía un sticker oficial usando el file_id de Telegram"""
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendSticker"
         payload = {
@@ -267,13 +263,10 @@ def send_sticker(chat_id, sticker_id):
 # ==============================
 
 class MemoryStats:
-    """Sistema de estadísticas en memoria y control de límites diarios"""
-    
     def __init__(self):
         self.reset_stats()
     
     def reset_stats(self):
-        """Reinicia todas las estadísticas"""
         self.stats = {
             'total_uploads': 0,
             'total_deletes': 0,
@@ -284,7 +277,6 @@ class MemoryStats:
         self.delete_logs = []
     
     def check_and_update_daily_reset(self, username):
-        """Verifica si cambió el día en Cuba para restablecer el uso diario a 0"""
         current_date = format_cuba_date()
         if username in self.user_stats:
             if self.user_stats[username].get('last_date') != current_date:
@@ -301,7 +293,6 @@ class MemoryStats:
             }
     
     def log_upload(self, username, filename, file_size, moodle_host):
-        """Registra una subida exitosa y acumula el consumo diario"""
         try:
             file_size = int(file_size)
         except:
@@ -333,19 +324,8 @@ class MemoryStats:
         return True
     
     def log_delete(self, username, filename, evidence_name, moodle_host):
-        """Registra una eliminación individual"""
         self.stats['total_deletes'] += 1
-        
-        if username not in self.user_stats:
-            current_date = format_cuba_date()
-            self.user_stats[username] = {
-                'uploads': 0,
-                'deletes': 0,
-                'total_size': 0,
-                'daily_size': 0,
-                'last_date': current_date,
-                'last_activity': format_cuba_datetime()
-            }
+        self.check_and_update_daily_reset(username)
         
         self.user_stats[username]['deletes'] += 1
         self.user_stats[username]['last_activity'] = format_cuba_datetime()
@@ -366,19 +346,8 @@ class MemoryStats:
         return True
     
     def log_delete_all(self, username, deleted_evidences, deleted_files, moodle_host):
-        """Registra eliminación masiva"""
         self.stats['total_deletes'] += deleted_files
-        
-        if username not in self.user_stats:
-            current_date = format_cuba_date()
-            self.user_stats[username] = {
-                'uploads': 0,
-                'deletes': 0,
-                'total_size': 0,
-                'daily_size': 0,
-                'last_date': current_date,
-                'last_activity': format_cuba_datetime()
-            }
+        self.check_and_update_daily_reset(username)
         
         self.user_stats[username]['deletes'] += deleted_files
         self.user_stats[username]['last_activity'] = format_cuba_datetime()
@@ -400,41 +369,33 @@ class MemoryStats:
         return True
     
     def get_user_stats(self, username):
-        """Obtiene estadísticas de un usuario"""
         self.check_and_update_daily_reset(username)
         if username in self.user_stats:
             return self.user_stats[username]
         return None
     
     def get_all_stats(self):
-        """Obtiene todas las estadísticas globales"""
         return self.stats
     
     def get_all_users(self):
-        """Obtiene todos los usuarios"""
         return self.user_stats
     
     def get_recent_uploads(self, limit=10):
-        """Obtiene subidas recientes"""
         return self.upload_logs[-limit:][::-1] if self.upload_logs else []
     
     def get_recent_deletes(self, limit=10):
-        """Obtiene eliminaciones recientes"""
         return self.delete_logs[-limit:][::-1] if self.delete_logs else []
     
     def has_any_data(self):
-        """Verifica si hay datos"""
         return len(self.upload_logs) > 0 or len(self.delete_logs) > 0
     
     def clear_all_data(self):
-        """Limpia todos los datos"""
         self.reset_stats()
         return "<b>✅ Todos los datos han sido eliminados</b>"
 
 memory_stats = MemoryStats()
 
 def expand_user_groups():
-    """Convierte 'usuario1,usuario2':config a 'usuario1':config, 'usuario2':config"""
     expanded = {}
     for user_group, config in PRE_CONFIGURATED_USERS.items():
         users = [u.strip() for u in user_group.split(',')]
@@ -503,7 +464,6 @@ def clean_process(thread_id):
 # FUNCIÓN PARA DIVIDIR MENSAJES LARGOS
 # ==============================
 def send_long_message(bot, chat_id, text, original_message=None, parse_mode='html'):
-    """Divide mensajes largos por saltos de línea para respetar el límite de Telegram"""
     MAX_LEN = 4000
     
     if len(text) <= MAX_LEN:
@@ -573,7 +533,7 @@ def uploadFile(filename, currentBits, totalBits, speed, time, args):
         raise ex
 
 # =========================================================
-# SUBIDA COMPLETA: EVIDENCE, DRAFT Y BLOG
+# SUBIDA POLIVALENTE: EVIDENCE, DRAFT Y BLOG
 # =========================================================
 def processUploadFiles(filename, filesize, files, update, bot, message, thread=None, jdb=None):
     try:
@@ -673,7 +633,7 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
             tokenize = user_info.get('tokenize', 0) != 0
             resplist = []
 
-            # 1. MODO DRAFT
+            # 1. SUBIDA A DRAFT
             if upload_type == 'draft':
                 for f in files:
                     if thread and thread.getStore('stop'):
@@ -691,9 +651,10 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
                     os.unlink(f)
                 return resplist
 
-            # 2. MODO BLOG
+            # 2. SUBIDA A BLOG
             elif upload_type == 'blog':
                 itemid = None
+                uploaded_info = []
                 for f in files:
                     if thread and thread.getStore('stop'):
                         raise Exception("Tarea detenida por mantenimiento o cancelación")
@@ -706,17 +667,27 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
                         iter += 1
                         if iter >= 10:
                             break
-                    resplist.append(resp)
+                    uploaded_info.append(resp)
                     os.unlink(f)
                 
-                try:
-                    if itemid:
-                        client.createBlog(os.path.basename(str(filename)), itemid)
-                except:
-                    pass
+                entryid = client.createBlog(os.path.basename(str(filename)), itemid)
+                
+                for info in uploaded_info:
+                    if info:
+                        fname = info.get('filename', os.path.basename(str(filename)))
+                        ctx_id = info.get('ctx_id', '1')
+                        if entryid and client.userdata and 'token' in client.userdata:
+                            direct_url = f"{client.path}webservice/pluginfile.php/{ctx_id}/blog/post/{entryid}/{fname}?token={client.userdata['token']}"
+                        else:
+                            direct_url = f"{client.path}pluginfile.php/{ctx_id}/blog/post/{entryid}/{fname}"
+                        
+                        if tokenize and client.userdata:
+                            direct_url = client.host_tokenize + S5Crypto.encrypt(direct_url) + '/' + client.userdata['s5token']
+                        
+                        resplist.append({'filename': fname, 'url': direct_url})
                 return resplist
 
-            # 3. MODO EVIDENCE
+            # 3. SUBIDA A EVIDENCE
             else:
                 evidences = client.getEvidences()
                 original_evidname = str(filename).split('.')[0]
@@ -822,7 +793,6 @@ def processFile(update, bot, message, file, thread=None, jdb=None):
         max_file_size = 1024 * 1024 * getUser['zips']
         file_upload_count = 0
         client = None
-        
         username = update.message.sender.username
         
         if file_size > max_file_size:
@@ -894,7 +864,7 @@ def processFile(update, bot, message, file, thread=None, jdb=None):
         if client:
             upload_type = getUser.get('uploadtype', 'evidence')
             
-            # --- MANEJO DE ENLACES PARA DRAFT Y BLOG DIRECTOS ---
+            # --- PARSEO DE ENLACES PARA DRAFT Y BLOG DIRECTOS ---
             if upload_type in ['draft', 'blog']:
                 for item in client:
                     if item and 'url' in item:
@@ -908,7 +878,7 @@ def processFile(update, bot, message, file, thread=None, jdb=None):
                         files.append({'name': item.get('filename', os.path.basename(file)), 'directurl': url})
                 findex = 0
             
-            # --- MANEJO DE ENLACES PARA EVIDENCE ---
+            # --- PARSEO DE ENLACES PARA EVIDENCE ---
             else:
                 original_evidname = str(file).split('.')[0]
                 visible_evidname = original_evidname
@@ -922,7 +892,6 @@ def processFile(update, bot, message, file, thread=None, jdb=None):
                                                  getUser['moodle_repo_id'],
                                                  proxy=proxy)
                     if moodle_client.login():
-                        files = []
                         evidence_index = -1
                         for attempt in range(3):
                             evidences = moodle_client.getEvidences()
@@ -1011,7 +980,8 @@ def processFile(update, bot, message, file, thread=None, jdb=None):
         if thread and thread.getStore('stop'):
             try:
                 bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
-            except: pass
+            except:
+                pass
             return
 
         error_detail = str(ex) if str(ex) else "Error desconocido"
@@ -1105,7 +1075,8 @@ def ddl(update, bot, message, url, file_name='', thread=None, jdb=None):
         if thread and thread.getStore('stop'):
             try:
                 bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
-            except: pass
+            except:
+                pass
         else:
             print(f"Error en ddl: {ex}")
     finally:
@@ -3148,7 +3119,7 @@ def onmessage(update, bot: ObigramClient):
                         
                         client.logout()
                         memory_stats.log_delete_all(username=username, deleted_evidences=0, deleted_files=deleted_count, moodle_host=user_info['moodle_host'])
-                        bot.editMessageText(message, f"🗑️ <b>Borrador vaciado</b>\n\n• <b>Archivos borrados:</b> <b>{deleted_count}</b>", parse_mode='html')
+                        bot.editMessageText(message, f"🗑️ <b>Borrador vaciado ({deleted_count} archivos borrados)</b>", parse_mode='html')
                         return
 
                     # 2. VACIAR BLOGS
@@ -3168,7 +3139,7 @@ def onmessage(update, bot: ObigramClient):
                         
                         client.logout()
                         memory_stats.log_delete_all(username=username, deleted_evidences=deleted_count, deleted_files=deleted_count, moodle_host=user_info['moodle_host'])
-                        bot.editMessageText(message, f"🗑️ <b>Publicaciones de blog eliminadas</b>\n\n• <b>Entradas borradas:</b> <b>{deleted_count}</b>", parse_mode='html')
+                        bot.editMessageText(message, f"🗑️ <b>Publicaciones de blog eliminadas ({deleted_count})</b>", parse_mode='html')
                         return
 
                     # 3. VACIAR EVIDENCE
