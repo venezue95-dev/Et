@@ -205,7 +205,6 @@ class MoodleClient(object):
                 
                 title = ""
                 if container:
-                    # Buscar el enlace o encabezado del post
                     for tag in container.find_all(['h3', 'h4', 'h2', 'div', 'a']):
                         txt = tag.get_text().strip()
                         if txt and not any(k in txt.lower() for k in ['editar', 'borrar', 'enlace permanente', 'comentarios', 'de ']):
@@ -454,14 +453,21 @@ class MoodleClient(object):
             
             data = self.parsejson(resp2.text)
             data['url'] = str(data['url']).replace('\\', '')
+            
             if self.userdata:
                 if 'token' in self.userdata and not tokenize:
-                    clean_url = str(data['url']).replace('draftfile.php/', 'webservice/pluginfile.php/').replace('pluginfile.php/', 'webservice/pluginfile.php/')
-                    data['url'] = clean_url + '?token=' + self.userdata['token']
+                    url_str = str(data['url'])
+                    if '/draftfile.php/' in url_str:
+                        url_str = url_str.replace('/draftfile.php/', '/webservice/draftfile.php/')
+                    elif '/pluginfile.php/' in url_str:
+                        url_str = url_str.replace('/pluginfile.php/', '/webservice/pluginfile.php/')
+                    data['url'] = url_str + '?token=' + self.userdata['token']
+                
                 if tokenize:
                     data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
+                    
             return query['itemid'], data
-        except:
+        except Exception:
             return None, None
 
     def upload_file_perfil(self, file, progressfunc=None, args=(), tokenize=False):
@@ -505,7 +511,7 @@ class MoodleClient(object):
             data['url'] = str(data['url']).replace('\\', '')
             if self.userdata:
                 if 'token' in self.userdata and not tokenize:
-                    clean_url = str(data['url']).replace('draftfile.php/', 'webservice/pluginfile.php/').replace('pluginfile.php/', 'webservice/pluginfile.php/')
+                    clean_url = str(data['url']).replace('/pluginfile.php/', '/webservice/pluginfile.php/')
                     data['url'] = clean_url + '?token=' + self.userdata['token']
                 if tokenize:
                     data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
@@ -555,7 +561,7 @@ class MoodleClient(object):
             data['url'] = str(data['url']).replace('\\', '')
             if self.userdata:
                 if 'token' in self.userdata and not tokenize:
-                    clean_url = str(data['url']).replace('draftfile.php/', 'webservice/pluginfile.php/').replace('pluginfile.php/', 'webservice/pluginfile.php/')
+                    clean_url = str(data['url']).replace('/pluginfile.php/', '/webservice/pluginfile.php/')
                     data['url'] = clean_url + '?token=' + self.userdata['token']
                 if tokenize:
                     data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
