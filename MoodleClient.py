@@ -191,33 +191,70 @@ class MoodleClient(object):
             resp = self.session.get(blog_url, proxies=self.proxy)
             soup = BeautifulSoup(resp.text, 'html.parser')
             entries = []
-            for a in soup.find_all('a', href=re.compile(r'blog/edit\.php\?action=delete&entryid=(\d+)')):
+            
+            del_links = soup.find_all('a', href=re.compile(r'blog/edit\.php\?action=delete&entryid=(\d+)'))
+            for a in del_links:
                 m = re.search(r'entryid=(\d+)', a['href'])
-                if m:
-                    eid = m.group(1)
-                    parent = a.find_parent('div', class_=re.compile(r'post|entry|forumpost|blog_entry')) or a.find_parent('div')
-                    title = "Entrada de Blog"
-                    if parent:
-                        t_el = parent.find(['h3', 'h4', 'h2', 'a'])
-                        if t_el:
-                            title = t_el.get_text().strip()
-                    entries.append({'id': eid, 'name': title})
+                if not m:
+                    continue
+                eid = m.group(1)
+                
+                container = a.find_parent('div', class_=re.compile(r'blog_entry|forumpost|post|card|box|entry'))
+                if not container:
+                    container = a.find_parent('div')
+                
+                title = ""
+                if container:
+                    # Buscar el enlace o encabezado del post
+                    for tag in container.find_all(['h3', 'h4', 'h2', 'div', 'a']):
+                        txt = tag.get_text().strip()
+                        if txt and not any(k in txt.lower() for k in ['editar', 'borrar', 'enlace permanente', 'comentarios', 'de ']):
+                            title = txt
+                            break
+                
+                if not title:
+                    title = f"Entrada de Blog #{eid}"
+                
+                entries.append({'id': eid, 'name': title})
             return entries
-        except:
+        except Exception as e:
+            print(f"Error getBlogs: {e}")
             return []
 
     def deleteBlog(self, entryid):
         try:
-            delete_url = f'{self.path}blog/edit.php?action=delete&entryid={entryid}&sesskey={self.sesskey}&confirm=1'
+            delete_url = f'{self.path}blog/edit.php?action=delete&entryid={entryid}'
             resp = self.session.get(delete_url, proxies=self.proxy)
             soup = BeautifulSoup(resp.text, 'html.parser')
-            form = soup.find('form', {'action': re.compile(r'blog/edit\.php')})
+            
+            sesskey = self.sesskey
+            sesskey_input = soup.find('input', attrs={'name': 'sesskey'})
+            if sesskey_input and sesskey_input.get('value'):
+                sesskey = sesskey_input['value']
+                self.sesskey = sesskey
+            
+            post_url = f'{self.path}blog/edit.php'
+            payload = {
+                'action': 'delete',
+                'entryid': str(entryid),
+                'sesskey': sesskey,
+                'confirm': '1',
+                'submitbutton': 'Continuar'
+            }
+            
+            form = soup.find('form', action=re.compile(r'blog/edit\.php|edit\.php'))
             if form:
-                inputs = form.find_all('input')
-                payload = {inp.get('name'): inp.get('value', '') for inp in inputs if inp.get('name')}
-                self.session.post(f'{self.path}blog/edit.php', data=payload, proxies=self.proxy)
+                for inp in form.find_all('input'):
+                    name = inp.get('name')
+                    val = inp.get('value', '')
+                    if name:
+                        payload[name] = val
+                payload['confirm'] = '1'
+            
+            self.session.post(post_url, data=payload, proxies=self.proxy)
             return True
-        except Exception:
+        except Exception as e:
+            print(f"Error deleteBlog: {e}")
             return False
 
     def saveEvidence(self, evidence):
@@ -568,23 +605,28 @@ class MoodleClient(object):
         return jsondec.get('list', [])
    
     def delteFile(self, name):
-        urlfiles = self.path + 'user/files.php'
-        resp = self.session.get(urlfiles, proxies=self.proxy)
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        _qf__core_user_form_private_files = soup.find('input', {'name': '_qf__core_user_form_private_files'})['value']
-        sesskey = soup.find('input', attrs={'name': 'sesskey'})['value']
-        client_id = self.getclientid(resp.text)
-        filepath = '/'
-        query = self.extractQuery(soup.find('object', attrs={'type': 'text/html'})['data'])
-        payload = {'sesskey': sesskey, 'client_id': client_id, 'filepath': filepath, 'itemid': query['itemid'], 'filename': name}
-        postdelete = self.path + 'repository/draftfiles_ajax.php?action=delete'
-        self.session.post(postdelete, data=payload, proxies=self.proxy)
+        try:
+            urlfiles = self.path + 'user/files.php'
+            resp = self.session.get(urlfiles, proxies=self.proxy)
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            _qf_el = soup.find('input', {'name': '_qf__core_user_form_private_files'})
+            _qf__core_user_form_private_files = _qf_el['value'] if _qf_el else "1"
+            sesskey = soup.find('input', attrs={'name': 'sesskey'})['value']
+            client_id = self.getclientid(resp.text)
+            filepath = '/'
+            query = self.extractQuery(soup.find('object', attrs={'type': 'text/html'})['data'])
+            payload = {'sesskey': sesskey, 'client_id': client_id, 'filepath': filepath, 'itemid': query['itemid'], 'filename': name}
+            postdelete = self.path + 'repository/draftfiles_ajax.php?action=delete'
+            self.session.post(postdelete, data=payload, proxies=self.proxy)
 
-        saveUrl = self.path + 'lib/ajax/service.php?sesskey=' + sesskey + '&info=core_form_dynamic_form'
-        savejson = [{"index": 0, "methodname": "core_form_dynamic_form", "args": {"formdata": "sesskey=" + sesskey + "&_qf__core_user_form_private_files=" + _qf__core_user_form_private_files + "&files_filemanager=" + query['itemid'] + "", "form": "core_user\\form\\private_files"}}]
-        headers = {'Content-type': 'application/json', 'Accept': 'application/json, text/javascript, */*; q=0.01'}
-        resp3 = self.session.post(saveUrl, json=savejson, headers=headers, proxies=self.proxy)
-        return resp3
+            saveUrl = self.path + 'lib/ajax/service.php?sesskey=' + sesskey + '&info=core_form_dynamic_form'
+            savejson = [{"index": 0, "methodname": "core_form_dynamic_form", "args": {"formdata": "sesskey=" + sesskey + "&_qf__core_user_form_private_files=" + _qf__core_user_form_private_files + "&files_filemanager=" + query['itemid'] + "", "form": "core_user\\form\\private_files"}}]
+            headers = {'Content-type': 'application/json', 'Accept': 'application/json, text/javascript, */*; q=0.01'}
+            resp3 = self.session.post(saveUrl, json=savejson, headers=headers, proxies=self.proxy)
+            return resp3
+        except Exception as e:
+            print(f"Error delteFile: {e}")
+            return None
 
     def logout(self):
         logouturl = self.path + 'login/logout.php?sesskey=' + self.sesskey
