@@ -17,7 +17,6 @@ import socks
 import asyncio
 import threading
 import S5Crypto
-import traceback
 
 
 class CallingUpload:
@@ -195,118 +194,6 @@ class MoodleClient(object):
         evidenceid = str(resp.url).split('?')[1].split('=')[1]
         return {'name': name, 'desc': desc, 'id': evidenceid, 'url': resp.url, 'files': []}
 
-    def createBlog(self, name, itemid, desc="<p+dir=\"ltr\"+style=\"text-align:+left;\">Archivo adjunto<br></p>"):
-        try:
-            post_attach = f'{self.path}blog/edit.php?action=add&userid=' + self.userid
-            resp = self.session.get(post_attach, proxies=self.proxy, timeout=15)
-            soup = BeautifulSoup(resp.text, 'html.parser') 
-            attachment_filemanager = soup.find('input', {'id': 'id_attachment_filemanager'})['value']
-            
-            post_url = f'{self.path}blog/edit.php'
-            payload = {
-                'action': 'add',
-                'entryid': '',
-                'modid': 0,
-                'courseid': 0,
-                'sesskey': self.sesskey,
-                '_qf__blog_edit_form': 1,
-                'mform_isexpanded_id_general': 1,
-                'mform_isexpanded_id_tagshdr': 1,
-                'subject': name,
-                'summary_editor[text]': desc,
-                'summary_editor[format]': 1,
-                'summary_editor[itemid]': itemid,
-                'attachment_filemanager': attachment_filemanager,
-                'publishstate': 'site',
-                'tags': '_qf__force_multiselect_submission',
-                'submitbutton': 'Guardar+cambios'
-            }
-            resp2 = self.session.post(post_url, data=payload, proxies=self.proxy, timeout=15)
-            
-            entryid = None
-            if 'entryid=' in resp2.url:
-                entryid = resp2.url.split('entryid=')[1].split('&')[0]
-            else:
-                soup2 = BeautifulSoup(resp2.text, 'html.parser')
-                del_link = soup2.find('a', href=re.compile(r'blog/edit\.php\?action=delete&entryid=(\d+)'))
-                if del_link:
-                    entryid = re.search(r'entryid=(\d+)', del_link['href']).group(1)
-            
-            return entryid
-        except Exception:
-            return None
-
-    def getBlogs(self):
-        try:
-            blog_url = f'{self.path}blog/index.php?userid={self.userid}'
-            resp = self.session.get(blog_url, proxies=self.proxy, timeout=15)
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            entries = []
-            
-            del_links = soup.find_all('a', href=re.compile(r'blog/edit\.php\?action=delete&entryid=(\d+)'))
-            for a in del_links:
-                m = re.search(r'entryid=(\d+)', a['href'])
-                if not m:
-                    continue
-                eid = m.group(1)
-                
-                container = a.find_parent('div', class_=re.compile(r'blog_entry|forumpost|post|card|box|entry'))
-                if not container:
-                    container = a.find_parent('div')
-                
-                title = ""
-                if container:
-                    for tag in container.find_all(['h3', 'h4', 'h2', 'div', 'a']):
-                        txt = tag.get_text().strip()
-                        if txt and not any(k in txt.lower() for k in ['editar', 'borrar', 'enlace permanente', 'comentarios', 'de ']):
-                            title = txt
-                            break
-                
-                if not title:
-                    title = f"Entrada de Blog #{eid}"
-                
-                entries.append({'id': eid, 'name': title})
-            return entries
-        except Exception as e:
-            print(f"Error getBlogs: {e}")
-            return []
-
-    def deleteBlog(self, entryid):
-        try:
-            delete_url = f'{self.path}blog/edit.php?action=delete&entryid={entryid}'
-            resp = self.session.get(delete_url, proxies=self.proxy, timeout=15)
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            
-            sesskey = self.sesskey
-            sesskey_input = soup.find('input', attrs={'name': 'sesskey'})
-            if sesskey_input and sesskey_input.get('value'):
-                sesskey = sesskey_input['value']
-                self.sesskey = sesskey
-            
-            post_url = f'{self.path}blog/edit.php'
-            payload = {
-                'action': 'delete',
-                'entryid': str(entryid),
-                'sesskey': sesskey,
-                'confirm': '1',
-                'submitbutton': 'Continuar'
-            }
-            
-            form = soup.find('form', action=re.compile(r'blog/edit\.php|edit\.php'))
-            if form:
-                for inp in form.find_all('input'):
-                    name = inp.get('name')
-                    val = inp.get('value', '')
-                    if name:
-                        payload[name] = val
-                payload['confirm'] = '1'
-            
-            self.session.post(post_url, data=payload, proxies=self.proxy, timeout=15)
-            return True
-        except Exception as e:
-            print(f"Error deleteBlog: {e}")
-            return False
-
     def saveEvidence(self, evidence):
         evidenceurl = self.path + 'admin/tool/lp/user_evidence_edit.php?id=' + evidence['id'] + '&userid=' + self.userid + '&return=list'
         resp = self.session.get(evidenceurl, proxies=self.proxy, timeout=15)
@@ -425,6 +312,118 @@ class MoodleClient(object):
         except Exception:
             return None, None
 
+    def createBlog(self, name, itemid, desc="<p+dir=\"ltr\"+style=\"text-align:+left;\">Archivo adjunto<br></p>"):
+        try:
+            post_attach = f'{self.path}blog/edit.php?action=add&userid=' + self.userid
+            resp = self.session.get(post_attach, proxies=self.proxy, timeout=15)
+            soup = BeautifulSoup(resp.text, 'html.parser') 
+            attachment_filemanager = soup.find('input', {'id': 'id_attachment_filemanager'})['value']
+            
+            post_url = f'{self.path}blog/edit.php'
+            payload = {
+                'action': 'add',
+                'entryid': '',
+                'modid': 0,
+                'courseid': 0,
+                'sesskey': self.sesskey,
+                '_qf__blog_edit_form': 1,
+                'mform_isexpanded_id_general': 1,
+                'mform_isexpanded_id_tagshdr': 1,
+                'subject': name,
+                'summary_editor[text]': desc,
+                'summary_editor[format]': 1,
+                'summary_editor[itemid]': itemid,
+                'attachment_filemanager': attachment_filemanager,
+                'publishstate': 'site',
+                'tags': '_qf__force_multiselect_submission',
+                'submitbutton': 'Guardar+cambios'
+            }
+            resp2 = self.session.post(post_url, data=payload, proxies=self.proxy, timeout=15)
+            
+            entryid = None
+            if 'entryid=' in resp2.url:
+                entryid = resp2.url.split('entryid=')[1].split('&')[0]
+            else:
+                soup2 = BeautifulSoup(resp2.text, 'html.parser')
+                del_link = soup2.find('a', href=re.compile(r'blog/edit\.php\?action=delete&entryid=(\d+)'))
+                if del_link:
+                    entryid = re.search(r'entryid=(\d+)', del_link['href']).group(1)
+            
+            return entryid
+        except Exception:
+            return None
+
+    def getBlogs(self):
+        try:
+            blog_url = f'{self.path}blog/index.php?userid={self.userid}'
+            resp = self.session.get(blog_url, proxies=self.proxy, timeout=15)
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            entries = []
+            
+            del_links = soup.find_all('a', href=re.compile(r'blog/edit\.php\?action=delete&entryid=(\d+)'))
+            for a in del_links:
+                m = re.search(r'entryid=(\d+)', a['href'])
+                if not m:
+                    continue
+                eid = m.group(1)
+                
+                container = a.find_parent('div', class_=re.compile(r'blog_entry|forumpost|post|card|box|entry'))
+                if not container:
+                    container = a.find_parent('div')
+                
+                title = ""
+                if container:
+                    for tag in container.find_all(['h3', 'h4', 'h2', 'div', 'a']):
+                        txt = tag.get_text().strip()
+                        if txt and not any(k in txt.lower() for k in ['editar', 'borrar', 'enlace permanente', 'comentarios', 'de ']):
+                            title = txt
+                            break
+                
+                if not title:
+                    title = f"Entrada de Blog #{eid}"
+                
+                entries.append({'id': eid, 'name': title})
+            return entries
+        except Exception as e:
+            print(f"Error getBlogs: {e}")
+            return []
+
+    def deleteBlog(self, entryid):
+        try:
+            delete_url = f'{self.path}blog/edit.php?action=delete&entryid={entryid}'
+            resp = self.session.get(delete_url, proxies=self.proxy, timeout=15)
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            
+            sesskey = self.sesskey
+            sesskey_input = soup.find('input', attrs={'name': 'sesskey'})
+            if sesskey_input and sesskey_input.get('value'):
+                sesskey = sesskey_input['value']
+                self.sesskey = sesskey
+            
+            post_url = f'{self.path}blog/edit.php'
+            payload = {
+                'action': 'delete',
+                'entryid': str(entryid),
+                'sesskey': sesskey,
+                'confirm': '1',
+                'submitbutton': 'Continuar'
+            }
+            
+            form = soup.find('form', action=re.compile(r'blog/edit\.php|edit\.php'))
+            if form:
+                for inp in form.find_all('input'):
+                    name = inp.get('name')
+                    val = inp.get('value', '')
+                    if name:
+                        payload[name] = val
+                payload['confirm'] = '1'
+            
+            self.session.post(post_url, data=payload, proxies=self.proxy, timeout=15)
+            return True
+        except Exception as e:
+            print(f"Error deleteBlog: {e}")
+            return False
+
     def upload_file_blog(self, file, blog=None, itemid=None, progressfunc=None, args=(), tokenize=False):
         try:
             fileurl = self.path + 'blog/edit.php?action=add&userid=' + self.userid
@@ -475,222 +474,6 @@ class MoodleClient(object):
             return itempostid, data
         except Exception:
             return None, None
-
-    def upload_file_draft(self, file, progressfunc=None, args=(), tokenize=False):
-        try:
-            file_edit = f'{self.path}user/files.php'
-            resp = self.session.get(file_edit, proxies=self.proxy, timeout=15)
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            
-            sesskey = self.sesskey
-            if not sesskey:
-                sesskey = soup.find('input', attrs={'name': 'sesskey'})['value']
-
-            obj = soup.find('object', attrs={'type': 'text/html'})
-            if not obj:
-                obj = soup.find('object')
-            query = self.extractQuery(obj['data'])
-            
-            try:
-                client_id = str(soup.find('div', {'class': 'filemanager'})['id']).replace('filemanager-', '')
-            except Exception:
-                client_id = self.getclientid(resp.text)
-
-            post_file_url = f'{self.path}repository/repository_ajax.php?action=upload'
-
-            of = open(file, 'rb')
-            b = uuid.uuid4().hex
-            filename_only = os.path.basename(file)
-            
-            upload_data = {
-                'title': (None, ''),
-                'author': (None, 'ObysoftDev'),
-                'license': (None, 'allrightsreserved'),
-                'itemid': (None, query['itemid']),
-                'repo_id': (None, str(self.repo_id)),
-                'p': (None, ''),
-                'page': (None, ''),
-                'env': (None, query['env']),
-                'sesskey': (None, sesskey),
-                'client_id': (None, client_id),
-                'maxbytes': (None, query['maxbytes']),
-                'areamaxbytes': (None, query['areamaxbytes']),
-                'ctx_id': (None, query['ctx_id']),
-                'savepath': (None, '/')
-            }
-            upload_file = {
-                'repo_upload_file': (filename_only, of, 'application/octet-stream'),
-                **upload_data
-            }
-            
-            encoder = rt.MultipartEncoder(upload_file, boundary=b)
-            progrescall = CallingUpload(progressfunc, file, args)
-            monitor = MultipartEncoderMonitor(encoder, callback=partial(progrescall))
-            resp2 = self.session.post(post_file_url, data=monitor, headers={"Content-Type": "multipart/form-data; boundary=" + b}, proxies=self.proxy)
-            of.close()
-            
-            data = self.parsejson(resp2.text)
-            if 'url' in data and data['url']:
-                data['url'] = str(data['url']).replace('\\', '')
-                data['filename'] = filename_only
-                
-                if self.userdata:
-                    if 'token' in self.userdata and not tokenize:
-                        url_clean = str(data['url']).replace('draftfile.php/', 'webservice/draftfile.php/').replace('pluginfile.php/', 'webservice/pluginfile.php/')
-                        sep = '&' if '?' in url_clean else '?'
-                        data['url'] = f"{url_clean}{sep}token={self.userdata['token']}"
-                    elif tokenize:
-                        data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
-                        
-                return None, data
-            else:
-                print(f"[Error Respuesta Moodle Draft]: {resp2.text}")
-                return None, None
-        except Exception as e:
-            print(f"[Error upload_file_draft]: {e}")
-            traceback.print_exc()
-            return None, None
-
-    def upload_file_perfil(self, file, progressfunc=None, args=(), tokenize=False):
-        try:
-            file_edit = f'{self.path}user/edit.php?id={self.userid}&returnto=profile'
-            resp = self.session.get(file_edit, proxies=self.proxy, timeout=15)
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            sesskey = self.sesskey or soup.find('input', attrs={'name': 'sesskey'})['value']
-            query = self.extractQuery(soup.find('object', attrs={'type': 'text/html'})['data'])
-            client_id = str(soup.find('div', {'class': 'filemanager'})['id']).replace('filemanager-', '')
-
-            upload_file_url = f'{self.path}repository/repository_ajax.php?action=upload'
-
-            of = open(file, 'rb')
-            b = uuid.uuid4().hex
-            upload_data = {
-                'title': (None, ''),
-                'author': (None, 'ObysoftDev'),
-                'license': (None, 'allrightsreserved'),
-                'itemid': (None, query['itemid']),
-                'repo_id': (None, str(self.repo_id)),
-                'p': (None, ''),
-                'page': (None, ''),
-                'env': (None, query['env']),
-                'sesskey': (None, sesskey),
-                'client_id': (None, client_id),
-                'maxbytes': (None, query['maxbytes']),
-                'areamaxbytes': (None, query['areamaxbytes']),
-                'ctx_id': (None, query['ctx_id']),
-                'savepath': (None, '/')
-            }
-            upload_file = {
-                'repo_upload_file': (os.path.basename(file), of, 'application/octet-stream'),
-                **upload_data
-            }
-            encoder = rt.MultipartEncoder(upload_file, boundary=b)
-            progrescall = CallingUpload(progressfunc, file, args)
-            monitor = MultipartEncoderMonitor(encoder, callback=partial(progrescall))
-            resp2 = self.session.post(upload_file_url, data=monitor, headers={"Content-Type": "multipart/form-data; boundary=" + b}, proxies=self.proxy)
-            of.close()
-            
-            data = self.parsejson(resp2.text)
-            data['url'] = str(data.get('url', '')).replace('\\', '')
-            if self.userdata:
-                if 'token' in self.userdata and not tokenize:
-                    data['url'] = str(data['url']).replace('pluginfile.php/', 'webservice/pluginfile.php/') + '?token=' + self.userdata['token']
-                if tokenize:
-                    data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
-
-            return None, data
-        except Exception:
-            return None, None
-
-    def upload_file_calendar(self, file, progressfunc=None, args=(), tokenize=False):
-        try:
-            file_edit = f'{self.path}calendar/managesubscriptions.php'
-            resp = self.session.get(file_edit, proxies=self.proxy, timeout=15)
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            sesskey = self.sesskey or soup.find('input', attrs={'name': 'sesskey'})['value']
-            query = self.extractQuery(soup.find('object', attrs={'type': 'text/html'})['data'])
-            client_id = str(soup.find('input', {'name': 'importfilechoose'})['id']).replace('filepicker-button-', '')
-
-            upload_file_url = f'{self.path}repository/repository_ajax.php?action=upload'
-
-            of = open(file, 'rb')
-            b = uuid.uuid4().hex
-            upload_data = {
-                'title': (None, ''),
-                'author': (None, 'ObysoftDev'),
-                'license': (None, 'allrightsreserved'),
-                'itemid': (None, query['itemid']),
-                'repo_id': (None, str(self.repo_id)),
-                'p': (None, ''),
-                'page': (None, ''),
-                'env': (None, query['env']),
-                'sesskey': (None, sesskey),
-                'client_id': (None, client_id),
-                'maxbytes': (None, query['maxbytes']),
-                'areamaxbytes': (None, query['maxbytes']),
-                'ctx_id': (None, query['ctx_id']),
-                'savepath': (None, '/')
-            }
-            upload_file = {
-                'repo_upload_file': (os.path.basename(file), of, 'application/octet-stream'),
-                **upload_data
-            }
-            encoder = rt.MultipartEncoder(upload_file, boundary=b)
-            progrescall = CallingUpload(progressfunc, file, args)
-            monitor = MultipartEncoderMonitor(encoder, callback=partial(progrescall))
-            resp2 = self.session.post(upload_file_url, data=monitor, headers={"Content-Type": "multipart/form-data; boundary=" + b}, proxies=self.proxy)
-            of.close()
-            
-            data = self.parsejson(resp2.text)
-            data['url'] = str(data.get('url', '')).replace('\\', '')
-            if self.userdata:
-                if 'token' in self.userdata and not tokenize:
-                    data['url'] = str(data['url']).replace('pluginfile.php/', 'webservice/pluginfile.php/') + '?token=' + self.userdata['token']
-                if tokenize:
-                    data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
-            return None, data
-        except Exception:
-            return None, None
-
-    def getFiles(self):
-        try:
-            urlfiles = self.path + 'user/files.php'
-            resp = self.session.get(urlfiles, proxies=self.proxy, timeout=15)
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            sesskey = self.sesskey or soup.find('input', attrs={'name': 'sesskey'})['value']
-            client_id = self.getclientid(resp.text)
-            filepath = '/'
-            query = self.extractQuery(soup.find('object', attrs={'type': 'text/html'})['data'])
-            payload = {'sesskey': sesskey, 'client_id': client_id, 'filepath': filepath, 'itemid': query['itemid']}
-            postfiles = self.path + 'repository/draftfiles_ajax.php?action=list'
-            resp = self.session.post(postfiles, data=payload, proxies=self.proxy, timeout=15)
-            data = self.parsejson(resp.text)
-            return data.get('list', [])
-        except Exception:
-            return []
-   
-    def delteFile(self, name):
-        try:
-            urlfiles = self.path + 'user/files.php'
-            resp = self.session.get(urlfiles, proxies=self.proxy, timeout=15)
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            _qf_el = soup.find('input', {'name': '_qf__core_user_form_private_files'})
-            _qf__core_user_form_private_files = _qf_el['value'] if _qf_el else '1'
-            sesskey = self.sesskey or soup.find('input', attrs={'name': 'sesskey'})['value']
-            client_id = self.getclientid(resp.text)
-            filepath = '/'
-            query = self.extractQuery(soup.find('object', attrs={'type': 'text/html'})['data'])
-            payload = {'sesskey': sesskey, 'client_id': client_id, 'filepath': filepath, 'itemid': query['itemid'], 'filename': name}
-            postdelete = self.path + 'repository/draftfiles_ajax.php?action=delete'
-            self.session.post(postdelete, data=payload, proxies=self.proxy, timeout=15)
-
-            saveUrl = self.path + 'lib/ajax/service.php?sesskey=' + sesskey + '&info=core_form_dynamic_form'
-            savejson = [{"index": 0, "methodname": "core_form_dynamic_form", "args": {"formdata": "sesskey=" + sesskey + "&_qf__core_user_form_private_files=" + _qf__core_user_form_private_files + "&files_filemanager=" + query['itemid'] + "", "form": "core_user\\form\\private_files"}}]
-            headers = {'Content-type': 'application/json', 'Accept': 'application/json, text/javascript, */*; q=0.01'}
-            resp3 = self.session.post(saveUrl, json=savejson, headers=headers, proxies=self.proxy, timeout=15)
-            return resp3
-        except Exception:
-            return None
 
     def logout(self):
         try:
