@@ -144,32 +144,46 @@ class MoodleClient(object):
         evidenceid = str(resp.url).split('?')[1].split('=')[1]
         return {'name': name, 'desc': desc, 'id': evidenceid, 'url': resp.url, 'files': []}
 
-    def createBlog(self, name, itemid, desc="<p+dir=\"ltr\"+style=\"text-align:+left;\">asd<br></p>"):
-        post_attach = f'{self.path}blog/edit.php?action=add&userid=' + self.userid
-        resp = self.session.get(post_attach, proxies=self.proxy)
-        soup = BeautifulSoup(resp.text, 'html.parser') 
-        attachment_filemanager = soup.find('input', {'id': 'id_attachment_filemanager'})['value']
-        post_url = f'{self.path}blog/edit.php'
-        payload = {
-            'action': 'add',
-            'entryid': '',
-            'modid': 0,
-            'courseid': 0,
-            'sesskey': self.sesskey,
-            '_qf__blog_edit_form': 1,
-            'mform_isexpanded_id_general': 1,
-            'mform_isexpanded_id_tagshdr': 1,
-            'subject': name,
-            'summary_editor[text]': desc,
-            'summary_editor[format]': 1,
-            'summary_editor[itemid]': itemid,
-            'attachment_filemanager': attachment_filemanager,
-            'publishstate': 'site',
-            'tags': '_qf__force_multiselect_submission',
-            'submitbutton': 'Guardar+cambios'
-        }
-        resp = self.session.post(post_url, data=payload, proxies=self.proxy)
-        return resp
+    def createBlog(self, name, itemid, desc="<p dir=\"ltr\" style=\"text-align: left;\">Archivo adjunto</p>"):
+        try:
+            post_attach = f'{self.path}blog/edit.php?action=add&userid=' + self.userid
+            resp = self.session.get(post_attach, proxies=self.proxy)
+            soup = BeautifulSoup(resp.text, 'html.parser') 
+            attachment_filemanager = soup.find('input', {'id': 'id_attachment_filemanager'})['value']
+            
+            post_url = f'{self.path}blog/edit.php'
+            payload = {
+                'action': 'add',
+                'entryid': '',
+                'modid': 0,
+                'courseid': 0,
+                'sesskey': self.sesskey,
+                '_qf__blog_edit_form': 1,
+                'mform_isexpanded_id_general': 1,
+                'mform_isexpanded_id_tagshdr': 1,
+                'subject': name,
+                'summary_editor[text]': desc,
+                'summary_editor[format]': 1,
+                'summary_editor[itemid]': itemid,
+                'attachment_filemanager': attachment_filemanager,
+                'publishstate': 'site',
+                'tags': '_qf__force_multiselect_submission',
+                'submitbutton': 'Guardar+cambios'
+            }
+            resp2 = self.session.post(post_url, data=payload, proxies=self.proxy)
+            
+            entryid = None
+            if 'entryid=' in resp2.url:
+                entryid = resp2.url.split('entryid=')[1].split('&')[0]
+            else:
+                soup2 = BeautifulSoup(resp2.text, 'html.parser')
+                del_link = soup2.find('a', href=re.compile(r'blog/edit\.php\?action=delete&entryid=(\d+)'))
+                if del_link:
+                    entryid = re.search(r'entryid=(\d+)', del_link['href']).group(1)
+            
+            return entryid
+        except Exception:
+            return None
 
     def getBlogs(self):
         try:
@@ -275,11 +289,12 @@ class MoodleClient(object):
             client_id = self.getclientid(resp.text)
         
             itempostid = itemid if itemid else query['itemid']
+            filename_only = os.path.basename(file)
 
             of = open(file, 'rb')
             b = uuid.uuid4().hex
             upload_data = {
-                'title': (None, ''),
+                'title': (None, filename_only),
                 'author': (None, 'ObysoftDev'),
                 'license': (None, 'allrightsreserved'),
                 'itemid': (None, itempostid),
@@ -294,7 +309,7 @@ class MoodleClient(object):
                 'ctx_id': (None, query['ctx_id']),
                 'savepath': (None, '/')
             }
-            upload_file = {'repo_upload_file': (file, of, 'application/octet-stream'), **upload_data}
+            upload_file = {'repo_upload_file': (filename_only, of, 'application/octet-stream'), **upload_data}
             post_file_url = self.path + 'repository/repository_ajax.php?action=upload'
             encoder = rt.MultipartEncoder(upload_file, boundary=b)
             progrescall = CallingUpload(progressfunc, file, args)
@@ -327,11 +342,12 @@ class MoodleClient(object):
             client_id = self.getclientid(resp.text)
         
             itempostid = itemid if itemid else query['itemid']
+            filename_only = os.path.basename(file)
 
             of = open(file, 'rb')
             b = uuid.uuid4().hex
             upload_data = {
-                'title': (None, ''),
+                'title': (None, filename_only),
                 'author': (None, 'ObysoftDev'),
                 'license': (None, 'allrightsreserved'),
                 'itemid': (None, itempostid),
@@ -346,7 +362,7 @@ class MoodleClient(object):
                 'ctx_id': (None, query['ctx_id']),
                 'savepath': (None, '/')
             }
-            upload_file = {'repo_upload_file': (file, of, 'application/octet-stream'), **upload_data}
+            upload_file = {'repo_upload_file': (filename_only, of, 'application/octet-stream'), **upload_data}
             post_file_url = self.path + 'repository/repository_ajax.php?action=upload'
             encoder = rt.MultipartEncoder(upload_file, boundary=b)
             progrescall = CallingUpload(progressfunc, file, args)
@@ -354,15 +370,12 @@ class MoodleClient(object):
             resp2 = self.session.post(post_file_url, data=monitor, headers={"Content-Type": "multipart/form-data; boundary=" + b}, proxies=self.proxy)
             of.close()
 
-            data = self.parsejson(resp2.text)
-            data['url'] = str(data['url']).replace('\\', '')
-            if self.userdata:
-                if 'token' in self.userdata and not tokenize:
-                    data['url'] = str(data['url']).replace('pluginfile.php/', 'webservice/pluginfile.php/') + '?token=' + self.userdata['token']
-                if tokenize:
-                    data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
-            return itempostid, data
-        except:
+            return itempostid, {
+                'filename': filename_only,
+                'ctx_id': query['ctx_id'],
+                'itemid': itempostid
+            }
+        except Exception:
             return None, None
 
     def upload_file_draft(self, file, progressfunc=None, args=(), tokenize=False):
@@ -373,13 +386,14 @@ class MoodleClient(object):
             sesskey = self.sesskey or soup.find('input', attrs={'name': 'sesskey'})['value']
             query = self.extractQuery(soup.find('object', attrs={'type': 'text/html'})['data'])
             client_id = str(soup.find('div', {'class': 'filemanager'})['id']).replace('filemanager-', '')
+            filename_only = os.path.basename(file)
 
             upload_file_url = f'{self.path}repository/repository_ajax.php?action=upload'
 
             of = open(file, 'rb')
             b = uuid.uuid4().hex
             upload_data = {
-                'title': (None, ''),
+                'title': (None, filename_only),
                 'author': (None, 'ObysoftDev'),
                 'license': (None, 'allrightsreserved'),
                 'itemid': (None, query['itemid']),
@@ -394,7 +408,7 @@ class MoodleClient(object):
                 'ctx_id': (None, query['ctx_id']),
                 'savepath': (None, '/')
             }
-            upload_file = {'repo_upload_file': (file, of, 'application/octet-stream'), **upload_data}
+            upload_file = {'repo_upload_file': (filename_only, of, 'application/octet-stream'), **upload_data}
             encoder = rt.MultipartEncoder(upload_file, boundary=b)
             progrescall = CallingUpload(progressfunc, file, args)
             monitor = MultipartEncoderMonitor(encoder, callback=partial(progrescall))
@@ -405,7 +419,8 @@ class MoodleClient(object):
             data['url'] = str(data['url']).replace('\\', '')
             if self.userdata:
                 if 'token' in self.userdata and not tokenize:
-                    data['url'] = str(data['url']).replace('pluginfile.php/', 'webservice/pluginfile.php/') + '?token=' + self.userdata['token']
+                    clean_url = str(data['url']).replace('draftfile.php/', 'webservice/pluginfile.php/').replace('pluginfile.php/', 'webservice/pluginfile.php/')
+                    data['url'] = clean_url + '?token=' + self.userdata['token']
                 if tokenize:
                     data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
             return query['itemid'], data
@@ -420,13 +435,14 @@ class MoodleClient(object):
             sesskey = self.sesskey or soup.find('input', attrs={'name': 'sesskey'})['value']
             query = self.extractQuery(soup.find('object', attrs={'type': 'text/html'})['data'])
             client_id = str(soup.find('div', {'class': 'filemanager'})['id']).replace('filemanager-', '')
+            filename_only = os.path.basename(file)
 
             upload_file_url = f'{self.path}repository/repository_ajax.php?action=upload'
 
             of = open(file, 'rb')
             b = uuid.uuid4().hex
             upload_data = {
-                'title': (None, ''),
+                'title': (None, filename_only),
                 'author': (None, 'ObysoftDev'),
                 'license': (None, 'allrightsreserved'),
                 'itemid': (None, query['itemid']),
@@ -441,7 +457,7 @@ class MoodleClient(object):
                 'ctx_id': (None, query['ctx_id']),
                 'savepath': (None, '/')
             }
-            upload_file = {'repo_upload_file': (file, of, 'application/octet-stream'), **upload_data}
+            upload_file = {'repo_upload_file': (filename_only, of, 'application/octet-stream'), **upload_data}
             encoder = rt.MultipartEncoder(upload_file, boundary=b)
             progrescall = CallingUpload(progressfunc, file, args)
             monitor = MultipartEncoderMonitor(encoder, callback=partial(progrescall))
@@ -452,7 +468,8 @@ class MoodleClient(object):
             data['url'] = str(data['url']).replace('\\', '')
             if self.userdata:
                 if 'token' in self.userdata and not tokenize:
-                    data['url'] = str(data['url']).replace('pluginfile.php/', 'webservice/pluginfile.php/') + '?token=' + self.userdata['token']
+                    clean_url = str(data['url']).replace('draftfile.php/', 'webservice/pluginfile.php/').replace('pluginfile.php/', 'webservice/pluginfile.php/')
+                    data['url'] = clean_url + '?token=' + self.userdata['token']
                 if tokenize:
                     data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
 
@@ -468,13 +485,14 @@ class MoodleClient(object):
             sesskey = self.sesskey or soup.find('input', attrs={'name': 'sesskey'})['value']
             query = self.extractQuery(soup.find('object', attrs={'type': 'text/html'})['data'])
             client_id = str(soup.find('input', {'name': 'importfilechoose'})['id']).replace('filepicker-button-', '')
+            filename_only = os.path.basename(file)
 
             upload_file_url = f'{self.path}repository/repository_ajax.php?action=upload'
 
             of = open(file, 'rb')
             b = uuid.uuid4().hex
             upload_data = {
-                'title': (None, ''),
+                'title': (None, filename_only),
                 'author': (None, 'ObysoftDev'),
                 'license': (None, 'allrightsreserved'),
                 'itemid': (None, query['itemid']),
@@ -489,7 +507,7 @@ class MoodleClient(object):
                 'ctx_id': (None, query['ctx_id']),
                 'savepath': (None, '/')
             }
-            upload_file = {'repo_upload_file': (file, of, 'application/octet-stream'), **upload_data}
+            upload_file = {'repo_upload_file': (filename_only, of, 'application/octet-stream'), **upload_data}
             encoder = rt.MultipartEncoder(upload_file, boundary=b)
             progrescall = CallingUpload(progressfunc, file, args)
             monitor = MultipartEncoderMonitor(encoder, callback=partial(progrescall))
@@ -500,7 +518,8 @@ class MoodleClient(object):
             data['url'] = str(data['url']).replace('\\', '')
             if self.userdata:
                 if 'token' in self.userdata and not tokenize:
-                    data['url'] = str(data['url']).replace('pluginfile.php/', 'webservice/pluginfile.php/') + '?token=' + self.userdata['token']
+                    clean_url = str(data['url']).replace('draftfile.php/', 'webservice/pluginfile.php/').replace('pluginfile.php/', 'webservice/pluginfile.php/')
+                    data['url'] = clean_url + '?token=' + self.userdata['token']
                 if tokenize:
                     data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
             return None, data
@@ -561,7 +580,6 @@ class MoodleClient(object):
         postdelete = self.path + 'repository/draftfiles_ajax.php?action=delete'
         self.session.post(postdelete, data=payload, proxies=self.proxy)
 
-        # Confirmar y guardar cambios en archivos privados
         saveUrl = self.path + 'lib/ajax/service.php?sesskey=' + sesskey + '&info=core_form_dynamic_form'
         savejson = [{"index": 0, "methodname": "core_form_dynamic_form", "args": {"formdata": "sesskey=" + sesskey + "&_qf__core_user_form_private_files=" + _qf__core_user_form_private_files + "&files_filemanager=" + query['itemid'] + "", "form": "core_user\\form\\private_files"}}]
         headers = {'Content-type': 'application/json', 'Accept': 'application/json, text/javascript, */*; q=0.01'}
