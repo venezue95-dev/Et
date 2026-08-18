@@ -28,16 +28,16 @@ BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
 
 # ADMINISTRATOR CONFIGURATION
 ADMIN_USERNAME = "Eliel_21"
-ADMIN_CHAT_ID = 7363341763  # Tu ID
-LOG_GROUP_ID = -1004295272245  # ID del grupo para notificaciones de enlaces, archivos y txts
+ADMIN_CHAT_ID = 7363341763
+LOG_GROUP_ID = -1004295272245
 
 # VARIABLES GLOBALES DE CONTROL
 MAINTENANCE_MODE = False
 BANNED_USERS = set()
-REMOVED_USERS = set()  # Conjunto para usuarios quitados que anula la preconfiguración estática
-ACTIVE_PROCESSES = {}  # Diccionario para rastrear procesos activos en tiempo real (descargas, compresiones, preparando, subidas)
-ACTIVE_STATUS_CHECKS = set()  # Conjunto para evitar múltiples verificaciones simultáneas de estado
-CHANGING_CLOUD_USERS = set()  # Conjunto para usuarios que están en proceso de elegir nube con /cambiar
+REMOVED_USERS = set()
+ACTIVE_PROCESSES = {}
+ACTIVE_STATUS_CHECKS = set()
+CHANGING_CLOUD_USERS = set()
 
 # CUBA TIMEZONE
 try:
@@ -46,9 +46,9 @@ except:
     CUBA_TZ = None
 
 # SEPARATOR FOR USER EVIDENCES
-USER_EVIDENCE_MARKER = " "  # Space as separator
+USER_EVIDENCE_MARKER = " "
 
-# LISTA DISPONIBLE DE NUBES (1 al 7) - Soporta: 'evidence', 'draft' o 'blog'
+# LISTA DISPONIBLE DE NUBES (1 al 7) - Soporta: 'evidence' o 'blog'
 AVAILABLE_CLOUDS = [
     {
         "cloudtype": "moodle",
@@ -68,7 +68,7 @@ AVAILABLE_CLOUDS = [
         "moodle_user": "webmaster",
         "moodle_password": "Adminprincipal2216..",
         "zips": 99,
-        "uploadtype": "draft",
+        "uploadtype": "blog",
         "proxy": "",
         "tokenize": 0
     },
@@ -535,7 +535,7 @@ def uploadFile(filename, currentBits, totalBits, speed, time, args):
         raise ex
 
 # =========================================================
-# SUBIDA COMPLETA: EVIDENCE, DRAFT Y BLOG
+# SUBIDA COMPLETA: EVIDENCE Y BLOG
 # =========================================================
 def processUploadFiles(filename, filesize, files, update, bot, message, thread=None, jdb=None):
     try:
@@ -635,26 +635,8 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
             tokenize = user_info.get('tokenize', 0) != 0
             resplist = []
 
-            # 1. MODO DRAFT
-            if upload_type == 'draft':
-                for f in files:
-                    if thread and thread.getStore('stop'):
-                        raise Exception("Tarea detenida por mantenimiento o cancelación")
-                    resp = None
-                    iter = 0
-                    while resp is None:
-                        if thread and thread.getStore('stop'):
-                            raise Exception("Tarea detenida por mantenimiento o cancelación")
-                        _, resp = client.upload_file_draft(f, progressfunc=uploadFile, args=(bot, message, originalfile, thread, username), tokenize=tokenize)
-                        iter += 1
-                        if iter >= 10:
-                            break
-                    resplist.append(resp)
-                    os.unlink(f)
-                return resplist
-
-            # 2. MODO BLOG
-            elif upload_type == 'blog':
+            # 1. MODO BLOG
+            if upload_type == 'blog':
                 itemid = None
                 uploaded_info = []
                 for f in files:
@@ -689,7 +671,7 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
                         resplist.append({'filename': fname, 'url': direct_url})
                 return resplist
 
-            # 3. MODO EVIDENCE
+            # 2. MODO EVIDENCE
             else:
                 evidences = client.getEvidences()
                 original_evidname = str(filename).split('.')[0]
@@ -866,8 +848,8 @@ def processFile(update, bot, message, file, thread=None, jdb=None):
         if client:
             upload_type = getUser.get('uploadtype', 'evidence')
             
-            # --- PARSEO DE ENLACES PARA DRAFT Y BLOG ---
-            if upload_type in ['draft', 'blog']:
+            # --- PARSEO DE ENLACES PARA BLOG ---
+            if upload_type == 'blog':
                 for item in client:
                     if item and 'url' in item:
                         url = item['url']
@@ -2025,10 +2007,10 @@ def onmessage(update, bot: ObigramClient):
 
 🔧 <b>Tus comandos personales:</b>
 /cambiar - <b>Cambiar de nube (1 al {len(AVAILABLE_CLOUDS)}) 🔄</b>
-/files - <b>Ver tus evidencias o archivos</b>
+/files - <b>Ver tus evidencias o publicaciones</b>
 /txt_X - <b>Ver TXT de tu evidencia</b>
-/del_X - <b>Eliminar tu evidencia o archivo</b>
-/delall - <b>Eliminar todas tus evidencias o archivos</b>
+/del_X - <b>Eliminar tu evidencia o publicación</b>
+/delall - <b>Eliminar todas tus evidencias o publicaciones</b>
 /mystats - <b>Tus estadísticas</b>
                 """
             else:
@@ -2045,10 +2027,10 @@ def onmessage(update, bot: ObigramClient):
 /start - <b>Ver esta información</b>
 /cambiar - <b>Cambiar de nube (1 al {len(AVAILABLE_CLOUDS)}) 🔄</b>
 /status - <b>Estado de tu nube 🟢/🔴</b>
-/files - <b>Ver tus evidencias o archivos</b>
+/files - <b>Ver tus evidencias o publicaciones</b>
 /txt_X - <b>Ver TXT de evidencia X</b>
-/del_X - <b>Eliminar evidencia o archivo X</b>
-/delall - <b>Eliminar todas tus evidencias o archivos</b>
+/del_X - <b>Eliminar evidencia o publicación X</b>
+/delall - <b>Eliminar todas tus evidencias o publicaciones</b>
 /mystats - <b>Ver tus estadísticas</b>
                 """
             
@@ -2816,7 +2798,7 @@ def onmessage(update, bot: ObigramClient):
             return
         
         # =========================================================
-        # COMANDO /files (SOPORTE TOTAL: EVIDENCE, DRAFT Y BLOG)
+        # COMANDO /files (SOPORTE: EVIDENCE Y BLOG)
         # =========================================================
         elif '/files' == msgText:
             proxy = ProxyCloud.parse(user_info['proxy']) if user_info.get('proxy') else None
@@ -2833,29 +2815,9 @@ def onmessage(update, bot: ObigramClient):
             loged = client.login()
             if loged:
                 upload_type = user_info.get('uploadtype', 'evidence')
-                
-                # 1. LISTADO MODO DRAFT
-                if upload_type == 'draft':
-                    try:
-                        draft_files = client.getFiles()
-                        visible_files = [f for f in draft_files if f.get('type') != 'folder' and (f.get('filename') or f.get('fullname'))]
-                        if len(visible_files) > 0:
-                            files_msg = "📁 <b>Tus archivos en Borrador (Draft)</b>\n\n"
-                            for idx, item in enumerate(visible_files):
-                                fname = item.get('filename') or item.get('fullname') or 'Archivo'
-                                fsize = format_file_size(int(item.get('filesize', 0))) if item.get('filesize') else ""
-                                files_msg += f"• <b>{fname}</b> [ <b>{fsize}</b> ]\n  /del_{idx}\n\n"
-                            files_msg += f"<b>Total:</b> <b>{len(visible_files)} archivo(s)</b>"
-                            bot.editMessageText(message, files_msg, parse_mode='html')
-                        else:
-                            bot.editMessageText(message, '<b>📭 No hay archivos guardados en borrador</b>', parse_mode='html')
-                    except Exception as e:
-                        bot.editMessageText(message, f'<b>❌ Error obteniendo archivos draft:</b> <b>{str(e)}</b>', parse_mode='html')
-                    client.logout()
-                    return
 
-                # 2. LISTADO MODO BLOG
-                elif upload_type == 'blog':
+                # 1. LISTADO MODO BLOG
+                if upload_type == 'blog':
                     try:
                         blog_entries = client.getBlogs()
                         if len(blog_entries) > 0:
@@ -2871,7 +2833,7 @@ def onmessage(update, bot: ObigramClient):
                     client.logout()
                     return
 
-                # 3. LISTADO MODO EVIDENCE
+                # 2. LISTADO MODO EVIDENCE
                 all_evidences = client.getEvidences()
                 visible_list = []
                 search_pattern = f"{USER_EVIDENCE_MARKER}{username}"
@@ -2939,7 +2901,7 @@ def onmessage(update, bot: ObigramClient):
                 bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
              
         # =========================================================
-        # COMANDO /del_ (BORRADO INDIVIDUAL EN DRAFT, BLOG Y EVIDENCE)
+        # COMANDO /del_ (BORRADO INDIVIDUAL EN BLOG Y EVIDENCE)
         # =========================================================
         elif '/del_' in msgText:
             try:
@@ -2953,27 +2915,9 @@ def onmessage(update, bot: ObigramClient):
                 loged = client.login()
                 if loged:
                     upload_type = user_info.get('uploadtype', 'evidence')
-                    
-                    # 1. BORRADO EN DRAFT
-                    if upload_type == 'draft':
-                        draft_files = client.getFiles()
-                        visible_files = [f for f in draft_files if f.get('type') != 'folder' and (f.get('filename') or f.get('fullname'))]
-                        if findex < 0 or findex >= len(visible_files):
-                            bot.editMessageText(message, '<b>❌ Índice inválido. Use </b>/files<b> para ver la lista.</b>', parse_mode='html')
-                            client.logout()
-                            return
-                        
-                        target_file = visible_files[findex]
-                        file_name = target_file.get('filename') or target_file.get('fullname')
-                        client.delteFile(file_name)
-                        client.logout()
-                        
-                        memory_stats.log_delete(username=username, filename=file_name, evidence_name="Draft", moodle_host=user_info['moodle_host'])
-                        bot.editMessageText(message, f"🗑️ <b>Archivo borrado con éxito:</b> <b>{file_name}</b>", parse_mode='html')
-                        return
 
-                    # 2. BORRADO EN BLOG
-                    elif upload_type == 'blog':
+                    # 1. BORRADO EN BLOG
+                    if upload_type == 'blog':
                         blog_entries = client.getBlogs()
                         if findex < 0 or findex >= len(blog_entries):
                             bot.editMessageText(message, '<b>❌ Índice inválido. Use </b>/files<b> para ver la lista.</b>', parse_mode='html')
@@ -2988,7 +2932,7 @@ def onmessage(update, bot: ObigramClient):
                         bot.editMessageText(message, f"🗑️ <b>Entrada de blog borrada con éxito:</b> <b>{target_blog['name']}</b>", parse_mode='html')
                         return
 
-                    # 3. BORRADO EN EVIDENCE
+                    # 2. BORRADO EN EVIDENCE
                     all_evidences = client.getEvidences()
                     visible_list = []
                     search_pattern = f"{USER_EVIDENCE_MARKER}{username}"
@@ -3061,7 +3005,7 @@ def onmessage(update, bot: ObigramClient):
                 bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
                 
         # =========================================================
-        # COMANDO /delall (BORRADO MASIVO EN DRAFT, BLOG Y EVIDENCE)
+        # COMANDO /delall (BORRADO MASIVO EN BLOG Y EVIDENCE)
         # =========================================================
         elif '/delall' in msgText:
             try:
@@ -3074,31 +3018,9 @@ def onmessage(update, bot: ObigramClient):
                 loged = client.login()
                 if loged:
                     upload_type = user_info.get('uploadtype', 'evidence')
-                    
-                    # 1. VACIAR DRAFT
-                    if upload_type == 'draft':
-                        draft_files = client.getFiles()
-                        visible_files = [f for f in draft_files if f.get('type') != 'folder' and (f.get('filename') or f.get('fullname'))]
-                        if not visible_files:
-                            bot.editMessageText(message, '<b>📭 No hay archivos para eliminar en el borrador</b>', parse_mode='html')
-                            client.logout()
-                            return
-                        
-                        deleted_count = 0
-                        for f in visible_files:
-                            fname = f.get('filename') or f.get('fullname')
-                            try:
-                                client.delteFile(fname)
-                                deleted_count += 1
-                            except: pass
-                        
-                        client.logout()
-                        memory_stats.log_delete_all(username=username, deleted_evidences=0, deleted_files=deleted_count, moodle_host=user_info['moodle_host'])
-                        bot.editMessageText(message, f"🗑️ <b>Borrador vaciado</b>\n\n• <b>Archivos borrados:</b> <b>{deleted_count}</b>", parse_mode='html')
-                        return
 
-                    # 2. VACIAR BLOGS
-                    elif upload_type == 'blog':
+                    # 1. VACIAR BLOGS
+                    if upload_type == 'blog':
                         blog_entries = client.getBlogs()
                         if not blog_entries:
                             bot.editMessageText(message, '<b>📭 No hay entradas de blog para eliminar</b>', parse_mode='html')
@@ -3117,7 +3039,7 @@ def onmessage(update, bot: ObigramClient):
                         bot.editMessageText(message, f"🗑️ <b>Publicaciones de blog eliminadas</b>\n\n• <b>Entradas borradas:</b> <b>{deleted_count}</b>", parse_mode='html')
                         return
 
-                    # 3. VACIAR EVIDENCE
+                    # 2. VACIAR EVIDENCE
                     all_evidences = client.getEvidences()
                     user_evidences = []
                     search_pattern = f"{USER_EVIDENCE_MARKER}{username}"
