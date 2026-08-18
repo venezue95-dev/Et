@@ -17,6 +17,7 @@ import socks
 import asyncio
 import threading
 import S5Crypto
+import traceback
 
 
 class CallingUpload:
@@ -138,12 +139,12 @@ class MoodleClient(object):
         except Exception:
             return False
 
-    def parsejson(self, json_data):
+    def parsejson(self, json_str):
         try:
-            return json.loads(json_data)
+            return json.loads(json_str)
         except Exception:
             data = {}
-            tokens = str(json_data).replace('{', '').replace('}', '').split(',')
+            tokens = str(json_str).replace('{', '').replace('}', '').split(',')
             for t in tokens:
                 split = str(t).split(':', 1)
                 if len(split) == 2:
@@ -155,7 +156,7 @@ class MoodleClient(object):
             index = str(html).index('client_id')
             max_len = 25
             ret = html[index:(index + max_len)]
-            return str(ret).replace('client_id":"', '')
+            return str(ret).replace('client_id":"', '').split('"')[0]
         except Exception:
             return uuid.uuid4().hex[:10]
 
@@ -399,7 +400,7 @@ class MoodleClient(object):
                 'savepath': (None, '/')
             }
             upload_file = {
-                'repo_upload_file': (file, of, 'application/octet-stream'),
+                'repo_upload_file': (os.path.basename(file), of, 'application/octet-stream'),
                 **upload_data
             }
             post_file_url = self.path + 'repository/repository_ajax.php?action=upload'
@@ -454,7 +455,7 @@ class MoodleClient(object):
                 'savepath': (None, '/')
             }
             upload_file = {
-                'repo_upload_file': (file, of, 'application/octet-stream'),
+                'repo_upload_file': (os.path.basename(file), of, 'application/octet-stream'),
                 **upload_data
             }
             post_file_url = self.path + 'repository/repository_ajax.php?action=upload'
@@ -485,7 +486,10 @@ class MoodleClient(object):
             if not sesskey:
                 sesskey = soup.find('input', attrs={'name': 'sesskey'})['value']
 
-            query = self.extractQuery(soup.find('object', attrs={'type': 'text/html'})['data'])
+            obj = soup.find('object', attrs={'type': 'text/html'})
+            if not obj:
+                obj = soup.find('object')
+            query = self.extractQuery(obj['data'])
             
             try:
                 client_id = str(soup.find('div', {'class': 'filemanager'})['id']).replace('filemanager-', '')
@@ -496,6 +500,8 @@ class MoodleClient(object):
 
             of = open(file, 'rb')
             b = uuid.uuid4().hex
+            filename_only = os.path.basename(file)
+            
             upload_data = {
                 'title': (None, ''),
                 'author': (None, 'ObysoftDev'),
@@ -513,7 +519,7 @@ class MoodleClient(object):
                 'savepath': (None, '/')
             }
             upload_file = {
-                'repo_upload_file': (file, of, 'application/octet-stream'),
+                'repo_upload_file': (filename_only, of, 'application/octet-stream'),
                 **upload_data
             }
             
@@ -524,24 +530,25 @@ class MoodleClient(object):
             of.close()
             
             data = self.parsejson(resp2.text)
-            data['url'] = str(data.get('url', '')).replace('\\', '')
-            data['filename'] = os.path.basename(file)
-            
-            if self.userdata:
-                if 'token' in self.userdata and not tokenize:
-                    url_str = str(data['url'])
-                    if 'draftfile.php/' in url_str:
-                        url_str = url_str.replace('draftfile.php/', 'webservice/draftfile.php/')
-                    elif 'pluginfile.php/' in url_str:
-                        url_str = url_str.replace('pluginfile.php/', 'webservice/pluginfile.php/')
-                    
-                    sep = '&' if '?' in url_str else '?'
-                    data['url'] = f"{url_str}{sep}token={self.userdata['token']}"
-                elif tokenize:
-                    data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
-                    
-            return query['itemid'], data
-        except Exception:
+            if 'url' in data and data['url']:
+                data['url'] = str(data['url']).replace('\\', '')
+                data['filename'] = filename_only
+                
+                if self.userdata:
+                    if 'token' in self.userdata and not tokenize:
+                        url_clean = str(data['url']).replace('draftfile.php/', 'webservice/draftfile.php/').replace('pluginfile.php/', 'webservice/pluginfile.php/')
+                        sep = '&' if '?' in url_clean else '?'
+                        data['url'] = f"{url_clean}{sep}token={self.userdata['token']}"
+                    elif tokenize:
+                        data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
+                        
+                return None, data
+            else:
+                print(f"[Error Respuesta Moodle Draft]: {resp2.text}")
+                return None, None
+        except Exception as e:
+            print(f"[Error upload_file_draft]: {e}")
+            traceback.print_exc()
             return None, None
 
     def upload_file_perfil(self, file, progressfunc=None, args=(), tokenize=False):
@@ -574,7 +581,7 @@ class MoodleClient(object):
                 'savepath': (None, '/')
             }
             upload_file = {
-                'repo_upload_file': (file, of, 'application/octet-stream'),
+                'repo_upload_file': (os.path.basename(file), of, 'application/octet-stream'),
                 **upload_data
             }
             encoder = rt.MultipartEncoder(upload_file, boundary=b)
@@ -625,7 +632,7 @@ class MoodleClient(object):
                 'savepath': (None, '/')
             }
             upload_file = {
-                'repo_upload_file': (file, of, 'application/octet-stream'),
+                'repo_upload_file': (os.path.basename(file), of, 'application/octet-stream'),
                 **upload_data
             }
             encoder = rt.MultipartEncoder(upload_file, boundary=b)
@@ -650,7 +657,7 @@ class MoodleClient(object):
             urlfiles = self.path + 'user/files.php'
             resp = self.session.get(urlfiles, proxies=self.proxy, timeout=15)
             soup = BeautifulSoup(resp.text, 'html.parser')
-            sesskey = soup.find('input', attrs={'name': 'sesskey'})['value']
+            sesskey = self.sesskey or soup.find('input', attrs={'name': 'sesskey'})['value']
             client_id = self.getclientid(resp.text)
             filepath = '/'
             query = self.extractQuery(soup.find('object', attrs={'type': 'text/html'})['data'])
@@ -669,7 +676,7 @@ class MoodleClient(object):
             soup = BeautifulSoup(resp.text, 'html.parser')
             _qf_el = soup.find('input', {'name': '_qf__core_user_form_private_files'})
             _qf__core_user_form_private_files = _qf_el['value'] if _qf_el else '1'
-            sesskey = soup.find('input', attrs={'name': 'sesskey'})['value']
+            sesskey = self.sesskey or soup.find('input', attrs={'name': 'sesskey'})['value']
             client_id = self.getclientid(resp.text)
             filepath = '/'
             query = self.extractQuery(soup.find('object', attrs={'type': 'text/html'})['data'])
