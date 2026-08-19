@@ -1,4 +1,4 @@
-from pyobigram.utils import sizeof_fmt,get_file_size,createID,nice_time
+from pyobigram.utils import sizeof_fmt, get_file_size, createID, nice_time
 from pyobigram.client import ObigramClient, inlineQueryResultArticle
 from MoodleClient import MoodleClient
 from JDatabase import JsonDatabase
@@ -44,8 +44,8 @@ try:
 except:
     CUBA_TZ = None
 
-# SEPARATOR FOR USER EVIDENCES
-USER_EVIDENCE_MARKER = " "  # Space as separator
+# SEPARATOR FOR USER EVIDENCES / DRAFTS
+USER_EVIDENCE_MARKER = " "  # Espacio como separador para marcar al usuario
 
 # LISTA DISPONIBLE DE NUBES (1 al 7)
 AVAILABLE_CLOUDS = [
@@ -536,7 +536,7 @@ def send_long_message(bot, chat_id, text, original_message=None, parse_mode='htm
         time.sleep(0.5)  # Breve pausa para evitar flood
         bot.sendMessage(chat_id, msg_part, parse_mode=parse_mode)
 
-def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
+def downloadFile(downloader, filename, currentBits, totalBits, speed, time, args):
     try:
         bot = args[0]
         message = args[1]
@@ -548,12 +548,12 @@ def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
         
         update_process(thread.id, username, filename, '📥 Descargando', currentBits, totalBits)
         
-        downloadingInfo = infos.createDownloading(filename,totalBits,currentBits,speed,time,tid=thread.id)
+        downloadingInfo = infos.createDownloading(filename, totalBits, currentBits, speed, time, tid=thread.id)
         bot.editMessageText(message, downloadingInfo, parse_mode='html')
     except Exception as ex: 
         raise ex
 
-def uploadFile(filename,currentBits,totalBits,speed,time,args):
+def uploadFile(filename, currentBits, totalBits, speed, time, args):
     try:
         bot = args[0]
         message = args[1]
@@ -572,7 +572,7 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
     except Exception as ex: 
         raise ex
 
-def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jdb=None):
+def processUploadFiles(filename, filesize, files, update, bot, message, thread=None, jdb=None):
     try:
         prep_msg = '<b>⬆️ Preparando para subir ☁ ●●○</b>'
         if thread:
@@ -585,15 +585,10 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
             update_process(thread.id, username, os.path.basename(str(filename)), '⬆️ Preparando para subir', 0, 100)
             
-        evidence = None
-        fileid = None
         user_info = jdb.get_user(username)
         proxy = ProxyCloud.parse(user_info['proxy']) if user_info and user_info.get('proxy') else None
-
-        # Tipo de destino configurado para la nube de este usuario: "evidence" (por defecto) o "draft"
-        upload_type = user_info.get('uploadtype', 'evidence') if user_info else 'evidence'
         
-        # VERIFICACIÓN RÁPIDA DE CONECTIVIDAD (Falla rápido y con mensajes mejorados si la Moodle está caída)
+        # VERIFICACIÓN RÁPIDA DE CONECTIVIDAD
         try:
             test_url = user_info['moodle_host']
             requests.get(test_url, timeout=6, proxies=proxy, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
@@ -669,56 +664,69 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             return None
 
         if loged:
+            upload_type = user_info.get('uploadtype', 'evidence')
+            tokenize = (user_info.get('tokenize', 0) != 0)
+            originalfile = filename if len(files) > 1 else ''
+            draftlist = []
+
+            # ==========================================
+            # MODO 1: SUBIDA A DRAFT CON MARCA DE USUARIO
+            # ==========================================
             if upload_type == 'draft':
-                # ============================================
-                # FLUJO DE SUBIDA: ARCHIVOS PRIVADOS (DRAFT)
-                # ============================================
-                originalfile = ''
-                if len(files)>1:
-                    originalfile = filename
-                draftlist = []
                 for f in files:
                     if thread and thread.getStore('stop'):
                         raise Exception("Tarea detenida por mantenimiento o cancelación")
-                    f_size = get_file_size(f)
+                    
+                    base_dir = os.path.dirname(f)
+                    base_name = os.path.basename(f)
+                    name_part, ext_part = os.path.splitext(base_name)
+                    tagged_filename = f"{name_part}{USER_EVIDENCE_MARKER}{username}{ext_part}"
+                    tagged_filepath = os.path.join(base_dir, tagged_filename) if base_dir else tagged_filename
+                    
+                    try:
+                        os.rename(f, tagged_filepath)
+                        upload_path = tagged_filepath
+                    except:
+                        upload_path = f
+
                     resp = None
                     iter = 0
-                    tokenize = False
-                    if user_info['tokenize']!=0:
-                       tokenize = True
                     while resp is None:
                         if thread and thread.getStore('stop'):
                             raise Exception("Tarea detenida por mantenimiento o cancelación")
+
+                        _, resp = client.upload_file_draft(
+                            upload_path,
+                            progressfunc=uploadFile,
+                            args=(bot, message, originalfile, thread, username),
+                            tokenize=tokenize
+                        )
                         
                         if thread and thread.getStore('stop'):
                             raise Exception("Tarea detenida por mantenimiento o cancelación")
 
-                        fileid,resp = client.upload_file_draft(f,itemid=fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
-                        
-                        if thread and thread.getStore('stop'):
-                            raise Exception("Tarea detenida por mantenimiento o cancelación")
-
-                        draftlist.append(resp)
+                        if resp:
+                            if 'file' not in resp:
+                                resp['file'] = os.path.basename(f)
+                            draftlist.append(resp)
                         iter += 1
-                        if iter>=10:
+                        if iter >= 10:
                             break
-                    os.unlink(f)
+                    try:
+                        os.unlink(upload_path)
+                    except: pass
                 
-                if thread and thread.getStore('stop'):
-                    raise Exception("Tarea detenida por mantenimiento o cancelación")
-
-                try:
-                    client.savePrivateFiles(fileid)
-                except:pass
                 return draftlist
+
+            # ==========================================
+            # MODO 2: SUBIDA A EVIDENCE
+            # ==========================================
             else:
-                # ============================================
-                # FLUJO DE SUBIDA: EVIDENCIAS (ORIGINAL)
-                # ============================================
+                evidence = None
+                fileid = None
                 evidences = client.getEvidences()
                 
                 original_evidname = str(filename).split('.')[0]
-                visible_evidname = original_evidname
                 internal_evidname = f"{original_evidname}{USER_EVIDENCE_MARKER}{username}"
                 
                 for evid in evidences:
@@ -728,43 +736,42 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 if evidence is None:
                     evidence = client.createEvidence(internal_evidname)
 
-                originalfile = ''
-                if len(files)>1:
-                    originalfile = filename
-                draftlist = []
                 for f in files:
                     if thread and thread.getStore('stop'):
                         raise Exception("Tarea detenida por mantenimiento o cancelación")
-                    f_size = get_file_size(f)
                     resp = None
                     iter = 0
-                    tokenize = False
-                    if user_info['tokenize']!=0:
-                       tokenize = True
                     while resp is None:
                         if thread and thread.getStore('stop'):
                             raise Exception("Tarea detenida por mantenimiento o cancelación")
+
+                        fileid, resp = client.upload_file(
+                            f, 
+                            evidence, 
+                            fileid, 
+                            progressfunc=uploadFile, 
+                            args=(bot, message, originalfile, thread, username), 
+                            tokenize=tokenize
+                        )
                         
                         if thread and thread.getStore('stop'):
                             raise Exception("Tarea detenida por mantenimiento o cancelación")
 
-                        fileid,resp = client.upload_file(f,evidence,fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
-                        
-                        if thread and thread.getStore('stop'):
-                            raise Exception("Tarea detenida por mantenimiento o cancelación")
-
-                        draftlist.append(resp)
+                        if resp:
+                            draftlist.append(resp)
                         iter += 1
-                        if iter>=10:
+                        if iter >= 10:
                             break
-                    os.unlink(f)
+                    try:
+                        os.unlink(f)
+                    except: pass
                 
                 if thread and thread.getStore('stop'):
                     raise Exception("Tarea detenida por mantenimiento o cancelación")
 
                 try:
                     client.saveEvidence(evidence)
-                except:pass
+                except: pass
                 return draftlist
         else:
             if thread and thread.getStore('stop'):
@@ -795,8 +802,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         if thread and thread.getStore('stop'):
             try:
                 bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
-            except:
-                pass
+            except: pass
             return None
 
         error_detail = str(ex) if str(ex) else "Error desconocido en la subida"
@@ -824,7 +830,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 print(f"Error al notificar error de subida al grupo: {e}")
         return None
 
-def processFile(update,bot,message,file,thread=None,jdb=None):
+def processFile(update, bot, message, file, thread=None, jdb=None):
     phase = "procesamiento"
     findex = 0
     try:
@@ -835,13 +841,11 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         getUser = jdb.get_user(update.message.sender.username)
         max_file_size = 1024 * 1024 * getUser['zips']
         file_upload_count = 0
-        client = None
-        
         username = update.message.sender.username
         
         if file_size > max_file_size:
             phase = "compresión"
-            compresingInfo = infos.createCompresing(file,file_size,max_file_size)
+            compresingInfo = infos.createCompresing(file, file_size, max_file_size)
             if thread:
                 compresingInfo = compresingInfo.strip() + f"\n\n/cancel_{thread.id}"
             bot.editMessageText(message, compresingInfo, parse_mode='html')
@@ -852,8 +856,8 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 update_process(thread.id, username, os.path.basename(file), '🗜️ Comprimiendo', 0, 100)
             
             zipname = str(file).split('.')[0] + createID()
-            mult_file = zipfile.MultiFile(zipname,max_file_size)
-            zip = zipfile.ZipFile(mult_file,  mode='w', compression=zipfile.ZIP_DEFLATED)
+            mult_file = zipfile.MultiFile(zipname, max_file_size)
+            zip = zipfile.ZipFile(mult_file, mode='w', compression=zipfile.ZIP_DEFLATED)
             
             if thread and thread.getStore('stop'):
                 zip.close()
@@ -888,59 +892,50 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
 
             phase = "subida"
-            client = processUploadFiles(file,file_size,mult_file.files,update,bot,message,thread=thread,jdb=jdb)
+            upload_results = processUploadFiles(file, file_size, mult_file.files, update, bot, message, thread=thread, jdb=jdb)
             try:
                 os.unlink(file)
-            except:pass
+            except: pass
             file_upload_count = len(mult_file.files)
         else:
             phase = "subida"
-            client = processUploadFiles(file,file_size,[file],update,bot,message,thread=thread,jdb=jdb)
+            upload_results = processUploadFiles(file, file_size, [file], update, bot, message, thread=thread, jdb=jdb)
             file_upload_count = 1
         
         if thread and thread.getStore('stop'):
             raise Exception("Tarea detenida por mantenimiento o cancelación")
 
-        visible_evidname = ''
-        files = []
-        upload_type = getUser.get('uploadtype', 'evidence') if getUser else 'evidence'
-
-        if client == "LOGIN_FAILED":
+        if upload_results == "LOGIN_FAILED":
             return
-        if client:
+
+        if upload_results:
+            upload_type = getUser.get('uploadtype', 'evidence')
+            files = []
+
+            # ==========================================
+            # PROCESAR ENLACES EN MODO DRAFT
+            # ==========================================
             if upload_type == 'draft':
-                # ============================================
-                # RECUPERACIÓN DE ARCHIVOS: DRAFT (PRIVATE FILES)
-                # ============================================
-                visible_evidname = os.path.basename(str(file)).split('.')[0]
-                try:
-                    proxy = ProxyCloud.parse(getUser['proxy']) if getUser.get('proxy') else None
-                    moodle_client = MoodleClient(getUser['moodle_user'],
-                                                 getUser['moodle_password'],
-                                                 getUser['moodle_host'],
-                                                 getUser['moodle_repo_id'],
-                                                 proxy=proxy)
-                    if moodle_client.login():
-                        # Reintenta por si hay retraso de indexación en el listado
-                        for attempt in range(3):
-                            files = moodle_client.getPrivateFiles()
-                            if files:
-                                break
-                            time.sleep(2)
-                        moodle_client.logout()
-                except Exception as e:
-                    print(f"Error obteniendo archivos privados: {e}")
-                    files = []
+                for r in upload_results:
+                    if r and 'url' in r:
+                        url = r['url']
+                        f_name = r.get('file', os.path.basename(file))
+                        if '?forcedownload=1' in url:
+                            url = url.replace('?forcedownload=1', '')
+                        elif '&forcedownload=1' in url:
+                            url = url.replace('&forcedownload=1', '')
+                        if '&token=' in url and '?' not in url:
+                            url = url.replace('&token=', '?token=', 1)
+                        files.append({'name': f_name, 'url': url, 'directurl': url})
                 findex = 0
+
+            # ==========================================
+            # PROCESAR ENLACES EN MODO EVIDENCE
+            # ==========================================
             else:
-                # ============================================
-                # RECUPERACIÓN DE ARCHIVOS: EVIDENCIAS (ORIGINAL)
-                # ============================================
                 original_evidname = str(file).split('.')[0]
-                visible_evidname = original_evidname
                 internal_evidname = f"{original_evidname}{USER_EVIDENCE_MARKER}{username}"
                 
-                txtname = visible_evidname + '.txt'
                 try:
                     proxy = ProxyCloud.parse(getUser['proxy']) if getUser.get('proxy') else None
                     moodle_client = MoodleClient(getUser['moodle_user'],
@@ -949,8 +944,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                                                  getUser['moodle_repo_id'],
                                                  proxy=proxy)
                     if moodle_client.login():
-                        # SISTEMA DE REINTENTO PARA LIDIAR CON EL RETRASO DE INDEXACIÓN DE MOODLE
-                        files = []
                         evidence_index = -1
                         for attempt in range(3):
                             evidences = moodle_client.getEvidences()
@@ -976,7 +969,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                                 files[i]['directurl'] = url
                         
                         moodle_client.logout()
-                        
                         findex = evidence_index if evidence_index != -1 else 0
                 except Exception as e:
                     print(f"Error obteniendo índice de evidencia: {e}")
@@ -985,9 +977,9 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             if thread and thread.getStore('stop'):
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
 
-            bot.deleteMessage(message.chat.id,message.message_id)
-            finishInfo = infos.createFinishUploading(file,file_size,max_file_size,file_upload_count,file_upload_count,findex)
-            filesInfo = infos.createFileMsg(file,files)
+            bot.deleteMessage(message.chat.id, message.message_id)
+            finishInfo = infos.createFinishUploading(file, file_size, max_file_size, file_upload_count, file_upload_count, findex)
+            filesInfo = infos.createFileMsg(file, files)
             
             extra_msg = ""
             if getUser:
@@ -1019,12 +1011,11 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 except Exception as e:
                     print(f"Error al notificar subida al grupo: {e}")
             
-            if len(files)>0:
+            if len(files) > 0:
                 txtname = str(file).split('/')[-1].split('.')[0] + '.txt'
                 send_to_group_flag = False if username.lower() == ADMIN_USERNAME.lower() else True
                 sendTxt(txtname, files, update, bot, send_to_group=send_to_group_flag, user_info=getUser)
             
-            # Envío de sticker de subida completada (luego del txt)
             send_sticker(message.chat.id, "CAACAgEAAxkBAAIoXGqA9r31O2plFhlz_RG3tuYEg-_JAAK6BgACnFgJRDiBixe0VxapPQQ")
         else:
             if thread and thread.getStore('stop'):
@@ -1041,8 +1032,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if thread and thread.getStore('stop'):
             try:
                 bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
-            except:
-                pass
+            except: pass
             return
 
         error_detail = str(ex) if str(ex) else "Error desconocido"
@@ -1073,7 +1063,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if thread:
             clean_process(thread.id)
 
-def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
+def ddl(update, bot, message, url, file_name='', thread=None, jdb=None):
     try:
         downloader = Downloader()
         username = update.message.sender.username
@@ -1090,7 +1080,7 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                     if thread:
                         update_process(thread.id, username, "Descarga", f'🔄 Reintentando ({attempt+1}/{retries})', 0, 100)
                 
-                file = downloader.download_url(url, progressfunc=downloadFile, args=(bot,message,thread,username))
+                file = downloader.download_url(url, progressfunc=downloadFile, args=(bot, message, thread, username))
                 if file:
                     break
             except Exception as ex:
@@ -1126,18 +1116,17 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
         
         if not downloader.stoping:
             if file:
-                processFile(update,bot,message,file,thread=thread,jdb=jdb)
+                processFile(update, bot, message, file, thread=thread, jdb=jdb)
             else:
                 try:
-                    bot.editMessageText(message,'<b>➥ Error en la descarga ✗</b>', parse_mode='html')
+                    bot.editMessageText(message, '<b>➥ Error en la descarga ✗</b>', parse_mode='html')
                 except:
-                    bot.editMessageText(message,'<b>➥ Error en la descarga ✗</b>', parse_mode='html')
+                    bot.editMessageText(message, '<b>➥ Error en la descarga ✗</b>', parse_mode='html')
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
                 bot.editMessageText(message, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
-            except:
-                pass
+            except: pass
         else:
             print(f"Error en ddl: {ex}")
     finally:
@@ -1145,7 +1134,7 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
             clean_process(thread.id)
 
 def sendTxt(name, files, update, bot, send_to_group=False, user_info=None):
-    txt = open(name,'w')
+    txt = open(name, 'w')
     
     for i, f in enumerate(files):
         url = f['directurl']
@@ -1623,7 +1612,7 @@ def show_loading_progress(bot, message, step, total_steps=3):
     msg = loading_msgs[step-1] if step <= len(loading_msgs) else f"<b>Procesando... ({step}/{total_steps})</b>"
     bot.editMessageText(message, f"{msg} {bar}", parse_mode='html')
 
-def onmessage(update,bot:ObigramClient):
+def onmessage(update, bot: ObigramClient):
     global MAINTENANCE_MODE, BANNED_USERS, REMOVED_USERS, ACTIVE_PROCESSES, ACTIVE_STATUS_CHECKS, CHANGING_CLOUD_USERS
     try:
         thread = bot.this_thread
@@ -1632,7 +1621,7 @@ def onmessage(update,bot:ObigramClient):
 
         msgText = ''
         try: msgText = update.message.text
-        except:pass
+        except: pass
 
         jdb = JsonDatabase('database')
         jdb.check_create()
@@ -1693,11 +1682,11 @@ def onmessage(update,bot:ObigramClient):
 
         if '/cancel_' in msgText:
             try:
-                cmd = str(msgText).split('_',2)
+                cmd = str(msgText).split('_', 2)
                 tid = cmd[1]
                 tcancel = bot.threads[tid]
                 msg = tcancel.getStore('msg')
-                tcancel.store('stop',True)
+                tcancel.store('stop', True)
                 
                 proc_info = ACTIVE_PROCESSES.get(tid, {})
                 proc_user = proc_info.get('user', username)
@@ -1706,7 +1695,7 @@ def onmessage(update,bot:ObigramClient):
                 
                 clean_process(tid)
                 time.sleep(1)
-                bot.editMessageText(msg,'<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
+                bot.editMessageText(msg, '<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
                 
                 if LOG_GROUP_ID != 0 and proc_user.lower() != ADMIN_USERNAME.lower():
                     try:
@@ -1722,8 +1711,8 @@ def onmessage(update,bot:ObigramClient):
                 print(str(ex))
             return
 
-        message = bot.sendMessage(chat_id,'<b>➲ Procesando ✪ ●●○</b>', parse_mode='html')
-        thread.store('msg',message)
+        message = bot.sendMessage(chat_id, '<b>➲ Procesando ✪ ●●○</b>', parse_mode='html')
+        thread.store('msg', message)
 
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/add '):
             try:
@@ -2105,30 +2094,31 @@ def onmessage(update,bot:ObigramClient):
 
 🔧 <b>Tus comandos personales:</b>
 /cambiar - <b>Cambiar de nube (1 al {len(AVAILABLE_CLOUDS)}) 🔄</b>
-/files - <b>Ver tus evidencias</b>
-/txt_X - <b>Ver TXT de tu evidencia</b>
-/del_X - <b>Eliminar tu evidencia</b>
-/delall - <b>Eliminar tus evidencias</b>
+/files - <b>Ver tus evidencias o borradores</b>
+/txt_X - <b>Ver TXT de tu archivo X</b>
+/del_X - <b>Eliminar tu archivo X</b>
+/delall - <b>Eliminar todos tus archivos</b>
 /mystats - <b>Tus estadísticas</b>
                 """
             else:
                 current_cloud_short = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
+                current_mode_str = "Borrador (Draft)" if user_info.get('uploadtype') == 'draft' else "Evidencia"
                 start_msg = f"""
 👤 <b>Usuario Regular</b>
 
 👤 <b>Usuario:</b> <b>@{username}</b>
 ☁️ <b>Nube actual:</b> <code>{current_cloud_short}</code>
 ⚖️ <b>Límite:</b> <b>{user_info["zips"]} MB</b>
-📁 <b>Evidence:</b> <b>Activado</b>
+📁 <b>Modo de subida:</b> <b>{current_mode_str}</b>
 
 🔧 <b>Tus comandos:</b>
 /start - <b>Ver esta información</b>
 /cambiar - <b>Cambiar de nube (1 al {len(AVAILABLE_CLOUDS)}) 🔄</b>
 /status - <b>Estado de tu nube 🟢/🔴</b>
-/files - <b>Ver tus evidencias</b>
-/txt_X - <b>Ver TXT de evidencia X</b>
-/del_X - <b>Eliminar evidencia X</b>
-/delall - <b>Eliminar tus evidencias</b>
+/files - <b>Ver tus archivos</b>
+/txt_X - <b>Ver TXT del archivo X</b>
+/del_X - <b>Eliminar archivo X</b>
+/delall - <b>Eliminar todos tus archivos</b>
 /mystats - <b>Ver tus estadísticas</b>
                 """
             
@@ -2906,36 +2896,48 @@ def onmessage(update,bot:ObigramClient):
             client = MoodleClient(user_info['moodle_user'],
                                    user_info['moodle_password'],
                                    user_info['moodle_host'],
-                                   user_info['moodle_repo_id'],proxy=proxy)
+                                   user_info['moodle_repo_id'],
+                                   proxy=proxy)
             loged = client.login()
             if loged:
                 upload_type = user_info.get('uploadtype', 'evidence')
+                search_marker = f"{USER_EVIDENCE_MARKER}{username}"
 
+                # --- MODO DRAFT ---
                 if upload_type == 'draft':
-                    # ============================================
-                    # LISTADO: ARCHIVOS PRIVADOS (DRAFT)
-                    # ============================================
-                    private_files = client.getPrivateFiles()
-                    if len(private_files) > 0:
-                        files_msg = "📁 <b>Archivos privados en la nube</b>\n\n"
-                        for idx, item in enumerate(private_files):
-                            files_msg += f"• <b>{item['name']}</b>\n  /txt_{idx} | /del_{idx}\n\n"
-                        files_msg += f"<b>Total:</b> <b>{len(private_files)} archivo(s)</b>"
-                        bot.editMessageText(message, files_msg, parse_mode='html')
-                    else:
-                        bot.editMessageText(message, '<b>📭 No hay archivos disponibles</b>', parse_mode='html')
-                    client.logout()
+                    try:
+                        draft_files = client.getFiles()
+                        visible_list = []
+                        for f in draft_files:
+                            fname = f.get('filename', f.get('fullname', ''))
+                            if search_marker in fname:
+                                clean_name = fname.replace(search_marker, "")
+                                f_size = format_file_size(int(f.get('filesize', 0))) if 'filesize' in f else ''
+                                visible_list.append({
+                                    'clean_name': clean_name,
+                                    'real_name': fname,
+                                    'size': f_size
+                                })
+                        
+                        if len(visible_list) > 0:
+                            files_msg = "📁 <b>Tus archivos en Borrador (Draft)</b>\n\n"
+                            for idx, item in enumerate(visible_list):
+                                size_str = f" [ <b>{item['size']}</b> ]" if item['size'] else ""
+                                files_msg += f"• <b>{item['clean_name']}</b>{size_str}\n  /txt_{idx} | /del_{idx}\n\n"
+                            files_msg += f"<b>Total:</b> <b>{len(visible_list)} archivo(s)</b>"
+                            bot.editMessageText(message, files_msg, parse_mode='html')
+                        else:
+                            bot.editMessageText(message, '<b>📭 No hay archivos tuyos en el borrador</b>', parse_mode='html')
+                    except Exception as e:
+                        bot.editMessageText(message, f'<b>❌ Error al obtener archivos:</b> <b>{str(e)}</b>', parse_mode='html')
+                
+                # --- MODO EVIDENCE ---
                 else:
-                    # ============================================
-                    # LISTADO: EVIDENCIAS (ORIGINAL)
-                    # ============================================
                     all_evidences = client.getEvidences()
                     visible_list = []
-                    search_pattern = f"{USER_EVIDENCE_MARKER}{username}"
-                    
                     for ev in all_evidences:
-                        if ev['name'].endswith(search_pattern):
-                            clean_name = ev['name'].replace(f"{USER_EVIDENCE_MARKER}{username}", "")
+                        if ev['name'].endswith(search_marker):
+                            clean_name = ev['name'].replace(search_marker, "")
                             file_count = len(ev['files']) if 'files' in ev else 0
                             visible_list.append({
                                 'name': clean_name,
@@ -2951,10 +2953,11 @@ def onmessage(update,bot:ObigramClient):
                         bot.editMessageText(message, files_msg, parse_mode='html')
                     else:
                         bot.editMessageText(message, '<b>📭 No hay evidencias disponibles</b>', parse_mode='html')
-                    client.logout()
+                
+                client.logout()
             else:
                 bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
-                
+
         elif '/txt_' in msgText:
             try:
                 findex = int(str(msgText).split('_')[1])
@@ -2962,37 +2965,51 @@ def onmessage(update,bot:ObigramClient):
                 client = MoodleClient(user_info['moodle_user'],
                                        user_info['moodle_password'],
                                        user_info['moodle_host'],
-                                       user_info['moodle_repo_id'],proxy=proxy)
+                                       user_info['moodle_repo_id'],
+                                       proxy=proxy)
                 loged = client.login()
                 if loged:
                     upload_type = user_info.get('uploadtype', 'evidence')
+                    search_marker = f"{USER_EVIDENCE_MARKER}{username}"
 
+                    # --- MODO DRAFT ---
                     if upload_type == 'draft':
-                        # ============================================
-                        # TXT: ARCHIVOS PRIVADOS (DRAFT)
-                        # ============================================
-                        private_files = client.getPrivateFiles()
-                        if findex < 0 or findex >= len(private_files):
+                        draft_files = client.getFiles()
+                        user_files = [f for f in draft_files if search_marker in f.get('filename', f.get('fullname', ''))]
+
+                        if findex < 0 or findex >= len(user_files):
                             bot.editMessageText(message, '<b>❌ Índice inválido. Use </b>/files<b> para ver la lista.</b>', parse_mode='html')
                             client.logout()
                             return
                         
-                        target_file = private_files[findex]
-                        txtname = target_file['name'] + '.txt'
-                        sendTxt(txtname, [target_file], update, bot, user_info=user_info)
+                        target_file = user_files[findex]
+                        real_fname = target_file.get('filename', target_file.get('fullname', 'archivo'))
+                        clean_name = real_fname.replace(search_marker, "")
+                        url = target_file.get('url', '')
+                        
+                        directurl = url
+                        if client.userdata and 'token' in client.userdata:
+                            directurl = str(url).replace('pluginfile.php/', 'webservice/pluginfile.php/') + '?token=' + client.userdata['token']
+                        
+                        if '?forcedownload=1' in directurl:
+                            directurl = directurl.replace('?forcedownload=1', '')
+                        elif '&forcedownload=1' in directurl:
+                            directurl = directurl.replace('&forcedownload=1', '')
+                        
+                        clean_txtname = clean_name.rsplit('.', 1)[0] if '.' in clean_name else clean_name
+                        txtname = f"{clean_txtname}.txt"
+                        
+                        sendTxt(txtname, [{'directurl': directurl}], update, bot, user_info=user_info)
                         client.logout()
-                        bot.editMessageText(message,'<b>📄 TXT aquí</b>', parse_mode='html')
+                        bot.editMessageText(message, '<b>📄 TXT aquí</b>', parse_mode='html')
+
+                    # --- MODO EVIDENCE ---
                     else:
-                        # ============================================
-                        # TXT: EVIDENCIAS (ORIGINAL)
-                        # ============================================
                         all_evidences = client.getEvidences()
                         visible_list = []
-                        search_pattern = f"{USER_EVIDENCE_MARKER}{username}"
-                        
                         for ev in all_evidences:
-                            if ev['name'].endswith(search_pattern):
-                                clean_name = ev['name'].replace(f"{USER_EVIDENCE_MARKER}{username}", "")
+                            if ev['name'].endswith(search_marker):
+                                clean_name = ev['name'].replace(search_marker, "")
                                 visible_list.append({
                                     'clean_name': clean_name,
                                     'original': ev
@@ -3008,14 +3025,14 @@ def onmessage(update,bot:ObigramClient):
                         txtname = clean_name + '.txt'
                         sendTxt(txtname, evindex['files'], update, bot, user_info=user_info)
                         client.logout()
-                        bot.editMessageText(message,'<b>📄 TXT aquí</b>', parse_mode='html')
+                        bot.editMessageText(message, '<b>📄 TXT aquí</b>', parse_mode='html')
                 else:
                     bot.editMessageText(message,'<b>➲ Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
             except ValueError:
                 bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /txt_0', parse_mode='html')
             except Exception as e:
                 bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
-             
+
         elif '/del_' in msgText:
             try:
                 findex = int(str(msgText).split('_')[1])
@@ -3028,62 +3045,67 @@ def onmessage(update,bot:ObigramClient):
                 loged = client.login()
                 if loged:
                     upload_type = user_info.get('uploadtype', 'evidence')
+                    search_marker = f"{USER_EVIDENCE_MARKER}{username}"
 
+                    # --- MODO DRAFT ---
                     if upload_type == 'draft':
-                        # ============================================
-                        # DELETE: ARCHIVOS PRIVADOS (DRAFT)
-                        # ============================================
-                        private_files = client.getPrivateFiles()
-                        if findex < 0 or findex >= len(private_files):
+                        draft_files = client.getFiles()
+                        user_files = [f for f in draft_files if search_marker in f.get('filename', f.get('fullname', ''))]
+
+                        if findex < 0 or findex >= len(user_files):
                             bot.editMessageText(message, '<b>❌ Índice inválido. Use </b>/files<b> para ver la lista.</b>', parse_mode='html')
                             client.logout()
                             return
                         
-                        target_file = private_files[findex]
-                        target_name = target_file['name']
+                        target_file = user_files[findex]
+                        file_name_to_del = target_file.get('filename', target_file.get('fullname', ''))
+                        clean_name = file_name_to_del.replace(search_marker, "")
                         
-                        client.deletePrivateFile(target_name)
-                        updated_files = client.getPrivateFiles()
+                        client.delteFile(file_name_to_del)
+                        
+                        updated_draft_files = client.getFiles()
+                        updated_user_files = [f for f in updated_draft_files if search_marker in f.get('filename', f.get('fullname', ''))]
                         client.logout()
-                        
+
                         memory_stats.log_delete(
                             username=username,
-                            filename=target_name,
-                            evidence_name=target_name,
+                            filename=clean_name,
+                            evidence_name="Draft",
                             moodle_host=user_info['moodle_host']
                         )
 
                         if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                             try:
                                 clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                                msg_log = (f"<b>🗑️ ¡Archivo eliminado!</b>\n\n"
+                                msg_log = (f"<b>🗑️ ¡Archivo de borrador eliminado!</b>\n\n"
                                            f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
-                                           f"<b>📄 Archivo:</b> <b>{target_name}</b>\n"
+                                           f"<b>📄 Archivo:</b> <b>{clean_name}</b>\n"
                                            f"<b>☁️ Nube:</b> <code>{clean_host}</code>")
                                 bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
                             except Exception as e:
                                 print(f"Error al notificar eliminación al grupo: {e}")
-                        
-                        confirmation_msg = f"🗑️ <b>Archivo eliminado:</b> <b>{target_name}</b>\n"
-                        if len(updated_files) > 0:
-                            confirmation_msg += "📋 <b>Archivos actualizados:</b>\n\n"
-                            for idx, item in enumerate(updated_files):
-                                confirmation_msg += f"• <b>{item['name']}</b>\n  /txt_{idx} | /del_{idx}\n\n"
+
+                        confirmation_msg = f"🗑️ <b>Archivo borrado de draft:</b> <b>{clean_name}</b>\n\n"
+                        if len(updated_user_files) > 0:
+                            confirmation_msg += "📋 <b>Tus archivos actualizados:</b>\n\n"
+                            for idx, item in enumerate(updated_user_files):
+                                r_name = item.get('filename', item.get('fullname', 'Archivo'))
+                                c_name = r_name.replace(search_marker, "")
+                                f_size = format_file_size(int(item.get('filesize', 0))) if 'filesize' in item else ''
+                                size_str = f" [ <b>{f_size}</b> ]" if f_size else ""
+                                confirmation_msg += f"• <b>{c_name}</b>{size_str}\n  /txt_{idx} | /del_{idx}\n\n"
                             bot.editMessageText(message, confirmation_msg, parse_mode='html')
                         else:
-                            confirmation_msg += "<b>📭 No hay archivos disponibles</b>"
+                            confirmation_msg += "<b>📭 No hay más archivos tuyos en el borrador</b>"
                             bot.editMessageText(message, confirmation_msg, parse_mode='html')
+
+                    # --- MODO EVIDENCE ---
                     else:
-                        # ============================================
-                        # DELETE: EVIDENCIAS (ORIGINAL)
-                        # ============================================
                         all_evidences = client.getEvidences()
                         visible_list = []
-                        search_pattern = f"{USER_EVIDENCE_MARKER}{username}"
-                        
                         for ev in all_evidences:
-                            if ev['name'].endswith(search_pattern):
-                                clean_name = ev['name'].replace(f"{USER_EVIDENCE_MARKER}{username}", "")
+                            if ev['name'].endswith(search_marker):
+                                clean_name = ev['name'].replace(search_marker, "")
                                 visible_list.append({
                                     'clean_name': clean_name,
                                     'original': ev
@@ -3103,8 +3125,8 @@ def onmessage(update,bot:ObigramClient):
                         
                         updated_visible_list = []
                         for ev in all_evidences:
-                            if ev['name'].endswith(search_pattern):
-                                clean_name = ev['name'].replace(f"{USER_EVIDENCE_MARKER}{username}", "")
+                            if ev['name'].endswith(search_marker):
+                                clean_name = ev['name'].replace(search_marker, "")
                                 updated_visible_list.append({
                                     'clean_name': clean_name,
                                     'original': ev
@@ -3147,7 +3169,7 @@ def onmessage(update,bot:ObigramClient):
                 bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /del_0', parse_mode='html')
             except Exception as e:
                 bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
-                
+
         elif '/delall' in msgText:
             try:
                 proxy = ProxyCloud.parse(user_info['proxy']) if user_info.get('proxy') else None
@@ -3159,50 +3181,54 @@ def onmessage(update,bot:ObigramClient):
                 loged = client.login()
                 if loged:
                     upload_type = user_info.get('uploadtype', 'evidence')
+                    search_marker = f"{USER_EVIDENCE_MARKER}{username}"
 
+                    # --- MODO DRAFT (Solo borra los archivos del usuario) ---
                     if upload_type == 'draft':
-                        # ============================================
-                        # DELETE ALL: ARCHIVOS PRIVADOS (DRAFT)
-                        # ============================================
-                        private_files = client.getPrivateFiles()
-                        if not private_files:
-                            bot.editMessageText(message, '<b>📭 No hay archivos disponibles</b>', parse_mode='html')
+                        draft_files = client.getFiles()
+                        user_files = [f for f in draft_files if search_marker in f.get('filename', f.get('fullname', ''))]
+                        
+                        if not user_files:
+                            bot.editMessageText(message, '<b>📭 No hay archivos tuyos en el borrador</b>', parse_mode='html')
                             client.logout()
                             return
                         
-                        total_files = len(private_files)
-                        deleted_count = client.deleteAllPrivateFiles()
-                        client.logout()
+                        total_files = len(user_files)
+                        for item in user_files:
+                            try:
+                                f_name = item.get('filename', item.get('fullname', ''))
+                                if f_name:
+                                    client.delteFile(f_name)
+                            except: pass
                         
+                        client.logout()
                         memory_stats.log_delete_all(
                             username=username,
-                            deleted_evidences=deleted_count,
-                            deleted_files=deleted_count,
+                            deleted_evidences=1,
+                            deleted_files=total_files,
                             moodle_host=user_info['moodle_host']
                         )
 
                         if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                             try:
                                 clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                                msg_log = (f"<b>🗑️💥 ¡Eliminación masiva!</b>\n\n"
+                                msg_log = (f"<b>🗑️💥 ¡Limpieza de borrador masiva!</b>\n\n"
                                            f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
-                                           f"<b>📁 Archivos borrados:</b> <b>{deleted_count}</b>\n"
+                                           f"<b>📁 Archivos borrados:</b> <b>{total_files}</b>\n"
                                            f"<b>☁️ Nube:</b> <code>{clean_host}</code>")
                                 bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
                             except Exception as e:
                                 print(f"Error al notificar eliminación masiva al grupo: {e}")
-                        
-                        deletion_msg = f"🗑️ <b>Eliminación masiva completada</b>\n\n• <b>Archivos borrados:</b> <b>{deleted_count}</b>\n\n<b>✅ ¡Todos los archivos han sido eliminados!</b>"
+
+                        deletion_msg = f"🗑️ <b>Eliminación masiva completada</b>\n\n• <b>Tus archivos borrados de draft:</b> <b>{total_files}</b>\n\n<b>✅ ¡Todos tus archivos en borrador han sido eliminados!</b>"
                         bot.editMessageText(message, deletion_msg, parse_mode='html')
+
+                    # --- MODO EVIDENCE ---
                     else:
-                        # ============================================
-                        # DELETE ALL: EVIDENCIAS (ORIGINAL)
-                        # ============================================
                         all_evidences = client.getEvidences()
                         user_evidences = []
-                        search_pattern = f"{USER_EVIDENCE_MARKER}{username}"
                         for ev in all_evidences:
-                            if ev['name'].endswith(search_pattern):
+                            if ev['name'].endswith(search_marker):
                                 user_evidences.append(ev)
                         
                         if not user_evidences:
@@ -3326,9 +3352,9 @@ def onmessage(update,bot:ObigramClient):
                 except Exception as e:
                     print(f"Error al notificar enlace: {e}")
             
-            ddl(update,bot,message,url,file_name='',thread=thread,jdb=jdb)
+            ddl(update, bot, message, url, file_name='', thread=thread, jdb=jdb)
         else:
-            bot.editMessageText(message,'<b>➲ No se pudo procesar ✗ </b>', parse_mode='html')
+            bot.editMessageText(message, '<b>➲ No se pudo procesar ✗ </b>', parse_mode='html')
             
     except Exception as ex:
         print(f"Error general onmessage: {str(ex)}")
