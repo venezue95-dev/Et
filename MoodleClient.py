@@ -75,7 +75,7 @@ class MoodleClient(object):
 
     def getDirectUrl(self,url):
         tokens = str(url).split('/')
-        direct = self.path+'webservice/pluginfile.php/'+tokens[4]+'/user/private/'+tokens[-1]+'?token='+self.data['token']
+        direct = self.path+'webservice/pluginfile.php/'+tokens[4]+'/user/private/'+tokens[-1]+'?token='+self.userdata['token']
         return direct
 
     def getSessKey(self):
@@ -415,9 +415,8 @@ class MoodleClient(object):
 
             return None,data
 
-    def upload_file_draft(self,file,progressfunc=None,args=(),tokenize=False):
+    def upload_file_draft(self,file,itemid=None,progressfunc=None,args=(),tokenize=False):
             file_edit = f'{self.path}user/files.php'
-            #https://eduvirtual.uho.edu.cu/user/profile.php
             resp = self.session.get(file_edit,proxies=self.proxy)
             soup = BeautifulSoup(resp.text, 'html.parser')
             sesskey = self.sesskey
@@ -427,6 +426,13 @@ class MoodleClient(object):
             query = self.extractQuery(soup.find('object',attrs={'type':'text/html'})['data'])
             client_id = str(soup.find('div',{'class':'filemanager'})['id']).replace('filemanager-','')
 
+            # NOTA: reutilizamos el mismo itemid entre partes de un mismo zip,
+            # igual que hace upload_file() para evidencias. Antes esto no se
+            # respetaba y cada parte subía a un itemid distinto.
+            itempostid = query['itemid']
+            if itemid:
+                itempostid = itemid
+
             upload_file = f'{self.path}repository/repository_ajax.php?action=upload'
 
             of = open(file,'rb')
@@ -435,7 +441,7 @@ class MoodleClient(object):
                 'title':(None,''),
                 'author':(None,'ObysoftDev'),
                 'license':(None,'allrightsreserved'),
-                'itemid':(None,query['itemid']),
+                'itemid':(None,itempostid),
                 'repo_id':(None,str(self.repo_id)),
                 'p':(None,''),
                 'page':(None,''),
@@ -465,7 +471,31 @@ class MoodleClient(object):
                     data['url'] = str(data['url']).replace('pluginfile.php/','webservice/pluginfile.php/') + '?token=' + self.userdata['token']
                 if tokenize:
                     data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
-            return None,data
+
+            # Devolvemos itempostid igual que upload_file(), para poder
+            # encadenar varias partes en el mismo itemid del draft.
+            return itempostid,data
+
+    def savePrivateFiles(self,itemid):
+        """
+        Persiste el contenido del draft area (itemid) como archivos privados
+        reales del usuario. Sin este paso, upload_file_draft() solo deja los
+        archivos en el área temporal de borrador y NUNCA aparecen como
+        'Archivos privados' del usuario -- este es el motivo por el que
+        antes 'no subía a draft': faltaba este guardado explícito,
+        equivalente a saveEvidence() en el flujo de evidencias.
+        """
+        urlfiles = self.path+'user/files.php'
+        resp = self.session.get(urlfiles,proxies=self.proxy)
+        soup = BeautifulSoup(resp.text,'html.parser')
+        _qf__core_user_form_private_files = soup.find('input',{'name':'_qf__core_user_form_private_files'})['value']
+        sesskey  =  soup.find('input',attrs={'name':'sesskey'})['value']
+
+        saveUrl = self.path+'lib/ajax/service.php?sesskey='+sesskey+'&info=core_form_dynamic_form'
+        savejson = [{"index":0,"methodname":"core_form_dynamic_form","args":{"formdata":"sesskey="+sesskey+"&_qf__core_user_form_private_files="+_qf__core_user_form_private_files+"&files_filemanager="+str(itemid)+"","form":"core_user\\form\\private_files"}}]
+        headers = {'Content-type': 'application/json', 'Accept': 'application/json, text/javascript, */*; q=0.01'}
+        resp2 = self.session.post(saveUrl, json=savejson,headers=headers,proxies=self.proxy)
+        return resp2
 
     def upload_file_calendar(self,file,progressfunc=None,args=(),tokenize=False):
             file_edit = f'{self.path}/calendar/managesubscriptions.php'
@@ -558,6 +588,39 @@ class MoodleClient(object):
         dec = json.JSONDecoder()
         jsondec = dec.decode(resp.text)
         return jsondec['list']
+
+    def getPrivateFiles(self):
+        """
+        Igual que getEvidences() pero para el área de 'Archivos privados'.
+        Recarga user/files.php (que tras savePrivateFiles ya refleja el
+        estado guardado), lista el contenido vía draftfiles_ajax y devuelve
+        cada archivo normalizado con 'name' y 'directurl', en el mismo
+        formato que usa Bot.py (sendTxt, processFile, etc.) para las
+        evidencias, así el resto del bot puede tratar ambos flujos igual.
+        """
+        urlfiles = self.path+'user/files.php'
+        resp = self.session.get(urlfiles,proxies=self.proxy)
+        soup = BeautifulSoup(resp.text,'html.parser')
+        sesskey  =  soup.find('input',attrs={'name':'sesskey'})['value']
+        client_id = self.getclientid(resp.text)
+        filepath = '/'
+        query = self.extractQuery(soup.find('object',attrs={'type':'text/html'})['data'])
+        payload = {'sesskey': sesskey, 'client_id': client_id,'filepath': filepath, 'itemid': query['itemid']}
+        postfiles = self.path+'repository/draftfiles_ajax.php?action=list'
+        resp = self.session.post(postfiles,data=payload,proxies=self.proxy)
+        dec = json.JSONDecoder()
+        jsondec = dec.decode(resp.text)
+        rawfiles = jsondec.get('list',[])
+
+        contextid = query.get('ctx_id','')
+        files = []
+        for f in rawfiles:
+            filename = f.get('filename', f.get('title',''))
+            directurl = ''
+            if self.userdata and 'token' in self.userdata and filename:
+                directurl = self.path+'webservice/pluginfile.php/'+str(contextid)+'/user/private/0/'+urllib.parse.quote(str(filename))+'?token='+self.userdata['token']
+            files.append({'name':filename,'url':f.get('url',''),'directurl':directurl})
+        return files
    
     def delteFile(self,name):
         urlfiles = self.path+'user/files.php'
@@ -580,6 +643,25 @@ class MoodleClient(object):
         resp3 = self.session.post(saveUrl, json=savejson,headers=headers,proxies=self.proxy)
 
         return resp3
+
+    def deletePrivateFile(self,name):
+        """Alias explícito de delteFile(), para que el nombre sea claro
+        desde Bot.py cuando se maneje el flujo draft/private files."""
+        return self.delteFile(name)
+
+    def deleteAllPrivateFiles(self):
+        """Elimina todos los archivos privados actuales del usuario, uno
+        por uno, reutilizando delteFile(). Necesario para /delall en modo
+        draft, ya que no existe el concepto de 'evidencia' agrupadora."""
+        files = self.getPrivateFiles()
+        deleted = 0
+        for f in files:
+            try:
+                self.delteFile(f['name'])
+                deleted += 1
+            except:
+                pass
+        return deleted
 
     def logout(self):
         logouturl = self.path + 'login/logout.php?sesskey=' + self.sesskey
