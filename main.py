@@ -463,8 +463,7 @@ def check_single_cloud(cloud_config):
             is_online = True
             try:
                 client.logout()
-            except:
-                pass
+            except: pass
     except Exception:
         is_online = False
         
@@ -533,7 +532,7 @@ def send_long_message(bot, chat_id, text, original_message=None, parse_mode='htm
         bot.sendMessage(chat_id, messages_to_send[0], parse_mode=parse_mode)
         
     for msg_part in messages_to_send[1:]:
-        time.sleep(0.5)  # Breve pausa para evitar flood
+        time.sleep(0.5)
         bot.sendMessage(chat_id, msg_part, parse_mode=parse_mode)
 
 def downloadFile(downloader, filename, currentBits, totalBits, speed, time, args):
@@ -588,7 +587,6 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
         user_info = jdb.get_user(username)
         proxy = ProxyCloud.parse(user_info['proxy']) if user_info and user_info.get('proxy') else None
         
-        # VERIFICACIÓN RÁPIDA DE CONECTIVIDAD
         try:
             test_url = user_info['moodle_host']
             requests.get(test_url, timeout=6, proxies=proxy, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
@@ -606,19 +604,6 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
                 f"💡 <i>Usa /status para revisar el estado o /cambiar para elegir otra nube.</i>"
             )
             bot.editMessageText(message, error_msg_user, parse_mode='html')
-            
-            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
-                try:
-                    mensaje_log = (
-                        f"<b>❌ ¡Error de Conexión (Timeout)!</b>\n\n"
-                        f"👤 <b>Usuario:</b> <b>@{username}</b>\n"
-                        f"📄 <b>Nombre:</b> <b>{filename_fail}</b>\n"
-                        f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
-                        f"⚠️ <b>Detalle:</b> {error_desc}"
-                    )
-                    bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
-                except Exception as e:
-                    print(f"Error al notificar Moodle caída al grupo: {e}")
             return "LOGIN_FAILED"
         except Exception as conn_err:
             if thread and thread.getStore('stop'):
@@ -634,19 +619,6 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
                 f"💡 <i>Usa /status para revisar el estado o /cambiar para elegir otra nube.</i>"
             )
             bot.editMessageText(message, error_msg_user, parse_mode='html')
-            
-            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
-                try:
-                    mensaje_log = (
-                        f"<b>❌ ¡Error de Conexión (Servidor Caído)!</b>\n\n"
-                        f"👤 <b>Usuario:</b> <b>@{username}</b>\n"
-                        f"📄 <b>Nombre:</b> <b>{filename_fail}</b>\n"
-                        f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
-                        f"⚠️ <b>Detalle:</b> {error_desc}"
-                    )
-                    bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
-                except Exception as e:
-                    print(f"Error al notificar Moodle caída al grupo: {e}")
             return "LOGIN_FAILED"
         
         client = MoodleClient(user_info['moodle_user'],
@@ -670,7 +642,7 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
             draftlist = []
 
             # ==========================================
-            # MODO 1: SUBIDA A DRAFT CON MARCA DE USUARIO
+            # MODO 1: SUBIDA A DRAFT
             # ==========================================
             if upload_type == 'draft':
                 for f in files:
@@ -713,7 +685,8 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
                         if iter >= 10:
                             break
                     try:
-                        os.unlink(upload_path)
+                        if os.path.exists(upload_path):
+                            os.unlink(upload_path)
                     except: pass
                 
                 return draftlist
@@ -763,7 +736,8 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
                         if iter >= 10:
                             break
                     try:
-                        os.unlink(f)
+                        if os.path.exists(f):
+                            os.unlink(f)
                     except: pass
                 
                 if thread and thread.getStore('stop'):
@@ -786,17 +760,6 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
                 f"⚠️ <b>Detalle:</b> {error_desc}"
             )
             bot.editMessageText(message, error_msg_user, parse_mode='html')
-            
-            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
-                try:
-                    mensaje_log = (f"<b>❌ ¡Error de Autenticación en Moodle!</b>\n\n"
-                                   f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
-                                   f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
-                                   f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                                   f"<b>⚠️ Detalle:</b> {error_desc}")
-                    bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
-                except Exception as e:
-                    print(f"Error al notificar error de página al grupo: {e}")
             return "LOGIN_FAILED"
     except Exception as ex:
         if thread and thread.getStore('stop'):
@@ -817,17 +780,6 @@ def processUploadFiles(filename, filesize, files, update, bot, message, thread=N
             f"⚠️ <b>Detalle:</b> <b>Fallo en la subida del archivo: {error_detail}</b>"
         )
         bot.editMessageText(message, error_msg_user, parse_mode='html')
-
-        if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
-            try:
-                mensaje_log = (f"<b>❌ ¡Error en la subida!</b>\n\n"
-                               f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
-                               f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
-                               f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                               f"<b>⚠️ Detalle:</b> <b>Fallo en la subida del archivo: {error_detail}</b>")
-                bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
-            except Exception as e:
-                print(f"Error al notificar error de subida al grupo: {e}")
         return None
 
 def processFile(update, bot, message, file, thread=None, jdb=None):
@@ -894,7 +846,8 @@ def processFile(update, bot, message, file, thread=None, jdb=None):
             phase = "subida"
             upload_results = processUploadFiles(file, file_size, mult_file.files, update, bot, message, thread=thread, jdb=jdb)
             try:
-                os.unlink(file)
+                if os.path.exists(file):
+                    os.unlink(file)
             except: pass
             file_upload_count = len(mult_file.files)
         else:
@@ -1057,17 +1010,6 @@ def processFile(update, bot, message, file, thread=None, jdb=None):
             f"<b>⚠️ Detalle:</b> <b>Fallo en la {phase} del archivo: {error_detail}</b>"
         )
         bot.editMessageText(message, error_msg_user, parse_mode='html')
-        
-        if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
-            try:
-                mensaje_log = (f"<b>❌ ¡Error en la {phase}!</b>\n\n"
-                               f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
-                               f"<b>📄 Nombre:</b> <b>{filename_fail}</b>\n"
-                               f"<b>☁️ Nube:</b> <code>{clean_host}</code>\n"
-                               f"<b>⚠️ Detalle:</b> <b>Fallo en la {phase} del archivo: {error_detail}</b>")
-                bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
-            except Exception as e:
-                print(f"Error al notificar error de proceso al grupo: {e}")
     finally:
         if thread:
             clean_process(thread.id)
@@ -1143,35 +1085,35 @@ def ddl(update, bot, message, url, file_name='', thread=None, jdb=None):
             clean_process(thread.id)
 
 def sendTxt(name, files, update, bot, send_to_group=False, user_info=None):
-    txt = open(name, 'w')
-    
-    for i, f in enumerate(files):
-        url = f['directurl']
-        
-        if '?forcedownload=1' in url:
-            url = url.replace('?forcedownload=1', '')
-        elif '&forcedownload=1' in url:
-            url = url.replace('&forcedownload=1', '')
-        
-        if '&token=' in url and '?' not in url:
-            url = url.replace('&token=', '?token=', 1)
-        
-        txt.write(url)
-        
-        if i < len(files) - 1:
-            txt.write('\n\n')
-    
-    txt.close()
-    
-    bot.sendFile(update.message.chat.id, name)
-    
-    if send_to_group and LOG_GROUP_ID != 0:
-        try:
-            bot.sendFile(LOG_GROUP_ID, name)
-        except Exception as e:
-            print(f"Error enviando txt al grupo: {e}")
+    try:
+        txt = open(name, 'w', encoding='utf-8')
+        for i, f in enumerate(files):
+            url = f.get('directurl', f.get('url', ''))
+            if '?forcedownload=1' in url:
+                url = url.replace('?forcedownload=1', '')
+            elif '&forcedownload=1' in url:
+                url = url.replace('&forcedownload=1', '')
+            if '&token=' in url and '?' not in url:
+                url = url.replace('&token=', '?token=', 1)
             
-    os.unlink(name)
+            txt.write(url)
+            if i < len(files) - 1:
+                txt.write('\n\n')
+        txt.close()
+        
+        bot.sendFile(update.message.chat.id, name)
+        
+        if send_to_group and LOG_GROUP_ID != 0:
+            try:
+                bot.sendFile(LOG_GROUP_ID, name)
+            except Exception as e:
+                print(f"Error enviando txt al grupo: {e}")
+                
+        time.sleep(1)
+        if os.path.exists(name):
+            os.unlink(name)
+    except Exception as e:
+        print(f"Error en sendTxt: {e}")
 
 def initialize_database(jdb):
     expanded_users = expand_user_groups()
@@ -1323,8 +1265,7 @@ def delete_all_evidences_from_cloud(cloud_config):
                     client.deleteEvidence(evidence)
                     deleted_count += 1
                     total_files += files_count
-                except:
-                    pass
+                except: pass
             
             client.logout()
             cloud_cache.clear_cache()
@@ -2202,12 +2143,10 @@ def onmessage(update, bot: ObigramClient):
                                 if active_msg:
                                     try:
                                         bot.editMessageText(active_msg, '<b>⚠️ Tarea cancelada automáticamente por inicio de mantenimiento del sistema ✗</b>', parse_mode='html')
-                                    except:
-                                        pass
+                                    except: pass
                             clean_process(tid)
                             cancel_count += 1
-                        except:
-                            pass
+                        except: pass
                 
                 aviso_cancelados = f"\n⚠️ <b>Se cancelaron y notificaron {cancel_count} proceso(s) activo(s) (excepto administrador).</b>" if cancel_count > 0 else ""
                 bot.editMessageText(message, f'<b>🛠️ Modo mantenimiento:</b> <b>{estado}</b>{aviso_cancelados}', parse_mode='html')
@@ -2576,7 +2515,7 @@ def onmessage(update, bot: ObigramClient):
                                     safe_name = f"evidencia_{cloud_idx}_{evid_idx}"
                                 
                                 txtname = f"{safe_name}.txt"
-                                txt = open(txtname, 'w')
+                                txt = open(txtname, 'w', encoding='utf-8')
                                 for i, f in enumerate(files):
                                     url = f['directurl']
                                     txt.write(url)
@@ -2584,7 +2523,9 @@ def onmessage(update, bot: ObigramClient):
                                         txt.write('\n\n')
                                 txt.close()
                                 bot.sendFile(chat_id, txtname)
-                                os.unlink(txtname)
+                                time.sleep(1)
+                                if os.path.exists(txtname):
+                                    os.unlink(txtname)
                                 bot.editMessageText(message, f'<b>✅ TXT enviado:</b> <b>{clean_name[:50]}</b>', parse_mode='html')
                             else:
                                 bot.editMessageText(message, '<b>❌ No se encontró la evidencia</b>', parse_mode='html')
@@ -3321,12 +3262,15 @@ def onmessage(update, bot: ObigramClient):
         print(traceback.format_exc())
 
 def main():
-    bot = ObigramClient(BOT_TOKEN)
-    bot.onMessage(onmessage)
-    bot.run()
+    while True:
+        try:
+            print("Iniciando bot...")
+            bot = ObigramClient(BOT_TOKEN)
+            bot.onMessage(onmessage)
+            bot.run()
+        except Exception as e:
+            print(f"Error en bot.run(), reiniciando en 3 segundos: {e}")
+            time.sleep(3)
 
 if __name__ == '__main__':
-    try:
-        main()
-    except:
-        main()
+    main()
