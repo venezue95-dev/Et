@@ -62,7 +62,7 @@ AVAILABLE_CLOUDS = [
     },
     {
         "cloudtype": "moodle",
-        "moodle_host": "https://eva.uo.edu.cu/",
+        "moodle_host": "https://cursos.uo.edu.cu/",
         "moodle_repo_id": 4,
         "moodle_user": "sifcf",
         "moodle_password": "Encargado321.",
@@ -687,7 +687,13 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                         _, resp = client.upload_file_draft(f, progressfunc=uploadFile, args=(bot, message, '', thread, username), tokenize=tokenize)
                         
                         if resp:
-                            draftlist.append(resp)
+                            file_url = resp.get('url', '')
+                            file_dict = {
+                                'name': os.path.basename(f),
+                                'url': file_url,
+                                'directurl': file_url
+                            }
+                            draftlist.append(file_dict)
                             break
                         iter += 1
                         if iter >= 10:
