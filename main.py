@@ -63,10 +63,10 @@ AVAILABLE_CLOUDS = [
     {
         "cloudtype": "moodle",
         "moodle_host": "https://aulavirtual.sld.cu/",
-        "moodle_repo_id": 5,
+        "moodle_repo_id": 4,
         "moodle_user": "eliel2216",
         "moodle_password": "Et345678210.",
-        "zips": 99,
+        "zips": 4,
         "uploadtype": "draft",
         "proxy": "",
         "tokenize": 0
