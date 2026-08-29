@@ -465,46 +465,7 @@ class MoodleClient(object):
                     data['url'] = str(data['url']).replace('pluginfile.php/','webservice/pluginfile.php/') + '?token=' + self.userdata['token']
                 if tokenize:
                     data['url'] = self.host_tokenize + S5Crypto.encrypt(data['url']) + '/' + self.userdata['s5token']
-            # FIX: se devuelve query['itemid'] (antes devolvía None), necesario
-            # para poder persistir el archivo con save_private_files()
-            return query['itemid'],data
-
-    def save_private_files(self, itemid):
-        """
-        FIX: Persiste los archivos subidos vía upload_file_draft en el área
-        de archivos privados. El formulario de user/files.php es un "dynamic
-        form" de Moodle: se guarda vía AJAX a lib/ajax/service.php (mismo
-        patrón que ya usa delteFile), NO con un POST directo a la página.
-        Sin este paso, el archivo queda huérfano en el área temporal de
-        borrador y Moodle lo descarta.
-        """
-        try:
-            file_edit = f'{self.path}user/files.php'
-            resp = self.session.get(file_edit, proxies=self.proxy)
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            sesskey = self.sesskey
-            if self.sesskey == '':
-                sesskey = soup.find('input', attrs={'name': 'sesskey'})['value']
-
-            qf_input = soup.find('input', {'name': '_qf__core_user_form_private_files'})
-            qf_value = qf_input['value'] if qf_input else '1'
-
-            saveUrl = self.path + 'lib/ajax/service.php?sesskey=' + sesskey + '&info=core_form_dynamic_form'
-            formdata = f"sesskey={sesskey}&_qf__core_user_form_private_files={qf_value}&files_filemanager={itemid}"
-            savejson = [{
-                "index": 0,
-                "methodname": "core_form_dynamic_form",
-                "args": {
-                    "formdata": formdata,
-                    "form": "core_user\\form\\private_files"
-                }
-            }]
-            headers = {'Content-type': 'application/json', 'Accept': 'application/json, text/javascript, */*; q=0.01'}
-            resp2 = self.session.post(saveUrl, json=savejson, headers=headers, proxies=self.proxy)
-            return resp2
-        except Exception as e:
-            print(f"Error en save_private_files: {e}")
-            return None
+            return None,data
 
     def upload_file_calendar(self,file,progressfunc=None,args=(),tokenize=False):
             file_edit = f'{self.path}/calendar/managesubscriptions.php'
