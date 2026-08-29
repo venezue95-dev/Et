@@ -75,7 +75,7 @@ AVAILABLE_CLOUDS = [
         "cloudtype": "moodle",
         "moodle_host": "https://cursos.ucf.edu.cu/",
         "moodle_repo_id": 4,
-        "moodle_user": "jsalas@uo.edu.cu",
+        "moodle_user": "julianrene",
         "moodle_password": "Transfer60*",
         "zips": 5,
         "uploadtype": "evidence",
