@@ -77,7 +77,7 @@ AVAILABLE_CLOUDS = [
         "moodle_repo_id": 4,
         "moodle_user": "jsalas@uo.edu.cu",
         "moodle_password": "Transfer60*",
-        "zips": 4,
+        "zips": 5,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
