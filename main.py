@@ -22,6 +22,19 @@ import pytz
 import threading
 import json
 
+# ==============================
+# CONFIGURACIÓN DE LÍMITES DIARIOS
+# ==============================
+# LÍMITE DIARIO POR USUARIO (EN BYTES)
+# Cambia este valor según necesites:
+# 0 = Sin límite (DESACTIVADO)
+# 500 * 1024 * 1024 = 500 MB
+# 1024 * 1024 * 1024 = 1 GB (valor anterior)
+# 2 * 1024 * 1024 * 1024 = 2 GB
+# 5 * 1024 * 1024 * 1024 = 5 GB
+# 10 * 1024 * 1024 * 1024 = 10 GB
+DAILY_LIMIT_BYTES = 100 * 1024 * 1024 * 1024  # 100 GB por defecto
+
 # FIXED CONFIGURATION IN CODE
 BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
 
@@ -67,7 +80,7 @@ AVAILABLE_CLOUDS = [
         "moodle_user": "mayelin.cabrera",
         "moodle_password": "Mayelin*167.",
         "zips": 99,
-        "uploadtype": "draft",
+        "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
     },
@@ -2799,7 +2812,7 @@ def onmessage(update,bot:ObigramClient):
 👤 <b>Usuario:</b> <b>@{username}</b>
 📤 <b>Subidas:</b> <b>{user_stats['uploads']}</b>
 🗑️ <b>Eliminaciones:</b> <b>{user_stats['deletes']}</b>
-💾 <b>Espacio usado hoy:</b> <b>{daily_size_formatted} / 1 GB</b>
+💾 <b>Espacio usado hoy:</b> <b>{daily_size_formatted} / {format_file_size(DAILY_LIMIT_BYTES)}</b>
 💾 <b>Espacio histórico:</b> <b>{total_size_formatted}</b>
 📅 <b>Última actividad:</b> <b>{user_stats['last_activity']}</b>
                 """
@@ -2809,7 +2822,7 @@ def onmessage(update,bot:ObigramClient):
 👤 <b>Usuario:</b> <b>@{username}</b>
 📤 <b>Subidas:</b> <b>0</b>
 🗑️ <b>Eliminaciones:</b> <b>0</b>
-💾 <b>Espacio usado hoy:</b> <b>0 B / 1 GB</b>
+💾 <b>Espacio usado hoy:</b> <b>0 B / {format_file_size(DAILY_LIMIT_BYTES)}</b>
 
 ℹ️ <b>Aún no tienes actividad registrada.</b>
                 """
@@ -3057,32 +3070,33 @@ def onmessage(update,bot:ObigramClient):
                     filename = unquote(filename)
             except: pass
 
-            # --- VERIFICACIÓN DE LÍMITE DIARIO DE 1 GB (EXCEPTO ADMIN) ---
+            # --- VERIFICACIÓN DE LÍMITE DIARIO (EXCEPTO ADMIN) ---
+            # Usa la variable global DAILY_LIMIT_BYTES para controlar el límite
             if username.lower() != ADMIN_USERNAME.lower():
                 memory_stats.check_and_update_daily_reset(username)
                 user_st = memory_stats.get_user_stats(username)
                 current_daily_size = user_st['daily_size'] if user_st else 0
-                MAX_DAILY_LIMIT = 1024 * 1024 * 1024  # 1 GB
                 
-                if current_daily_size + file_size > MAX_DAILY_LIMIT:
+                # Si DAILY_LIMIT_BYTES es 0, significa SIN LÍMITE
+                if DAILY_LIMIT_BYTES > 0 and current_daily_size + file_size > DAILY_LIMIT_BYTES:
                     send_reaction(chat_id, update.message.message_id, "💩")
                     if current_daily_size == 0:
                         limit_msg = (
                             f"<b>🚫 Límite diario excedido</b>\n\n"
                             f"<b>Estimado usuario @{username}, el archivo que intenta procesar pesa {format_file_size(file_size)}, "
-                            f"lo cual excede el límite diario permitido de 1 GB. "
+                            f"lo cual excede el límite diario permitido de {format_file_size(DAILY_LIMIT_BYTES)}. "
                             f"No es posible procesar este archivo.</b>"
                         )
                         group_limit_msg = (
                             f"<b>🚫 ¡Límite diario excedido!</b>\n\n"
                             f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                             f"<b>⚖️ Archivo:</b> <b>{format_file_size(file_size)}</b>\n"
-                            f"<b>⚠️ Detalle:</b> <b>Supera el límite de 1 GB diario</b>"
+                            f"<b>⚠️ Detalle:</b> <b>Supera el límite de {format_file_size(DAILY_LIMIT_BYTES)} diario</b>"
                         )
                     else:
                         limit_msg = (
                             f"<b>🚫 Límite diario alcanzado</b>\n\n"
-                            f"<b>Estimado usuario @{username}, ya ha consumido {format_file_size(current_daily_size)} de su cuota diaria de 1 GB. "
+                            f"<b>Estimado usuario @{username}, ya ha consumido {format_file_size(current_daily_size)} de su cuota diaria de {format_file_size(DAILY_LIMIT_BYTES)}. "
                             f"Intentar procesar este archivo de {format_file_size(file_size)} excedería su límite permitido. "
                             f"Su cuota se restablecerá automáticamente al cambiar el día.</b>"
                         )
@@ -3091,7 +3105,7 @@ def onmessage(update,bot:ObigramClient):
                             f"<b>👤 Usuario:</b> <b>@{username}</b>\n"
                             f"<b>📊 Consumo previo:</b> <b>{format_file_size(current_daily_size)}</b>\n"
                             f"<b>⚖️ Archivo intentado:</b> <b>{format_file_size(file_size)}</b>\n"
-                            f"<b>⚠️ Detalle:</b> <b>La suma excede el límite de 1 GB diario</b>"
+                            f"<b>⚠️ Detalle:</b> <b>La suma excede el límite de {format_file_size(DAILY_LIMIT_BYTES)} diario</b>"
                         )
 
                     bot.editMessageText(message, limit_msg, parse_mode='html')
