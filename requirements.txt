@@ -1,17 +1,38 @@
+# ====== LIBRERÍAS PRINCIPALES ======
 requests
 requests[socks]
-python-telegram-bot
-bs4
-user_agent
-ping3
-python-nmap
-tcping
-pyping
-youtube_dl
 requests_toolbelt
+python-telegram-bot
 telethon
 tenacity
 pytz
 pillow
 
+# ====== WEB SCRAPING Y PARSING ======
 beautifulsoup4
+bs4
+user_agent
+
+# ====== RED Y CONEXIONES ======
+ping3
+python-nmap
+tcping
+pyping
+
+# ====== DESCARGA DE MEDIA ======
+youtube_dl
+
+# ====== DEPENDENCIAS DE TU CÓDIGO PERSONALIZADO ======
+# Estas son librerías que tú mismo creaste, debes tenerlas en el mismo directorio
+# o instalarlas como paquetes locales:
+# - pyobigram
+# - MoodleClient
+# - JDatabase
+# - infos
+# - xdlink
+# - mediafire
+# - youtube
+# - NexCloudClient
+# - pydownloader
+# - ProxyCloud
+# - S5Crypto
