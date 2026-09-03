@@ -52,7 +52,6 @@ lock_mensajes = threading.Lock()
 auth_sessions = {}
 auth_lock = threading.Lock()
 listener_threads = {}
-event_loop = None
 
 # ==============================
 # CONFIGURACIÓN EXISTENTE DEL BOT
@@ -423,191 +422,214 @@ def subir_todos_los_mensajes():
                 pass
 
 # ==============================
-# SISTEMA DE AUTENTICACIÓN CON TELETHON (VERSIÓN MEJORADA)
+# SISTEMA DE AUTENTICACIÓN CON TELETHON (VERSIÓN CON HILOS)
 # ==============================
 
-def iniciar_bucle_eventos():
-    """Inicia el bucle de eventos de asyncio en un hilo separado"""
-    global event_loop
-    if event_loop is None or event_loop.is_closed():
-        event_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(event_loop)
-        
-        def run_loop():
-            asyncio.set_event_loop(event_loop)
-            try:
-                event_loop.run_forever()
-            except Exception as e:
-                print(f"Error en bucle de eventos: {e}")
-        
-        thread = threading.Thread(target=run_loop, daemon=True)
-        thread.start()
-        time.sleep(0.1)
-    return event_loop
-
-def ejecutar_async(coro):
-    """Ejecuta una corrutina en el bucle de eventos global"""
-    loop = iniciar_bucle_eventos()
-    future = asyncio.run_coroutine_threadsafe(coro, loop)
-    return future.result(timeout=120)  # 120 segundos de timeout
-
-async def iniciar_sesion_telethon_async(username, phone_number):
-    """Inicia el proceso de autenticación para un usuario"""
-    try:
-        session_file = f'sesion_{username}.session'
-        
-        # Si ya existe la sesión, verificar si es válida
-        if os.path.exists(session_file):
-            try:
-                client = TelegramClient(session_file, API_ID, API_HASH)
-                await client.connect()
-                if await client.is_user_authorized():
-                    await client.disconnect()
-                    iniciar_listener_usuario(username)
-                    return True, "✅ Ya estabas autenticado. El bot está escuchando el canal."
-                await client.disconnect()
-            except:
-                # Si hay error, eliminar sesión corrupta
+def iniciar_sesion_telethon_sync(username, phone_number):
+    """Versión síncrona para llamar desde onmessage - usa un hilo separado"""
+    result = [None, None]  # [exito, mensaje]
+    
+    def run():
+        try:
+            session_file = f'sesion_{username}.session'
+            
+            # Si ya existe la sesión, verificar si es válida
+            if os.path.exists(session_file):
                 try:
-                    os.remove(session_file)
+                    client = TelegramClient(session_file, API_ID, API_HASH)
+                    client.start()
+                    if client.is_user_authorized():
+                        client.disconnect()
+                        iniciar_listener_usuario(username)
+                        result[0] = True
+                        result[1] = "✅ Ya estabas autenticado. El bot está escuchando el canal."
+                        return
+                    client.disconnect()
                 except:
-                    pass
-        
-        # Crear nueva sesión
-        client = TelegramClient(session_file, API_ID, API_HASH)
-        await client.connect()
-        
-        # Verificar si ya está autorizado (por si acaso)
-        if await client.is_user_authorized():
-            await client.disconnect()
-            iniciar_listener_usuario(username)
-            return True, "✅ Ya estabas autenticado. El bot está escuchando el canal."
-        
-        # Enviar código de verificación
-        await client.send_code_request(phone_number)
-        
-        # Guardar el cliente en el estado
-        with auth_lock:
-            auth_sessions[username] = {
-                'client': client,
-                'phone': phone_number,
-                'step': 'waiting_code'
-            }
-        
-        return True, "📱 Se ha enviado un código de verificación a tu Telegram. Envíalo con /code <codigo>"
-        
-    except Exception as e:
-        return False, f"❌ Error al iniciar sesión: {str(e)}"
-
-async def verificar_codigo_telethon_async(username, code):
-    """Verifica el código de autenticación"""
-    with auth_lock:
-        if username not in auth_sessions:
-            return False, "❌ No hay un proceso de autenticación activo. Usa /login primero."
-        
-        session_data = auth_sessions[username]
-        if session_data['step'] != 'waiting_code':
-            return False, "❌ No hay un código pendiente de verificar."
-        
-        client = session_data['client']
-    
-    try:
-        # Intentar iniciar sesión con el código
-        await client.sign_in(session_data['phone'], code)
-        
-        # Si llegamos aquí, todo funcionó
-        await client.disconnect()
-        
-        with auth_lock:
-            del auth_sessions[username]
-        
-        iniciar_listener_usuario(username)
-        return True, "✅ ¡Autenticación exitosa! El bot ya puede leer el canal."
-        
-    except Exception as e:
-        error_msg = str(e)
-        
-        # Verificar si el error es por 2FA (contraseña de dos factores)
-        if '2FA' in error_msg or 'password' in error_msg.lower() or 'two-factor' in error_msg.lower():
+                    try:
+                        os.remove(session_file)
+                    except:
+                        pass
+            
+            # Crear nueva sesión
+            client = TelegramClient(session_file, API_ID, API_HASH)
+            client.start()
+            
+            # Verificar si ya está autorizado
+            if client.is_user_authorized():
+                client.disconnect()
+                iniciar_listener_usuario(username)
+                result[0] = True
+                result[1] = "✅ Ya estabas autenticado. El bot está escuchando el canal."
+                return
+            
+            # Enviar código de verificación
+            client.send_code_request(phone_number)
+            
+            # Guardar el cliente en el estado
             with auth_lock:
-                auth_sessions[username]['step'] = 'waiting_password'
-            return False, "🔐 Se requiere contraseña de dos factores. Envía tu contraseña con /password <contraseña>"
-        
-        # Si el error es por código incorrecto o caducado
-        if 'invalid code' in error_msg.lower() or 'code' in error_msg.lower() or 'expired' in error_msg.lower():
-            # Limpiar la sesión para que el usuario pueda reintentar
+                auth_sessions[username] = {
+                    'client': client,
+                    'phone': phone_number,
+                    'step': 'waiting_code'
+                }
+            
+            result[0] = True
+            result[1] = "📱 Se ha enviado un código de verificación a tu Telegram. Envíalo con /code <codigo>"
+            
+        except Exception as e:
+            result[0] = False
+            result[1] = f"❌ Error al iniciar sesión: {str(e)}"
+    
+    # Ejecutar en un hilo separado
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    thread.join(timeout=30)  # Esperar hasta 30 segundos
+    
+    if result[0] is None:
+        return False, "❌ Tiempo de espera agotado. Intenta nuevamente."
+    
+    return result[0], result[1]
+
+def verificar_codigo_telethon_sync(username, code):
+    """Versión síncrona para verificar código"""
+    result = [None, None]
+    
+    def run():
+        try:
+            with auth_lock:
+                if username not in auth_sessions:
+                    result[0] = False
+                    result[1] = "❌ No hay un proceso de autenticación activo. Usa /login primero."
+                    return
+                
+                session_data = auth_sessions[username]
+                if session_data['step'] != 'waiting_code':
+                    result[0] = False
+                    result[1] = "❌ No hay un código pendiente de verificar."
+                    return
+                
+                client = session_data['client']
+            
             try:
-                session_file = f'sesion_{username}.session'
-                if os.path.exists(session_file):
-                    os.remove(session_file)
-            except:
-                pass
-            
-            with auth_lock:
-                if username in auth_sessions:
+                # Intentar iniciar sesión con el código
+                client.sign_in(session_data['phone'], code)
+                
+                # Si llegamos aquí, todo funcionó
+                client.disconnect()
+                
+                with auth_lock:
                     del auth_sessions[username]
-            
-            return False, f"❌ El código ha caducado o es incorrecto. Por favor, usa /login nuevamente para obtener un nuevo código."
-        
-        return False, f"❌ Error de autenticación: {error_msg}"
-
-async def verificar_password_telethon_async(username, password):
-    """Verifica la contraseña de 2FA"""
-    with auth_lock:
-        if username not in auth_sessions:
-            return False, "❌ No hay un proceso de autenticación activo. Usa /login primero."
-        
-        session_data = auth_sessions[username]
-        if session_data['step'] != 'waiting_password':
-            return False, "❌ No hay una contraseña pendiente de verificar."
-        
-        client = session_data['client']
+                
+                iniciar_listener_usuario(username)
+                result[0] = True
+                result[1] = "✅ ¡Autenticación exitosa! El bot ya puede leer el canal."
+                
+            except Exception as e:
+                error_msg = str(e)
+                
+                # Verificar si el error es por 2FA
+                if '2FA' in error_msg or 'password' in error_msg.lower() or 'two-factor' in error_msg.lower():
+                    with auth_lock:
+                        auth_sessions[username]['step'] = 'waiting_password'
+                    result[0] = False
+                    result[1] = "🔐 Se requiere contraseña de dos factores. Envía tu contraseña con /password <contraseña>"
+                    return
+                
+                # Si el error es por código incorrecto o caducado
+                if 'invalid code' in error_msg.lower() or 'code' in error_msg.lower() or 'expired' in error_msg.lower():
+                    try:
+                        session_file = f'sesion_{username}.session'
+                        if os.path.exists(session_file):
+                            os.remove(session_file)
+                    except:
+                        pass
+                    
+                    with auth_lock:
+                        if username in auth_sessions:
+                            del auth_sessions[username]
+                    
+                    result[0] = False
+                    result[1] = f"❌ El código ha caducado o es incorrecto. Por favor, usa /login nuevamente para obtener un nuevo código."
+                    return
+                
+                result[0] = False
+                result[1] = f"❌ Error de autenticación: {error_msg}"
+                
+        except Exception as e:
+            result[0] = False
+            result[1] = f"❌ Error: {str(e)}"
     
-    try:
-        # Verificar la contraseña de 2FA
-        await client.sign_in(password=password)
-        
-        await client.disconnect()
-        
-        with auth_lock:
-            del auth_sessions[username]
-        
-        iniciar_listener_usuario(username)
-        return True, "✅ ¡Autenticación exitosa! El bot ya puede leer el canal."
-        
-    except Exception as e:
-        return False, f"❌ Contraseña incorrecta: {str(e)}"
+    # Ejecutar en un hilo separado
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    thread.join(timeout=30)  # Esperar hasta 30 segundos
+    
+    if result[0] is None:
+        return False, "❌ Tiempo de espera agotado. Intenta nuevamente."
+    
+    return result[0], result[1]
 
-# Funciones síncronas para llamar desde onmessage
-def iniciar_sesion_telethon(username, phone_number):
-    try:
-        return ejecutar_async(iniciar_sesion_telethon_async(username, phone_number))
-    except Exception as e:
-        return False, f"❌ Error de conexión: {str(e)}"
-
-def verificar_codigo_telethon(username, code):
-    try:
-        return ejecutar_async(verificar_codigo_telethon_async(username, code))
-    except Exception as e:
-        return False, f"❌ Error de conexión: {str(e)}"
-
-def verificar_password_telethon(username, password):
-    try:
-        return ejecutar_async(verificar_password_telethon_async(username, password))
-    except Exception as e:
-        return False, f"❌ Error de conexión: {str(e)}"
+def verificar_password_telethon_sync(username, password):
+    """Versión síncrona para verificar contraseña de 2FA"""
+    result = [None, None]
+    
+    def run():
+        try:
+            with auth_lock:
+                if username not in auth_sessions:
+                    result[0] = False
+                    result[1] = "❌ No hay un proceso de autenticación activo. Usa /login primero."
+                    return
+                
+                session_data = auth_sessions[username]
+                if session_data['step'] != 'waiting_password':
+                    result[0] = False
+                    result[1] = "❌ No hay una contraseña pendiente de verificar."
+                    return
+                
+                client = session_data['client']
+            
+            try:
+                # Verificar la contraseña de 2FA
+                client.sign_in(password=password)
+                
+                client.disconnect()
+                
+                with auth_lock:
+                    del auth_sessions[username]
+                
+                iniciar_listener_usuario(username)
+                result[0] = True
+                result[1] = "✅ ¡Autenticación exitosa! El bot ya puede leer el canal."
+                
+            except Exception as e:
+                result[0] = False
+                result[1] = f"❌ Contraseña incorrecta: {str(e)}"
+                
+        except Exception as e:
+            result[0] = False
+            result[1] = f"❌ Error: {str(e)}"
+    
+    # Ejecutar en un hilo separado
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    thread.join(timeout=30)
+    
+    if result[0] is None:
+        return False, "❌ Tiempo de espera agotado. Intenta nuevamente."
+    
+    return result[0], result[1]
 
 def iniciar_listener_usuario(username):
     """Inicia el listener del canal para un usuario específico"""
     if username in listener_threads and listener_threads[username].is_alive():
         return
     
-    iniciar_bucle_eventos()
-    
     def run_listener():
         try:
-            asyncio.set_event_loop(event_loop)
-            event_loop.run_until_complete(escuchar_canal_usuario(username))
+            # Usar asyncio.run() directamente
+            asyncio.run(escuchar_canal_usuario(username))
         except Exception as e:
             print(f"Error en listener: {e}")
     
@@ -794,7 +816,7 @@ def onmessage(update, bot: ObigramClient):
             msg = bot.sendMessage(chat_id, "⏳ <b>Iniciando sesión...</b>", parse_mode='html')
             
             try:
-                exito, mensaje = iniciar_sesion_telethon(username, phone_number)
+                exito, mensaje = iniciar_sesion_telethon_sync(username, phone_number)
                 bot.editMessageText(msg, mensaje, parse_mode='html')
             except Exception as e:
                 bot.editMessageText(msg, f"❌ <b>Error:</b> {str(e)}", parse_mode='html')
@@ -815,7 +837,7 @@ def onmessage(update, bot: ObigramClient):
             msg = bot.sendMessage(chat_id, "⏳ <b>Verificando código...</b>", parse_mode='html')
             
             try:
-                exito, mensaje = verificar_codigo_telethon(username, code)
+                exito, mensaje = verificar_codigo_telethon_sync(username, code)
                 bot.editMessageText(msg, mensaje, parse_mode='html')
             except Exception as e:
                 bot.editMessageText(msg, f"❌ <b>Error:</b> {str(e)}", parse_mode='html')
@@ -836,7 +858,7 @@ def onmessage(update, bot: ObigramClient):
             msg = bot.sendMessage(chat_id, "⏳ <b>Verificando contraseña...</b>", parse_mode='html')
             
             try:
-                exito, mensaje = verificar_password_telethon(username, password)
+                exito, mensaje = verificar_password_telethon_sync(username, password)
                 bot.editMessageText(msg, mensaje, parse_mode='html')
             except Exception as e:
                 bot.editMessageText(msg, f"❌ <b>Error:</b> {str(e)}", parse_mode='html')
@@ -946,10 +968,6 @@ def onmessage(update, bot: ObigramClient):
 # ==============================
 
 def main():
-    # Iniciar el bucle de eventos de asyncio primero
-    iniciar_bucle_eventos()
-    print("✅ Bucle de eventos de asyncio iniciado")
-    
     # Iniciar el procesador periódico
     procesador_thread = threading.Thread(target=procesar_mensajes_periodicamente, daemon=True)
     procesador_thread.start()
