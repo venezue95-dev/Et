@@ -30,8 +30,8 @@ from telethon import TelegramClient, events
 # ==============================
 
 # Credenciales de Telethon (obtén en my.telegram.org)
-API_ID = 1234567  # ¡REEMPLAZA CON TU API ID!
-API_HASH = 'tu_api_hash_aqui'  # ¡REEMPLAZA CON TU API HASH!
+API_ID = 20534584  # ¡REEMPLAZA CON TU API ID!
+API_HASH = '6d5b13261d2c92a9a00afc1fd613b9df'  # ¡REEMPLAZA CON TU API HASH!
 
 # Canal a escuchar
 CANAL_PRIVADO = '@empresaelectricacienfuegos1'
