@@ -50,9 +50,14 @@ MOODLE_USER_UCF = 'julianrene'
 MOODLE_PASS_UCF = 'Transfer60*'
 MOODLE_REPO_ID_UCF = 4
 
+# Configuración de tiempo
+INTERVALO_MINUTOS = 10  # Cada 10 minutos sube mensajes nuevos
+LIMITE_MENSAJES_ANTIGUOS = 10  # Procesar los últimos 10 mensajes al iniciar
+
 # Cola de mensajes pendientes
 mensajes_pendientes = []
 lock_mensajes = threading.Lock()
+mensajes_procesados = set()  # Para evitar duplicados
 
 # Estados de autenticación
 auth_sessions = {}
@@ -306,9 +311,16 @@ memory_stats = MemoryStats()
 # FUNCIONES PARA EL CANAL
 # ==============================
 
-def acumular_mensaje(mensaje_texto, fecha_mensaje):
+def acumular_mensaje(mensaje_texto, fecha_mensaje, mensaje_id=None):
     """Guarda un mensaje en la cola para procesar después"""
-    global mensajes_pendientes
+    global mensajes_pendientes, mensajes_procesados
+    
+    # Evitar duplicados
+    if mensaje_id and mensaje_id in mensajes_procesados:
+        return
+    
+    if mensaje_id:
+        mensajes_procesados.add(mensaje_id)
     
     texto_limpio = mensaje_texto.strip()
     enlaces = re.findall(r'https?://[^\s]+', texto_limpio)
@@ -322,7 +334,8 @@ def acumular_mensaje(mensaje_texto, fecha_mensaje):
             'fecha_cuba': format_cuba_datetime(fecha_mensaje),
             'contenido': texto_sin_enlaces,
             'contenido_completo': texto_limpio,
-            'enlaces': enlaces
+            'enlaces': enlaces,
+            'id': mensaje_id
         })
     
     print(f"📥 Mensaje acumulado ({len(mensajes_pendientes)} en cola)")
@@ -438,7 +451,6 @@ def limpiar_sesion(username):
         if os.path.exists(session_file):
             os.remove(session_file)
             print(f"🗑️ Sesión eliminada: {session_file}")
-        # También eliminar archivos .lock y .sqlite si existen
         for ext in ['.lock', '.sqlite', '.sqlite-journal']:
             lock_file = f'sesion_{username}{ext}'
             if os.path.exists(lock_file):
@@ -453,18 +465,12 @@ def iniciar_sesion_telethon_sync(username, phone_number):
     
     def run():
         try:
-            # Limpiar sesiones anteriores
             limpiar_sesion(username)
             
             session_file = f'sesion_{username}.session'
-            
-            # Crear nueva sesión con timeout
             client = TelegramClient(session_file, API_ID, API_HASH, connection_retries=3, retry_delay=1)
-            
-            # Conectar con timeout
             client.connect()
             
-            # Verificar si ya está autorizado
             if client.is_user_authorized():
                 client.disconnect()
                 iniciar_listener_usuario(username)
@@ -472,10 +478,8 @@ def iniciar_sesion_telethon_sync(username, phone_number):
                 result[1] = "✅ Ya estabas autenticado. El bot está escuchando el canal."
                 return
             
-            # Enviar código de verificación
             client.send_code_request(phone_number)
             
-            # Guardar el cliente en el estado
             with auth_lock:
                 auth_sessions[username] = {
                     'client': client,
@@ -501,10 +505,9 @@ def iniciar_sesion_telethon_sync(username, phone_number):
                 result[0] = False
                 result[1] = f"❌ Error al iniciar sesión: {error_msg}"
     
-    # Ejecutar en un hilo separado
     thread = threading.Thread(target=run, daemon=True)
     thread.start()
-    thread.join(timeout=45)  # Esperar hasta 45 segundos
+    thread.join(timeout=45)
     
     if result[0] is None:
         return False, "❌ Tiempo de espera agotado. Verifica tu conexión e intenta nuevamente."
@@ -532,10 +535,7 @@ def verificar_codigo_telethon_sync(username, code):
                 client = session_data['client']
             
             try:
-                # Intentar iniciar sesión con el código
                 client.sign_in(session_data['phone'], code)
-                
-                # Si llegamos aquí, todo funcionó
                 client.disconnect()
                 
                 with auth_lock:
@@ -576,10 +576,9 @@ def verificar_codigo_telethon_sync(username, code):
             result[0] = False
             result[1] = f"❌ Error: {str(e)}"
     
-    # Ejecutar en un hilo separado
     thread = threading.Thread(target=run, daemon=True)
     thread.start()
-    thread.join(timeout=30)  # Esperar hasta 30 segundos
+    thread.join(timeout=30)
     
     if result[0] is None:
         return False, "❌ Tiempo de espera agotado. Intenta nuevamente."
@@ -607,9 +606,7 @@ def verificar_password_telethon_sync(username, password):
                 client = session_data['client']
             
             try:
-                # Verificar la contraseña de 2FA
                 client.sign_in(password=password)
-                
                 client.disconnect()
                 
                 with auth_lock:
@@ -627,7 +624,6 @@ def verificar_password_telethon_sync(username, password):
             result[0] = False
             result[1] = f"❌ Error: {str(e)}"
     
-    # Ejecutar en un hilo separado
     thread = threading.Thread(target=run, daemon=True)
     thread.start()
     thread.join(timeout=30)
@@ -637,6 +633,50 @@ def verificar_password_telethon_sync(username, password):
     
     return result[0], result[1]
 
+# ==============================
+# FUNCIONES PARA OBTENER MENSAJES ANTIGUOS
+# ==============================
+
+async def obtener_mensajes_antiguos(username, limit=10):
+    """Obtiene los últimos N mensajes del canal al iniciar"""
+    global mensajes_procesados
+    
+    session_file = f'sesion_{username}.session'
+    
+    if not os.path.exists(session_file):
+        print(f"❌ No hay sesión para {username}")
+        return 0
+    
+    try:
+        client = TelegramClient(session_file, API_ID, API_HASH)
+        await client.start()
+        
+        contador = 0
+        async for message in client.iter_messages(CANAL_PRIVADO, limit=limit):
+            if message.text and not message.text.startswith('/'):
+                # Verificar si ya fue procesado
+                if message.id not in mensajes_procesados:
+                    acumular_mensaje(message.text, message.date, message.id)
+                    contador += 1
+                    print(f"📥 Mensaje antiguo recuperado ({contador}/{limit}): {message.text[:50]}...")
+        
+        await client.disconnect()
+        print(f"✅ {contador} mensajes antiguos recuperados")
+        
+        # Subir inmediatamente los mensajes antiguos si hay alguno
+        if contador > 0:
+            subir_todos_los_mensajes()
+        
+        return contador
+        
+    except Exception as e:
+        print(f"❌ Error al obtener mensajes antiguos: {e}")
+        return 0
+
+# ==============================
+# FUNCIONES DE LISTENER DEL CANAL
+# ==============================
+
 def iniciar_listener_usuario(username):
     """Inicia el listener del canal para un usuario específico"""
     if username in listener_threads and listener_threads[username].is_alive():
@@ -644,6 +684,10 @@ def iniciar_listener_usuario(username):
     
     def run_listener():
         try:
+            # Primero obtener mensajes antiguos (últimos 10)
+            asyncio.run(obtener_mensajes_antiguos(username, limit=LIMITE_MENSAJES_ANTIGUOS))
+            
+            # Luego empezar a escuchar mensajes nuevos
             asyncio.run(escuchar_canal_usuario(username))
         except Exception as e:
             print(f"Error en listener: {e}")
@@ -669,7 +713,9 @@ async def escuchar_canal_usuario(username):
             mensaje = event.message.text
             if not mensaje:
                 return
-            acumular_mensaje(mensaje, event.message.date)
+            # Acumular mensaje nuevo (evita duplicados con mensajes_procesados)
+            if event.message.id not in mensajes_procesados:
+                acumular_mensaje(mensaje, event.message.date, event.message.id)
         
         print(f"🔍 Usuario {username} escuchando canal: {CANAL_PRIVADO}")
         await client.run_until_disconnected()
@@ -677,12 +723,18 @@ async def escuchar_canal_usuario(username):
         print(f"❌ Error en listener de {username}: {e}")
 
 def procesar_mensajes_periodicamente():
-    """Cada 5 minutos, sube los mensajes acumulados a Moodle"""
+    """Cada 10 minutos, sube los mensajes acumulados a Moodle (solo si hay nuevos)"""
     while True:
-        time.sleep(300)
+        time.sleep(INTERVALO_MINUTOS * 60)  # Convertir minutos a segundos
         try:
-            print("🔄 Procesando mensajes acumulados...")
-            subir_todos_los_mensajes()
+            with lock_mensajes:
+                cantidad = len(mensajes_pendientes)
+            
+            if cantidad > 0:
+                print(f"🔄 Procesando {cantidad} mensajes acumulados...")
+                subir_todos_los_mensajes()
+            else:
+                print(f"⏭️ No hay mensajes nuevos para subir (esperando {INTERVALO_MINUTOS} minutos)")
         except Exception as e:
             print(f"❌ Error en procesamiento periódico: {e}")
 
@@ -981,15 +1033,16 @@ def onmessage(update, bot: ObigramClient):
 # ==============================
 
 def main():
-    # Iniciar el procesador periódico
+    # Iniciar el procesador periódico (cada 10 minutos)
     procesador_thread = threading.Thread(target=procesar_mensajes_periodicamente, daemon=True)
     procesador_thread.start()
-    print("✅ Procesador periódico iniciado (cada 5 minutos)")
+    print(f"✅ Procesador periódico iniciado (cada {INTERVALO_MINUTOS} minutos)")
     
     # Iniciar el bot principal
     bot = ObigramClient(BOT_TOKEN)
     bot.onMessage(onmessage)
     print("🤖 Bot iniciado. Usa /login +53XXXXXXXXX para autenticarte.")
+    print(f"📋 Al iniciar sesión, se procesarán los últimos {LIMITE_MENSAJES_ANTIGUOS} mensajes del canal.")
     bot.run()
 
 if __name__ == '__main__':
