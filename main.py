@@ -52,6 +52,7 @@ lock_mensajes = threading.Lock()
 auth_sessions = {}
 auth_lock = threading.Lock()
 listener_threads = {}
+event_loop = None
 
 # ==============================
 # CONFIGURACIÓN EXISTENTE DEL BOT
@@ -422,16 +423,40 @@ def subir_todos_los_mensajes():
                 pass
 
 # ==============================
-# SISTEMA DE AUTENTICACIÓN CON TELETHON
+# SISTEMA DE AUTENTICACIÓN CON TELETHON (CORREGIDO)
 # ==============================
 
-async def iniciar_sesion_telethon(username, phone_number):
+def iniciar_bucle_eventos():
+    """Inicia el bucle de eventos de asyncio en un hilo separado"""
+    global event_loop
+    if event_loop is None or event_loop.is_closed():
+        event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(event_loop)
+        
+        def run_loop():
+            asyncio.set_event_loop(event_loop)
+            try:
+                event_loop.run_forever()
+            except Exception as e:
+                print(f"Error en bucle de eventos: {e}")
+        
+        thread = threading.Thread(target=run_loop, daemon=True)
+        thread.start()
+        time.sleep(0.1)
+    return event_loop
+
+def ejecutar_async(coro):
+    """Ejecuta una corrutina en el bucle de eventos global"""
+    loop = iniciar_bucle_eventos()
+    future = asyncio.run_coroutine_threadsafe(coro, loop)
+    return future.result(timeout=60)
+
+async def iniciar_sesion_telethon_async(username, phone_number):
     """Inicia el proceso de autenticación para un usuario"""
     try:
         session_file = f'sesion_{username}.session'
         client = TelegramClient(session_file, API_ID, API_HASH)
         await client.connect()
-        
         await client.send_code_request(phone_number)
         
         with auth_lock:
@@ -445,7 +470,7 @@ async def iniciar_sesion_telethon(username, phone_number):
     except Exception as e:
         return False, f"❌ Error al iniciar sesión: {str(e)}"
 
-async def verificar_codigo_telethon(username, code):
+async def verificar_codigo_telethon_async(username, code):
     """Verifica el código de autenticación"""
     with auth_lock:
         if username not in auth_sessions:
@@ -464,20 +489,38 @@ async def verificar_codigo_telethon(username, code):
         with auth_lock:
             del auth_sessions[username]
         
-        # Iniciar el listener para este usuario
         iniciar_listener_usuario(username)
-        
         return True, "✅ ¡Autenticación exitosa! El bot ya puede leer el canal."
     except Exception as e:
         return False, f"❌ Código incorrecto: {str(e)}"
+
+def iniciar_sesion_telethon(username, phone_number):
+    """Versión síncrona para llamar desde onmessage"""
+    try:
+        return ejecutar_async(iniciar_sesion_telethon_async(username, phone_number))
+    except Exception as e:
+        return False, f"❌ Error de conexión: {str(e)}"
+
+def verificar_codigo_telethon(username, code):
+    """Versión síncrona para llamar desde onmessage"""
+    try:
+        return ejecutar_async(verificar_codigo_telethon_async(username, code))
+    except Exception as e:
+        return False, f"❌ Error de conexión: {str(e)}"
 
 def iniciar_listener_usuario(username):
     """Inicia el listener del canal para un usuario específico"""
     if username in listener_threads and listener_threads[username].is_alive():
         return
     
+    iniciar_bucle_eventos()
+    
     def run_listener():
-        asyncio.run(escuchar_canal_usuario(username))
+        try:
+            asyncio.set_event_loop(event_loop)
+            event_loop.run_until_complete(escuchar_canal_usuario(username))
+        except Exception as e:
+            print(f"Error en listener: {e}")
     
     thread = threading.Thread(target=run_listener, daemon=True)
     thread.start()
@@ -559,6 +602,23 @@ def clean_process(thread_id):
     if thread_id in ACTIVE_PROCESSES:
         del ACTIVE_PROCESSES[thread_id]
 
+def ddl(update, bot, message, url, file_name='', thread=None, jdb=None):
+    """Función de descarga (simplificada para compatibilidad)"""
+    try:
+        # Esta función debe ser reemplazada por tu implementación completa
+        print(f"Descargando: {url}")
+        bot.editMessageText(message, f"<b>📥 Descargando...</b>\n{url}", parse_mode='html')
+    except Exception as e:
+        print(f"Error en ddl: {e}")
+
+def processFile(update, bot, message, file, thread=None, jdb=None):
+    """Función de procesamiento de archivos (simplificada)"""
+    try:
+        print(f"Procesando archivo: {file}")
+        bot.editMessageText(message, f"<b>📤 Subiendo...</b>\n{file}", parse_mode='html')
+    except Exception as e:
+        print(f"Error en processFile: {e}")
+
 # ==============================
 # FUNCIÓN PRINCIPAL onmessage
 # ==============================
@@ -571,8 +631,10 @@ def onmessage(update, bot: ObigramClient):
         chat_id = update.message.chat.id
 
         msgText = ''
-        try: msgText = update.message.text
-        except: pass
+        try: 
+            msgText = update.message.text
+        except: 
+            pass
 
         jdb = JsonDatabase('database')
         jdb.check_create()
@@ -640,11 +702,13 @@ def onmessage(update, bot: ObigramClient):
             if not phone_number.startswith('+'):
                 phone_number = '+' + phone_number
             
-            # Enviar mensaje de "procesando"
             msg = bot.sendMessage(chat_id, "⏳ <b>Iniciando sesión...</b>", parse_mode='html')
             
-            exito, mensaje = asyncio.run(iniciar_sesion_telethon(username, phone_number))
-            bot.editMessageText(msg, mensaje, parse_mode='html')
+            try:
+                exito, mensaje = iniciar_sesion_telethon(username, phone_number)
+                bot.editMessageText(msg, mensaje, parse_mode='html')
+            except Exception as e:
+                bot.editMessageText(msg, f"❌ <b>Error:</b> {str(e)}", parse_mode='html')
             return
 
         if '/code' in msgText:
@@ -660,8 +724,12 @@ def onmessage(update, bot: ObigramClient):
             code = parts.split()[0] if parts else parts
             
             msg = bot.sendMessage(chat_id, "⏳ <b>Verificando código...</b>", parse_mode='html')
-            exito, mensaje = asyncio.run(verificar_codigo_telethon(username, code))
-            bot.editMessageText(msg, mensaje, parse_mode='html')
+            
+            try:
+                exito, mensaje = verificar_codigo_telethon(username, code)
+                bot.editMessageText(msg, mensaje, parse_mode='html')
+            except Exception as e:
+                bot.editMessageText(msg, f"❌ <b>Error:</b> {str(e)}", parse_mode='html')
             return
 
         if '/status_canal' in msgText:
@@ -678,8 +746,8 @@ def onmessage(update, bot: ObigramClient):
                 try:
                     os.remove(session_file)
                     bot.sendMessage(chat_id, "✅ <b>Sesión cerrada</b>\nLa sesión de Telethon ha sido eliminada.", parse_mode='html')
-                except:
-                    bot.sendMessage(chat_id, "❌ <b>Error al cerrar sesión</b>", parse_mode='html')
+                except Exception as e:
+                    bot.sendMessage(chat_id, f"❌ <b>Error al cerrar sesión:</b> {str(e)}", parse_mode='html')
             else:
                 bot.sendMessage(chat_id, "ℹ️ <b>No hay sesión activa</b>", parse_mode='html')
             return
@@ -690,9 +758,28 @@ def onmessage(update, bot: ObigramClient):
         
         if '/start' in msgText:
             if username.lower() == ADMIN_USERNAME.lower():
-                start_msg = f"👑 <b>Administrador</b>\n\n👤 @{username}\n☁️ {user_info['moodle_host']}\n⚖️ {user_info['zips']} MB"
+                start_msg = (
+                    f"👑 <b>Administrador</b>\n\n"
+                    f"👤 @{username}\n"
+                    f"☁️ {user_info['moodle_host']}\n"
+                    f"⚖️ {user_info['zips']} MB\n\n"
+                    f"📱 <b>Comandos del canal:</b>\n"
+                    f"/login +53XXXXX - Iniciar sesión\n"
+                    f"/code XXXXX - Verificar código\n"
+                    f"/status_canal - Estado de conexión\n"
+                    f"/logout - Cerrar sesión"
+                )
             else:
-                start_msg = f"👤 @{username}\n☁️ {user_info['moodle_host']}\n⚖️ {user_info['zips']} MB"
+                start_msg = (
+                    f"👤 @{username}\n"
+                    f"☁️ {user_info['moodle_host']}\n"
+                    f"⚖️ {user_info['zips']} MB\n\n"
+                    f"📱 <b>Comandos del canal:</b>\n"
+                    f"/login +53XXXXX - Iniciar sesión\n"
+                    f"/code XXXXX - Verificar código\n"
+                    f"/status_canal - Estado de conexión\n"
+                    f"/logout - Cerrar sesión"
+                )
             
             bot.sendMessage(chat_id, start_msg, parse_mode='html')
             return
@@ -701,8 +788,37 @@ def onmessage(update, bot: ObigramClient):
             bot.sendMessage(chat_id, "🟢 <b>Bot funcionando correctamente</b>", parse_mode='html')
             return
 
-        # Respuesta para otros comandos
-        bot.sendMessage(chat_id, '<b>➲ Comando no reconocido</b>', parse_mode='html')
+        # ============================================
+        # PROCESAR ENLACES (comportamiento original)
+        # ============================================
+        
+        if 'http' in msgText:
+            url = msgText
+            message = bot.sendMessage(chat_id, f'<b>📥 Procesando enlace...</b>\n{url}', parse_mode='html')
+            thread.store('msg', message)
+            
+            # Llamar a la función de descarga (tu implementación original)
+            try:
+                ddl(update, bot, message, url, file_name='', thread=thread, jdb=jdb)
+            except Exception as e:
+                bot.editMessageText(message, f'<b>❌ Error:</b> {str(e)}', parse_mode='html')
+            return
+
+        # Respuesta para otros mensajes
+        if msgText and not msgText.startswith('/'):
+            # Si es un mensaje de texto normal, responder con ayuda
+            bot.sendMessage(chat_id, 
+                "🤖 <b>Comandos disponibles:</b>\n\n"
+                "/start - Información del bot\n"
+                "/login +53XXXXX - Iniciar sesión en el canal\n"
+                "/code XXXXX - Verificar código\n"
+                "/status_canal - Estado de conexión\n"
+                "/logout - Cerrar sesión\n"
+                "/status - Estado del bot\n\n"
+                "📎 <b>Envía un enlace</b> para descargar y subir a Moodle.",
+                parse_mode='html')
+        else:
+            bot.sendMessage(chat_id, '<b>➲ Comando no reconocido</b>\nUsa /start para ver los comandos disponibles.', parse_mode='html')
             
     except Exception as ex:
         print(f"Error en onmessage: {ex}")
@@ -717,6 +833,10 @@ def onmessage(update, bot: ObigramClient):
 # ==============================
 
 def main():
+    # Iniciar el bucle de eventos de asyncio primero
+    iniciar_bucle_eventos()
+    print("✅ Bucle de eventos de asyncio iniciado")
+    
     # Iniciar el procesador periódico
     procesador_thread = threading.Thread(target=procesar_mensajes_periodicamente, daemon=True)
     procesador_thread.start()
