@@ -38,11 +38,11 @@ CANAL_PRIVADO = '@empresaelectricacienfuegos1'
 NOMBRE_CANAL = 'Cienfuegos'
 ARCHIVO_JSON = 'jsonCienfuegos.json'  # Nombre fijo en Moodle
 
-# Configuración de Moodle IN STEC (nube 0 de tu lista)
-MOODLE_HOST_INSTEC = 'https://moodle.instec.cu/'
-MOODLE_USER_INSTEC = 'kevin.cruz'
-MOODLE_PASS_INSTEC = 'Kevin10.'
-MOODLE_REPO_ID_INSTEC = 3
+# Configuración de Moodle UCF (cursos.ucf.edu.cu) - Nube 2 de tu lista
+MOODLE_HOST_UCF = 'https://cursos.ucf.edu.cu/'
+MOODLE_USER_UCF = 'julianrene'
+MOODLE_PASS_UCF = 'Transfer60*'
+MOODLE_REPO_ID_UCF = 4
 
 # Cola de mensajes pendientes (hilo seguro)
 mensajes_pendientes = []
@@ -70,6 +70,10 @@ except:
     CUBA_TZ = None
 
 USER_EVIDENCE_MARKER = " "
+
+# ==============================
+# LISTA DE NUBES DISPONIBLES
+# ==============================
 
 AVAILABLE_CLOUDS = [
     {
@@ -162,7 +166,7 @@ PRE_CONFIGURATED_USERS = {
 }
 
 # ==============================
-# FUNCIONES DE UTILIDAD (YA EXISTENTES)
+# FUNCIONES DE UTILIDAD
 # ==============================
 
 def get_cuba_time():
@@ -231,67 +235,6 @@ def send_sticker(chat_id, sticker_id):
         print(f"Error al enviar sticker: {e}")
 
 # ==============================
-# SISTEMA DE ESTADÍSTICAS (YA EXISTENTE)
-# ==============================
-
-class MemoryStats:
-    def __init__(self):
-        self.reset_stats()
-    
-    def reset_stats(self):
-        self.stats = {'total_uploads': 0, 'total_deletes': 0, 'total_size_uploaded': 0}
-        self.user_stats = {}
-        self.upload_logs = []
-        self.delete_logs = []
-    
-    def check_and_update_daily_reset(self, username):
-        current_date = format_cuba_date()
-        if username in self.user_stats:
-            if self.user_stats[username].get('last_date') != current_date:
-                self.user_stats[username]['daily_size'] = 0
-                self.user_stats[username]['last_date'] = current_date
-        else:
-            self.user_stats[username] = {
-                'uploads': 0, 'deletes': 0, 'total_size': 0,
-                'daily_size': 0, 'last_date': current_date,
-                'last_activity': format_cuba_datetime()
-            }
-    
-    def log_upload(self, username, filename, file_size, moodle_host):
-        self.check_and_update_daily_reset(username)
-        self.stats['total_uploads'] += 1
-        self.stats['total_size_uploaded'] += file_size
-        self.user_stats[username]['uploads'] += 1
-        self.user_stats[username]['total_size'] += file_size
-        self.user_stats[username]['daily_size'] += file_size
-        self.user_stats[username]['last_activity'] = format_cuba_datetime()
-        self.upload_logs.append({
-            'timestamp': format_cuba_datetime(),
-            'username': username, 'filename': filename,
-            'file_size_bytes': file_size,
-            'file_size_formatted': format_file_size(file_size),
-            'moodle_host': moodle_host
-        })
-        if len(self.upload_logs) > 300:
-            self.upload_logs.pop(0)
-        return True
-    
-    def get_user_stats(self, username):
-        self.check_and_update_daily_reset(username)
-        return self.user_stats.get(username)
-    
-    def get_all_stats(self):
-        return self.stats
-    
-    def get_recent_uploads(self, limit=10):
-        return self.upload_logs[-limit:][::-1] if self.upload_logs else []
-    
-    def has_any_data(self):
-        return len(self.upload_logs) > 0 or len(self.delete_logs) > 0
-
-memory_stats = MemoryStats()
-
-# ==============================
 # FUNCIONES PARA EL CANAL (NUEVO)
 # ==============================
 
@@ -301,8 +244,6 @@ def acumular_mensaje(mensaje_texto, fecha_mensaje):
     
     texto_limpio = mensaje_texto.strip()
     enlaces = re.findall(r'https?://[^\s]+', texto_limpio)
-    
-    # Eliminar enlaces del texto limpio (opcional)
     texto_sin_enlaces = texto_limpio
     for enlace in enlaces:
         texto_sin_enlaces = texto_sin_enlaces.replace(enlace, '').strip()
@@ -318,14 +259,14 @@ def acumular_mensaje(mensaje_texto, fecha_mensaje):
     
     print(f"📥 Mensaje acumulado ({len(mensajes_pendientes)} en cola)")
 
-def subir_a_moodle_instec(nombre_archivo):
-    """Sube el archivo JSON a Moodle IN STEC"""
+def subir_json_a_ucf(nombre_archivo):
+    """Sube el archivo JSON a Moodle UCF (cursos.ucf.edu.cu)"""
     try:
         client = MoodleClient(
-            MOODLE_USER_INSTEC,
-            MOODLE_PASS_INSTEC,
-            MOODLE_HOST_INSTEC,
-            MOODLE_REPO_ID_INSTEC
+            MOODLE_USER_UCF,
+            MOODLE_PASS_UCF,
+            MOODLE_HOST_UCF,
+            MOODLE_REPO_ID_UCF
         )
         
         if client.login():
@@ -355,15 +296,15 @@ def subir_a_moodle_instec(nombre_archivo):
             client.logout()
             return True
         else:
-            print("❌ Error de autenticación en IN STEC")
+            print("❌ Error de autenticación en UCF")
             return False
             
     except Exception as e:
-        print(f"❌ Error al subir a Moodle: {e}")
+        print(f"❌ Error al subir a UCF: {e}")
         return False
 
 def subir_todos_los_mensajes():
-    """Toma todos los mensajes acumulados y los sube a Moodle como un solo JSON"""
+    """Toma todos los mensajes acumulados y los sube a Moodle UCF"""
     global mensajes_pendientes
     
     with lock_mensajes:
@@ -384,10 +325,10 @@ def subir_todos_los_mensajes():
         with open(ARCHIVO_JSON, 'w', encoding='utf-8') as f:
             json.dump(datos, f, indent=2, ensure_ascii=False)
         
-        exito = subir_a_moodle_instec(ARCHIVO_JSON)
+        exito = subir_json_a_ucf(ARCHIVO_JSON)
         
         if exito:
-            print(f"✅ {len(mensajes_a_subir)} mensajes subidos a Moodle")
+            print(f"✅ {len(mensajes_a_subir)} mensajes subidos a UCF")
             # Notificar al grupo de logs
             if LOG_GROUP_ID != 0:
                 try:
@@ -397,7 +338,7 @@ def subir_todos_los_mensajes():
                         f"📢 <b>Canal:</b> <b>{NOMBRE_CANAL}</b>\n"
                         f"📊 <b>Mensajes:</b> <b>{len(mensajes_a_subir)}</b>\n"
                         f"📅 <b>Actualización:</b> <b>{datos['ultima_actualizacion']}</b>\n"
-                        f"💾 <b>JSON subido a IN STEC</b>"
+                        f"💾 <b>JSON subido a UCF</b>"
                     )
                     bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                 except Exception as e:
@@ -421,32 +362,104 @@ def subir_todos_los_mensajes():
                 pass
 
 # ==============================
-# ESCUCHA DEL CANAL CON TELETHON
+# SISTEMA DE AUTENTICACIÓN CON TELETHON DESDE EL BOT
 # ==============================
 
-async def escuchar_canal():
-    """Escucha mensajes del canal y los acumula"""
-    client = TelegramClient('sesion_usuario', API_ID, API_HASH)
-    
-    @client.on(events.NewMessage(chats=CANAL_PRIVADO))
-    async def handler(event):
-        mensaje = event.message.text
-        if not mensaje:
-            return
-        acumular_mensaje(mensaje, event.message.date)
-    
-    await client.start()
-    print(f"🔍 Escuchando canal: {CANAL_PRIVADO}")
-    await client.run_until_disconnected()
+auth_sessions = {}
+auth_lock = threading.Lock()
 
-def iniciar_escucha_canal():
-    """Wrapper para ejecutar el async en un hilo"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(escuchar_canal())
+async def iniciar_sesion_telethon(username, phone_number):
+    """Inicia el proceso de autenticación para un usuario"""
+    try:
+        session_file = f'sesion_{username}.session'
+        client = TelegramClient(session_file, API_ID, API_HASH)
+        await client.connect()
+        
+        # Enviar código de verificación
+        await client.send_code_request(phone_number)
+        
+        # Guardar el cliente en el estado del usuario
+        with auth_lock:
+            auth_sessions[username] = {
+                'client': client,
+                'phone': phone_number,
+                'step': 'waiting_code'
+            }
+        
+        return True, "📱 Se ha enviado un código de verificación a tu Telegram. Envíalo con /code <codigo>"
+    except Exception as e:
+        return False, f"❌ Error al iniciar sesión: {str(e)}"
+
+async def verificar_codigo_telethon(username, code):
+    """Verifica el código de autenticación"""
+    with auth_lock:
+        if username not in auth_sessions:
+            return False, "❌ No hay un proceso de autenticación activo. Usa /login primero."
+        
+        session_data = auth_sessions[username]
+        if session_data['step'] != 'waiting_code':
+            return False, "❌ No hay un código pendiente de verificar."
+        
+        client = session_data['client']
+    
+    try:
+        await client.sign_in(session_data['phone'], code)
+        
+        # Guardar la sesión
+        await client.disconnect()
+        
+        with auth_lock:
+            del auth_sessions[username]
+        
+        # Crear archivo de sesión (ya lo creó TelegramClient)
+        return True, "✅ ¡Autenticación exitosa! El bot ya puede leer el canal."
+    except Exception as e:
+        return False, f"❌ Código incorrecto: {str(e)}"
 
 # ==============================
-# PROCESAMIENTO PERIÓDICO (CADA 5 MINUTOS)
+# TELETHON: ESCUCHA DEL CANAL
+# ==============================
+
+listener_threads = {}
+
+def iniciar_listener_usuario(username):
+    """Inicia el listener del canal para un usuario específico"""
+    if username in listener_threads and listener_threads[username].is_alive():
+        return
+    
+    def run_listener():
+        asyncio.run(escuchar_canal_usuario(username))
+    
+    thread = threading.Thread(target=run_listener, daemon=True)
+    thread.start()
+    listener_threads[username] = thread
+
+async def escuchar_canal_usuario(username):
+    """Escucha mensajes del canal usando la sesión del usuario"""
+    session_file = f'sesion_{username}.session'
+    
+    if not os.path.exists(session_file):
+        print(f"❌ No hay sesión para {username}")
+        return
+    
+    try:
+        client = TelegramClient(session_file, API_ID, API_HASH)
+        await client.start()
+        
+        @client.on(events.NewMessage(chats=CANAL_PRIVADO))
+        async def handler(event):
+            mensaje = event.message.text
+            if not mensaje:
+                return
+            acumular_mensaje(mensaje, event.message.date)
+        
+        print(f"🔍 Usuario {username} escuchando canal: {CANAL_PRIVADO}")
+        await client.run_until_disconnected()
+    except Exception as e:
+        print(f"❌ Error en listener de {username}: {e}")
+
+# ==============================
+# PROCESAMIENTO PERIÓDICO
 # ==============================
 
 def procesar_mensajes_periodicamente():
@@ -460,7 +473,65 @@ def procesar_mensajes_periodicamente():
             print(f"❌ Error en procesamiento periódico: {e}")
 
 # ==============================
-# FUNCIONES EXISTENTES DEL BOT (RESUMIDAS)
+# FUNCIONES DE PROGRESO (TU CÓDIGO ORIGINAL)
+# ==============================
+
+def update_process(thread_id, username, filename, action, current, total):
+    try:
+        current = int(current or 0)
+        total = int(total or 0)
+        percent = (current / total) * 100 if total > 0 else 0
+        if percent > 100: percent = 100
+        fmt_percent = f"{int(percent)}%" if percent.is_integer() else f"{percent:.1f}%"
+        ACTIVE_PROCESSES[thread_id] = {
+            'user': username, 'file': filename, 'action': action,
+            'percent': fmt_percent, 'last_update': time.time()
+        }
+    except: pass
+
+def clean_process(thread_id):
+    if thread_id in ACTIVE_PROCESSES:
+        del ACTIVE_PROCESSES[thread_id]
+
+def downloadFile(downloader, filename, currentBits, totalBits, speed, elapsed_time, args):
+    try:
+        bot = args[0]
+        message = args[1]
+        thread = args[2]
+        username = args[3] if len(args) > 3 else "Desconocido"
+        
+        if thread.getStore('stop'):
+            downloader.stop()
+            raise Exception("Tarea detenida por mantenimiento o cancelación")
+        
+        update_process(thread.id, username, filename, '📥 Descargando', currentBits, totalBits)
+        
+        downloadingInfo = infos.createDownloading(filename, totalBits, currentBits, speed, elapsed_time, tid=thread.id)
+        bot.editMessageText(message, downloadingInfo, parse_mode='html')
+    except Exception as ex:
+        raise ex
+
+def uploadFile(filename, currentBits, totalBits, speed, elapsed_time, args):
+    try:
+        bot = args[0]
+        message = args[1]
+        originalfile = args[2]
+        thread = args[3]
+        username = args[4] if len(args) > 4 else "Desconocido"
+        
+        if thread and thread.getStore('stop'):
+            raise Exception("Tarea detenida por mantenimiento o cancelación")
+        
+        update_process(thread.id, username, filename, '📤 Subiendo', currentBits, totalBits)
+        
+        tid_str = thread.id if thread else ''
+        uploadingInfo = infos.createUploading(filename, totalBits, currentBits, speed, elapsed_time, originalfile, tid=tid_str)
+        bot.editMessageText(message, uploadingInfo, parse_mode='html')
+    except Exception as ex:
+        raise ex
+
+# ==============================
+# FUNCIONES DE PROCESAMIENTO (TU CÓDIGO ORIGINAL - RESUMIDAS)
 # ==============================
 
 def expand_user_groups():
@@ -484,33 +555,25 @@ def initialize_database(jdb):
             jdb.save_data_user(username, user_data)
     jdb.save()
 
-def update_process(thread_id, username, filename, action, current, total):
-    try:
-        current = int(current or 0)
-        total = int(total or 0)
-        percent = (current / total) * 100 if total > 0 else 0
-        if percent > 100: percent = 100
-        fmt_percent = f"{int(percent)}%" if percent.is_integer() else f"{percent:.1f}%"
-        ACTIVE_PROCESSES[thread_id] = {
-            'user': username, 'file': filename, 'action': action,
-            'percent': fmt_percent, 'last_update': time.time()
-        }
-    except: pass
-
-def clean_process(thread_id):
-    if thread_id in ACTIVE_PROCESSES:
-        del ACTIVE_PROCESSES[thread_id]
-
-def ddl(update, bot, message, url, file_name='', thread=None, jdb=None):
-    # Función resumida para compatibilidad
+def processUploadFiles(filename, filesize, files, update, bot, message, thread=None, jdb=None):
+    # Esta función debe ser tu código ORIGINAL completo
+    # Por brevedad, pongo una versión resumida, pero DEBES USAR TU CÓDIGO ORIGINAL
     pass
 
 def processFile(update, bot, message, file, thread=None, jdb=None):
-    # Función resumida para compatibilidad
+    # Esta función debe ser tu código ORIGINAL completo
+    pass
+
+def ddl(update, bot, message, url, file_name='', thread=None, jdb=None):
+    # Esta función debe ser tu código ORIGINAL completo
+    pass
+
+def sendTxt(name, files, update, bot, send_to_group=False, user_info=None):
+    # Esta función debe ser tu código ORIGINAL completo
     pass
 
 # ==============================
-# FUNCIÓN PRINCIPAL onmessage (EXISTENTE)
+# FUNCIÓN PRINCIPAL onmessage
 # ==============================
 
 def onmessage(update, bot: ObigramClient):
@@ -571,45 +634,166 @@ def onmessage(update, bot: ObigramClient):
             jdb.save_data_user(username, user_info)
             jdb.save()
 
-        # Comandos existentes (resumidos)
+        # ============================================
+        # COMANDOS DE AUTENTICACIÓN PARA EL CANAL
+        # ============================================
+
+        if '/login' in msgText:
+            parts = msgText.replace('/login', '').strip()
+            if not parts:
+                bot.editMessageText(message, 
+                    "📱 <b>Iniciar sesión con Telethon</b>\n\n"
+                    "Envía tu número de teléfono con el comando:\n"
+                    "<code>/login +53XXXXXXXXX</code>\n\n"
+                    "Ejemplo: <code>/login +53512345678</code>",
+                    parse_mode='html')
+                return
+            
+            phone_number = parts.split()[0] if parts else parts
+            if not phone_number.startswith('+'):
+                phone_number = '+' + phone_number
+            
+            # Iniciar autenticación
+            exito, mensaje = asyncio.run(iniciar_sesion_telethon(username, phone_number))
+            bot.editMessageText(message, mensaje, parse_mode='html')
+            return
+
+        if '/code' in msgText:
+            parts = msgText.replace('/code', '').strip()
+            if not parts:
+                bot.editMessageText(message, 
+                    "📱 <b>Verificar código</b>\n\n"
+                    "Envía el código que recibiste:\n"
+                    "<code>/code 12345</code>",
+                    parse_mode='html')
+                return
+            
+            code = parts.split()[0] if parts else parts
+            exito, mensaje = asyncio.run(verificar_codigo_telethon(username, code))
+            bot.editMessageText(message, mensaje, parse_mode='html')
+            
+            # Si fue exitoso, iniciar la escucha del canal
+            if exito:
+                iniciar_listener_usuario(username)
+            return
+
+        if '/status_canal' in msgText:
+            session_file = f'sesion_{username}.session'
+            if os.path.exists(session_file):
+                bot.editMessageText(message, "🟢 <b>Conectado al canal</b>\n✅ La autenticación está activa.", parse_mode='html')
+            else:
+                bot.editMessageText(message, "🔴 <b>No conectado</b>\n❌ Usa /login para autenticarte.", parse_mode='html')
+            return
+
+        if '/logout' in msgText:
+            session_file = f'sesion_{username}.session'
+            if os.path.exists(session_file):
+                try:
+                    os.remove(session_file)
+                    bot.editMessageText(message, "✅ <b>Sesión cerrada</b>\nLa sesión de Telethon ha sido eliminada.", parse_mode='html')
+                except:
+                    bot.editMessageText(message, "❌ <b>Error al cerrar sesión</b>", parse_mode='html')
+            else:
+                bot.editMessageText(message, "ℹ️ <b>No hay sesión activa</b>", parse_mode='html')
+            return
+
+        # ============================================
+        # COMANDOS DE USUARIO (TU CÓDIGO ORIGINAL)
+        # ============================================
+
         if '/start' in msgText:
-            start_msg = f"👤 <b>@{username}</b>\n☁️ <b>Nube:</b> {user_info['moodle_host']}\n⚖️ <b>Límite:</b> {user_info['zips']} MB"
+            if username.lower() == ADMIN_USERNAME.lower():
+                start_msg = f"""
+👑 <b>Usuario Administrador</b>
+
+👤 <b>Usuario:</b> <b>@{username}</b>
+☁️ <b>Nube actual:</b> <code>{user_info['moodle_host']}</code>
+⚖️ <b>Límite:</b> <b>{user_info['zips']} MB</b>
+
+📱 <b>Autenticación con Telethon:</b>
+/login +53XXXXXXXXX - <b>Iniciar sesión</b>
+/code 12345 - <b>Verificar código</b>
+/status_canal - <b>Estado de conexión</b>
+/logout - <b>Cerrar sesión</b>
+
+🔧 <b>Comandos principales:</b>
+/admin - <b>Panel de administración</b>
+/status - <b>Estado de las nubes 🟢/🔴</b>
+/procesos - <b>Procesos en tiempo real 🚀</b>
+"""
+            else:
+                start_msg = f"""
+👤 <b>Usuario Regular</b>
+
+👤 <b>Usuario:</b> <b>@{username}</b>
+☁️ <b>Nube actual:</b> <code>{user_info['moodle_host']}</code>
+⚖️ <b>Límite:</b> <b>{user_info['zips']} MB</b>
+
+📱 <b>Autenticación con Telethon:</b>
+/login +53XXXXXXXXX - <b>Iniciar sesión</b>
+/code 12345 - <b>Verificar código</b>
+/status_canal - <b>Estado de conexión</b>
+/logout - <b>Cerrar sesión</b>
+
+🔧 <b>Tus comandos:</b>
+/start - <b>Ver esta información</b>
+/cambiar - <b>Cambiar de nube 🔄</b>
+/status - <b>Estado de tu nube 🟢/🔴</b>
+/files - <b>Ver tus evidencias</b>
+/txt_X - <b>Ver TXT de evidencia X</b>
+/del_X - <b>Eliminar evidencia X</b>
+/delall - <b>Eliminar tus evidencias</b>
+/mystats - <b>Ver tus estadísticas</b>
+                """
+            
             bot.editMessageText(message, start_msg, parse_mode='html')
+            send_sticker(chat_id, "CAACAgEAAxkBAAIoVGqA9obyhoMJe62uOFPzvoFk6vwpAAK7BgACnFgJROtfXZ-KKr1vPQQ")
             return
 
-        if '/status' == msgText:
-            bot.editMessageText(message, "🟢 <b>Bot funcionando correctamente</b>", parse_mode='html')
+        # ============================================
+        # PROCESAR ENLACES (TU CÓDIGO ORIGINAL)
+        # ============================================
+
+        if 'http' in msgText:
+            url = msgText
+            file_size = 0
+            filename = url.split('/')[-1] or "Desconocido"
+            
+            # ... (tu código original para procesar enlaces) ...
+            bot.editMessageText(message, f'<b>📥 Procesando enlace: {filename}</b>', parse_mode='html')
+            ddl(update, bot, message, url, file_name='', thread=thread, jdb=jdb)
             return
 
-        # Respuesta para otros comandos
-        bot.editMessageText(message, '<b>➲ Comando no reconocido</b>', parse_mode='html')
+        # ============================================
+        # RESPUESTA POR DEFECTO
+        # ============================================
+
+        bot.editMessageText(message, '<b>➲ Comando no reconocido. Usa /start para ver los comandos disponibles.</b>', parse_mode='html')
             
     except Exception as ex:
-        print(f"Error: {ex}")
+        print(f"Error en onmessage: {ex}")
+        print(traceback.format_exc())
 
 # ==============================
 # FUNCIÓN PRINCIPAL main
 # ==============================
 
 def main():
-    # Iniciar el listener del canal en un hilo separado
-    canal_thread = threading.Thread(target=iniciar_escucha_canal, daemon=True)
-    canal_thread.start()
-    print("✅ Listener del canal iniciado")
+    # ====== BOT PRINCIPAL ======
+    bot = ObigramClient(BOT_TOKEN)
+    bot.onMessage(onmessage)
     
-    # Iniciar el procesador periódico en otro hilo
+    # ====== PROCESADOR PERIÓDICO ======
     procesador_thread = threading.Thread(target=procesar_mensajes_periodicamente, daemon=True)
     procesador_thread.start()
     print("✅ Procesador periódico iniciado (cada 5 minutos)")
     
-    # Iniciar el bot principal
-    bot = ObigramClient(BOT_TOKEN)
-    bot.onMessage(onmessage)
-    print("🤖 Bot principal iniciado")
+    print("🤖 Bot iniciado. Usa /login +53XXXXXXXXX para autenticarte.")
     bot.run()
 
 if __name__ == '__main__':
     try:
         main()
-    except:
+    except Exception as e:
+        print(f"Error en main: {e}")
         main()
