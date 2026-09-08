@@ -75,7 +75,7 @@ AVAILABLE_CLOUDS = [
     },
     {
         "cloudtype": "moodle",
-        "moodle_host": "https://eva.uo.edu.cu/",
+        "moodle_host": "https://cursos.uo.edu.cu/",
         "moodle_repo_id": 4,
         "moodle_user": "sifcf",
         "moodle_password": "Encargado321.",
