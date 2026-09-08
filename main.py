@@ -75,11 +75,11 @@ AVAILABLE_CLOUDS = [
     },
     {
         "cloudtype": "moodle",
-        "moodle_host": "https://cursos.uo.edu.cu/",
+        "moodle_host": "http://webdocente.ucpejv.edu.cu/",
         "moodle_repo_id": 4,
-        "moodle_user": "mayelin.cabrera",
-        "moodle_password": "Mayelin*167.",
-        "zips": 99,
+        "moodle_user": "ileana.dominguez",
+        "moodle_password": "Lesly200179",
+        "zips": 50,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
