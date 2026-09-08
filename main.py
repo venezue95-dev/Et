@@ -124,7 +124,7 @@ AVAILABLE_CLOUDS = [
         "moodle_user": "daniela.martinez",
         "moodle_password": "Zenia*07",
         "zips": 19,
-        "uploadtype": "calendar",
+        "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
     },
@@ -908,6 +908,10 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                         if files:
                             for i in range(len(files)):
                                 url = files[i]['directurl']
+                                if 'draftfile.php' in url and 'webservice/' not in url:
+                                    url = url.replace('draftfile.php', 'webservice/draftfile.php')
+                                if 'pluginfile.php' in url and 'webservice/' not in url:
+                                    url = url.replace('pluginfile.php', 'webservice/pluginfile.php')
                                 if '?forcedownload=1' in url:
                                     url = url.replace('?forcedownload=1', '')
                                 elif '&forcedownload=1' in url:
@@ -928,6 +932,12 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                     if not item:
                         continue
                     raw_url = item.get('url', '')
+                    
+                    if 'draftfile.php' in raw_url and 'webservice/' not in raw_url:
+                        raw_url = raw_url.replace('draftfile.php', 'webservice/draftfile.php')
+                    if 'pluginfile.php' in raw_url and 'webservice/' not in raw_url:
+                        raw_url = raw_url.replace('pluginfile.php', 'webservice/pluginfile.php')
+
                     if '?forcedownload=1' in raw_url:
                         raw_url = raw_url.replace('?forcedownload=1', '')
                     elif '&forcedownload=1' in raw_url:
@@ -1109,6 +1119,11 @@ def sendTxt(name, files, update, bot, send_to_group=False, user_info=None):
     
     for i, f in enumerate(files):
         url = f['directurl']
+        
+        if 'draftfile.php' in url and 'webservice/' not in url:
+            url = url.replace('draftfile.php', 'webservice/draftfile.php')
+        if 'pluginfile.php' in url and 'webservice/' not in url:
+            url = url.replace('pluginfile.php', 'webservice/pluginfile.php')
         
         if '?forcedownload=1' in url:
             url = url.replace('?forcedownload=1', '')
@@ -1379,6 +1394,10 @@ class AdminEvidenceManager:
                         
                         for i in range(len(files)):
                             url = files[i]['directurl']
+                            if 'draftfile.php' in url and 'webservice/' not in url:
+                                url = url.replace('draftfile.php', 'webservice/draftfile.php')
+                            if 'pluginfile.php' in url and 'webservice/' not in url:
+                                url = url.replace('pluginfile.php', 'webservice/pluginfile.php')
                             if '?forcedownload=1' in url:
                                 url = url.replace('?forcedownload=1', '')
                             elif '&forcedownload=1' in url:
