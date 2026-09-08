@@ -75,10 +75,10 @@ AVAILABLE_CLOUDS = [
     },
     {
         "cloudtype": "moodle",
-        "moodle_host": "http://webdocente.ucpejv.edu.cu/",
+        "moodle_host": "https://eva.uo.edu.cu/",
         "moodle_repo_id": 4,
-        "moodle_user": "ileana.dominguez",
-        "moodle_password": "Lesly200179",
+        "moodle_user": "sifcf",
+        "moodle_password": "Emcargado321.",
         "zips": 50,
         "uploadtype": "evidence",
         "proxy": "",
