@@ -78,8 +78,8 @@ AVAILABLE_CLOUDS = [
         "moodle_host": "https://eva.uo.edu.cu/",
         "moodle_repo_id": 4,
         "moodle_user": "sifcf",
-        "moodle_password": "Emcargado321.",
-        "zips": 50,
+        "moodle_password": "Encargado321.",
+        "zips": 99,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
