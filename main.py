@@ -113,7 +113,7 @@ AVAILABLE_CLOUDS = [
         "moodle_user": "daniela.martinez",
         "moodle_password": "Zenia*07",
         "zips": 99,
-        "uploadtype": "evidence",
+        "uploadtype": "draft",
         "proxy": "",
         "tokenize": 0
     },
