@@ -598,10 +598,10 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
             update_process(thread.id, username, os.path.basename(str(filename)), '⬆️ Preparando para subir', 0, 100)
             
-        evidence = None
         fileid = None
         user_info = jdb.get_user(username)
         proxy = ProxyCloud.parse(user_info['proxy']) if user_info and user_info.get('proxy') else None
+        upload_type = user_info.get('uploadtype', 'evidence') if user_info else 'evidence'
         
         # VERIFICACIÓN RÁPIDA DE CONECTIVIDAD (Falla rápido y con mensajes mejorados si la Moodle está caída)
         try:
@@ -679,18 +679,18 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             return None
 
         if loged:
-            evidences = client.getEvidences()
-            
-            original_evidname = str(filename).split('.')[0]
-            visible_evidname = original_evidname
-            internal_evidname = f"{original_evidname}{USER_EVIDENCE_MARKER}{username}"
-            
-            for evid in evidences:
-                if evid['name'] == internal_evidname:
-                    evidence = evid
-                    break
-            if evidence is None:
-                evidence = client.createEvidence(internal_evidname)
+            evidence = None
+            internal_evidname = ''
+            if upload_type == 'evidence':
+                evidences = client.getEvidences()
+                original_evidname = str(filename).split('.')[0]
+                internal_evidname = f"{original_evidname}{USER_EVIDENCE_MARKER}{username}"
+                for evid in evidences:
+                    if evid['name'] == internal_evidname:
+                        evidence = evid
+                        break
+                if evidence is None:
+                    evidence = client.createEvidence(internal_evidname)
 
             originalfile = ''
             if len(files)>1:
@@ -699,37 +699,47 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             for f in files:
                 if thread and thread.getStore('stop'):
                     raise Exception("Tarea detenida por mantenimiento o cancelación")
-                f_size = get_file_size(f)
-                resp = None
-                iter = 0
                 tokenize = False
                 if user_info['tokenize']!=0:
                    tokenize = True
+                resp = None
+                iter = 0
                 while resp is None:
                     if thread and thread.getStore('stop'):
                         raise Exception("Tarea detenida por mantenimiento o cancelación")
+
+                    if upload_type == 'evidence':
+                        fileid,resp = client.upload_file(f,evidence,fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
+                    elif upload_type == 'calendar':
+                        _,resp = client.upload_file_calendar(f,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
+                    else:
+                        # 'draft' o cualquier otro valor no reconocido cae aquí por defecto
+                        fileid,resp = client.upload_file_draft(f,None,fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
                     
                     if thread and thread.getStore('stop'):
                         raise Exception("Tarea detenida por mantenimiento o cancelación")
 
-                    fileid,resp = client.upload_file(f,evidence,fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
-                    
-                    if thread and thread.getStore('stop'):
-                        raise Exception("Tarea detenida por mantenimiento o cancelación")
-
-                    draftlist.append(resp)
                     iter += 1
-                    if iter>=10:
+                    if resp is None and iter>=10:
                         break
+                
+                if resp:
+                    resp['name'] = resp.get('file', os.path.basename(str(f)))
+                    draftlist.append(resp)
+                
                 os.unlink(f)
             
             if thread and thread.getStore('stop'):
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
 
-            try:
-                client.saveEvidence(evidence)
-            except:pass
-            return draftlist
+            if upload_type == 'evidence' and evidence:
+                try:
+                    if not evidence.get('files'):
+                        evidence['files'] = fileid
+                    client.saveEvidence(evidence)
+                except:pass
+
+            return {'type': upload_type, 'files': draftlist, 'evidence': evidence, 'evidname': internal_evidname}
         else:
             if thread and thread.getStore('stop'):
                 return None
@@ -791,17 +801,17 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
 def processFile(update,bot,message,file,thread=None,jdb=None):
     phase = "procesamiento"
     findex = 0
+    getUser = None
+    username = update.message.sender.username
     try:
         if thread and thread.getStore('stop'):
             raise Exception("Tarea detenida por mantenimiento o cancelación")
             
         file_size = get_file_size(file)
-        getUser = jdb.get_user(update.message.sender.username)
+        getUser = jdb.get_user(username)
         max_file_size = 1024 * 1024 * getUser['zips']
         file_upload_count = 0
-        client = None
-        
-        username = update.message.sender.username
+        upload_result = None
         
         if file_size > max_file_size:
             phase = "compresión"
@@ -852,68 +862,84 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 raise Exception("Tarea detenida por mantenimiento o cancelación")
 
             phase = "subida"
-            client = processUploadFiles(file,file_size,mult_file.files,update,bot,message,thread=thread,jdb=jdb)
+            upload_result = processUploadFiles(file,file_size,mult_file.files,update,bot,message,thread=thread,jdb=jdb)
             try:
                 os.unlink(file)
             except:pass
             file_upload_count = len(mult_file.files)
         else:
             phase = "subida"
-            client = processUploadFiles(file,file_size,[file],update,bot,message,thread=thread,jdb=jdb)
+            upload_result = processUploadFiles(file,file_size,[file],update,bot,message,thread=thread,jdb=jdb)
             file_upload_count = 1
         
         if thread and thread.getStore('stop'):
             raise Exception("Tarea detenida por mantenimiento o cancelación")
 
-        visible_evidname = ''
         files = []
-        if client == "LOGIN_FAILED":
+        if upload_result == "LOGIN_FAILED":
             return
-        if client:
-            original_evidname = str(file).split('.')[0]
-            visible_evidname = original_evidname
-            internal_evidname = f"{original_evidname}{USER_EVIDENCE_MARKER}{username}"
+        if upload_result:
+            upload_type = upload_result.get('type', 'evidence')
             
-            txtname = visible_evidname + '.txt'
-            try:
-                proxy = ProxyCloud.parse(getUser['proxy']) if getUser.get('proxy') else None
-                moodle_client = MoodleClient(getUser['moodle_user'],
-                                             getUser['moodle_password'],
-                                             getUser['moodle_host'],
-                                             getUser['moodle_repo_id'],
-                                             proxy=proxy)
-                if moodle_client.login():
-                    # SISTEMA DE REINTENTO PARA LIDIAR CON EL RETRASO DE INDEXACIÓN DE MOODLE
-                    files = []
-                    evidence_index = -1
-                    for attempt in range(3):
-                        evidences = moodle_client.getEvidences()
-                        for idx, ev in enumerate(evidences):
-                            if ev['name'] == internal_evidname:
-                                files = ev.get('files', [])
-                                if files:
-                                    evidence_index = idx
-                                    break
+            if upload_type == 'evidence':
+                # FLUJO ORIGINAL: reconsultar evidencias por retraso de indexación de Moodle
+                internal_evidname = upload_result.get('evidname', '')
+                try:
+                    proxy = ProxyCloud.parse(getUser['proxy']) if getUser.get('proxy') else None
+                    moodle_client = MoodleClient(getUser['moodle_user'],
+                                                 getUser['moodle_password'],
+                                                 getUser['moodle_host'],
+                                                 getUser['moodle_repo_id'],
+                                                 proxy=proxy)
+                    if moodle_client.login():
+                        evidence_index = -1
+                        for attempt in range(3):
+                            evidences = moodle_client.getEvidences()
+                            for idx, ev in enumerate(evidences):
+                                if ev['name'] == internal_evidname:
+                                    files = ev.get('files', [])
+                                    if files:
+                                        evidence_index = idx
+                                        break
+                            if files:
+                                break
+                            time.sleep(2)
+                        
                         if files:
-                            break
-                        time.sleep(2)
+                            for i in range(len(files)):
+                                url = files[i]['directurl']
+                                if '?forcedownload=1' in url:
+                                    url = url.replace('?forcedownload=1', '')
+                                elif '&forcedownload=1' in url:
+                                    url = url.replace('&forcedownload=1', '')
+                                if '&token=' in url and '?' not in url:
+                                    url = url.replace('&token=', '?token=', 1)
+                                files[i]['directurl'] = url
+                        
+                        moodle_client.logout()
+                        
+                        findex = evidence_index if evidence_index != -1 else 0
+                except Exception as e:
+                    print(f"Error obteniendo índice de evidencia: {e}")
+                    findex = 0
+            else:
+                # FLUJO 'draft' Y 'calendar': la URL ya viene lista desde la subida, sin re-consultar Moodle
+                for item in upload_result.get('files', []):
+                    if not item:
+                        continue
+                    raw_url = item.get('url', '')
+                    if '?forcedownload=1' in raw_url:
+                        raw_url = raw_url.replace('?forcedownload=1', '')
+                    elif '&forcedownload=1' in raw_url:
+                        raw_url = raw_url.replace('&forcedownload=1', '')
+                    if '&token=' in raw_url and '?' not in raw_url:
+                        raw_url = raw_url.replace('&token=', '?token=', 1)
                     
-                    if files:
-                        for i in range(len(files)):
-                            url = files[i]['directurl']
-                            if '?forcedownload=1' in url:
-                                url = url.replace('?forcedownload=1', '')
-                            elif '&forcedownload=1' in url:
-                                url = url.replace('&forcedownload=1', '')
-                            if '&token=' in url and '?' not in url:
-                                url = url.replace('&token=', '?token=', 1)
-                            files[i]['directurl'] = url
-                    
-                    moodle_client.logout()
-                    
-                    findex = evidence_index if evidence_index != -1 else 0
-            except Exception as e:
-                print(f"Error obteniendo índice de evidencia: {e}")
+                    files.append({
+                        'name': item.get('name', os.path.basename(str(file))),
+                        'url': item.get('normalurl', ''),
+                        'directurl': raw_url
+                    })
                 findex = 0
             
             if thread and thread.getStore('stop'):
@@ -2067,7 +2093,7 @@ def onmessage(update,bot:ObigramClient):
                 """
             
             bot.editMessageText(message, start_msg, parse_mode='html')
-            send_sticker(chat_id, "CAACAgEAAxkBAAIoVGqA9obyhoMJe62uOFPzvoFk6vwpAAK7BgACnFgJROtfXZ-KKr1vPQQ")
+            send_sticker(chat_id, "CAACAgEAAxkBAAIoVGqA9obyhoMJe62uOFPzvoFk6vwpAAK7BgACnFgJRDiBixe0VxapPQQ")
             return
 
         if '/status' == msgText:
