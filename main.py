@@ -80,7 +80,7 @@ AVAILABLE_CLOUDS = [
         "moodle_user": "sifcf",
         "moodle_password": "Encargado321.",
         "zips": 99,
-        "uploadtype": "calendar",
+        "uploadtype": "draft",
         "proxy": "",
         "tokenize": 0
     },
