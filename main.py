@@ -1264,7 +1264,8 @@ def sendTxt(name, files, update, bot, send_to_group=False, user_info=None):
             print(f"Error enviando txt al grupo: {e}")
             
     os.unlink(name)
-    def initialize_database(jdb):
+
+def initialize_database(jdb):
     expanded_users = expand_user_groups()
     database_updated = False
     
