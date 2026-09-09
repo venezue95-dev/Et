@@ -1160,8 +1160,11 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
 
 def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
     username = update.message.sender.username
+    downloader = Downloader()
+    if thread and hasattr(thread, 'store'):
+        thread.store('downloader', downloader)
+
     try:
-        downloader = Downloader()
         file = None
         retries = 3
         for attempt in range(retries):
@@ -1788,44 +1791,54 @@ def onmessage(update,bot:ObigramClient):
 
         if '/cancel_' in msgText:
             try:
-                cmd = str(msgText).split('_',2)
-                tid = cmd[1]
+                parts = str(msgText).strip().split('_')
+                if len(parts) >= 2:
+                    tid = parts[1]
 
-                owner_username, target_task, location = queue_manager.find_task(tid)
-                if target_task is None:
-                    return
+                    owner_username, target_task, location = queue_manager.find_task(tid)
+                    if target_task is None:
+                        bot.sendMessage(chat_id, '<b>⚠️ Esta tarea ya no existe o ya finalizó.</b>', parse_mode='html')
+                        return
 
-                cancel_result = queue_manager.cancel(owner_username, tid)
+                    cancel_result = queue_manager.cancel(owner_username, tid)
 
-                proc_info = ACTIVE_PROCESSES.get(tid, {})
-                proc_user = proc_info.get('user', owner_username)
-                proc_file = proc_info.get('file', target_task.filename)
-                proc_action = proc_info.get('action', 'Enlace en cola')
+                    proc_info = ACTIVE_PROCESSES.get(tid, {})
+                    proc_user = proc_info.get('user', owner_username)
+                    proc_file = proc_info.get('file', target_task.filename)
+                    proc_action = proc_info.get('action', 'Enlace en cola')
 
-                clean_process(tid)
+                    clean_process(tid)
 
-                if cancel_result == 'pending':
-                    try:
-                        bot.sendMessage(target_task.chat_id, f'<b>➲ Tarea retirada de la cola ✗</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
-                    except: pass
-                elif cancel_result == 'active':
-                    time.sleep(1)
-                    if target_task.thread_ctx:
-                        msg_obj = target_task.thread_ctx.getStore('msg')
-                        if msg_obj:
-                            try:
-                                bot.editMessageText(msg_obj,'<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
-                            except: pass
+                    if cancel_result == 'pending':
+                        try:
+                            bot.sendMessage(target_task.chat_id, f'<b>➲ Tarea retirada de la cola ✗</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
+                        except: pass
+                    elif cancel_result == 'active':
+                        if target_task.thread_ctx:
+                            target_task.thread_ctx.store('stop', True)
+                            dl = target_task.thread_ctx.getStore('downloader')
+                            if dl:
+                                try:
+                                    dl.stop()
+                                except:
+                                    pass
+                        time.sleep(0.5)
+                        if target_task.thread_ctx:
+                            msg_obj = target_task.thread_ctx.getStore('msg')
+                            if msg_obj:
+                                try:
+                                    bot.editMessageText(msg_obj,'<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
+                                except: pass
 
-                if LOG_GROUP_ID != 0 and proc_user.lower() != ADMIN_USERNAME.lower():
-                    try:
-                        mensaje_log = (f"<b>❌ ¡Proceso cancelado!</b>\n\n"
-                                       f"<b>👤 Usuario:</b> <b>@{proc_user}</b>\n"
-                                       f"<b>🛠️ Acción:</b> <b>{proc_action}</b>\n"
-                                       f"<b>📄 Archivo:</b> <b>{proc_file}</b>")
-                        bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
-                    except Exception as e:
-                        print(f"Error al notificar cancelación al grupo: {e}")
+                    if LOG_GROUP_ID != 0 and proc_user.lower() != ADMIN_USERNAME.lower():
+                        try:
+                            mensaje_log = (f"<b>❌ ¡Proceso cancelado!</b>\n\n"
+                                           f"<b>👤 Usuario:</b> <b>@{proc_user}</b>\n"
+                                           f"<b>🛠️ Acción:</b> <b>{proc_action}</b>\n"
+                                           f"<b>📄 Archivo:</b> <b>{proc_file}</b>")
+                            bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+                        except Exception as e:
+                            print(f"Error al notificar cancelación al grupo: {e}")
 
             except Exception as ex:
                 print(str(ex))
@@ -3380,7 +3393,7 @@ def onmessage(update,bot:ObigramClient):
 ⚙️ <b>Se procesará automáticamente al terminar tu tarea actual.</b>
 
 🗑️ <b>Cancelar este turno:</b> /cancel_{task_id}
-📋 <b>Ver tu cola completa:</b> /cola
+📋 <b>Ver tu cola completa:</b> <b>/cola</b>
                 """
                 bot.editMessageText(message, queue_pos_msg, parse_mode='html')
         else:
