@@ -418,11 +418,12 @@ memory_stats = MemoryStats()
 # ==============================
 
 class QueuedTask:
-    def __init__(self, task_id, username, url, chat_id):
+    def __init__(self, task_id, username, url, chat_id, filename="Desconocido"):
         self.task_id = task_id
         self.username = username
         self.url = url
         self.chat_id = chat_id
+        self.filename = filename
         self.added_at = get_cuba_time()
         self.status = 'esperando'  # esperando | procesando
         self.thread_ctx = None
@@ -471,9 +472,9 @@ class QueueManager:
             self.pending[username] = collections.deque()
         return self.pending[username]
 
-    def submit(self, username, url, chat_id, task_id):
+    def submit(self, username, url, chat_id, task_id, filename="Desconocido"):
         with self.lock:
-            task = QueuedTask(task_id, username, url, chat_id)
+            task = QueuedTask(task_id, username, url, chat_id, filename)
             if self.active.get(username) is None:
                 task.status = 'procesando'
                 self.active[username] = task
@@ -1798,14 +1799,14 @@ def onmessage(update,bot:ObigramClient):
 
                 proc_info = ACTIVE_PROCESSES.get(tid, {})
                 proc_user = proc_info.get('user', owner_username)
-                proc_file = proc_info.get('file', target_task.url)
+                proc_file = proc_info.get('file', target_task.filename)
                 proc_action = proc_info.get('action', 'Enlace en cola')
 
                 clean_process(tid)
 
                 if cancel_result == 'pending':
                     try:
-                        bot.sendMessage(target_task.chat_id, f'<b>➲ Enlace retirado de la cola ✗</b>\n\n🔗 <b>{target_task.url[:60]}</b>', parse_mode='html')
+                        bot.sendMessage(target_task.chat_id, f'<b>➲ Tarea retirada de la cola ✗</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
                     except: pass
                 elif cancel_result == 'active':
                     time.sleep(1)
@@ -1821,7 +1822,7 @@ def onmessage(update,bot:ObigramClient):
                         mensaje_log = (f"<b>❌ ¡Proceso cancelado!</b>\n\n"
                                        f"<b>👤 Usuario:</b> <b>@{proc_user}</b>\n"
                                        f"<b>🛠️ Acción:</b> <b>{proc_action}</b>\n"
-                                       f"<b>📄 Nombre:</b> <b>{proc_file}</b>")
+                                       f"<b>📄 Archivo:</b> <b>{proc_file}</b>")
                         bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
                     except Exception as e:
                         print(f"Error al notificar cancelación al grupo: {e}")
@@ -2465,11 +2466,11 @@ def onmessage(update,bot:ObigramClient):
                             dq = pending_dict.get(u, [])
                             colas_msg += f"👤 <b>@{u}</b>\n"
                             if active_task:
-                                colas_msg += f"   ▶️ <b>En curso:</b> <b>{active_task.url[:45]}</b>\n   🗑️ /cancel_{active_task.task_id}\n"
+                                colas_msg += f"   ▶️ <b>En curso:</b> <b>{active_task.filename}</b>\n   🗑️ /cancel_{active_task.task_id}\n"
                             if dq:
                                 colas_msg += f"   ⏳ <b>En espera ({len(dq)}):</b>\n"
                                 for idx, t in enumerate(dq, 1):
-                                    colas_msg += f"      <b>{idx}.</b> {t.url[:45]}  🗑️ /cancel_{t.task_id}\n"
+                                    colas_msg += f"      <b>{idx}.</b> {t.filename}  🗑️ /cancel_{t.task_id}\n"
                             colas_msg += "\n"
 
                         send_long_message(bot, chat_id, colas_msg, original_message=message, parse_mode='html')
@@ -3046,12 +3047,12 @@ def onmessage(update,bot:ObigramClient):
             cola_msg = "🚦 <b>Tu cola de descargas</b>\n\n"
 
             if active_task:
-                cola_msg += f"▶️ <b>En curso ahora:</b>\n   🔗 <b>{active_task.url[:50]}</b>\n   🗑️ /cancel_{active_task.task_id}\n\n"
+                cola_msg += f"▶️ <b>En curso ahora:</b>\n   📄 <b>{active_task.filename}</b>\n   🗑️ /cancel_{active_task.task_id}\n\n"
 
             if pending_list:
                 cola_msg += "⏳ <b>En espera:</b>\n"
                 for idx, t in enumerate(pending_list, 1):
-                    cola_msg += f"   <b>{idx}.</b> <b>{t.url[:50]}</b>\n      🗑️ /cancel_{t.task_id}\n"
+                    cola_msg += f"   <b>{idx}.</b> <b>{t.filename}</b>\n      🗑️ /cancel_{t.task_id}\n"
             else:
                 cola_msg += "✅ <b>No tienes más enlaces esperando.</b>"
 
@@ -3346,26 +3347,35 @@ def onmessage(update,bot:ObigramClient):
             
             send_reaction(chat_id, update.message.message_id, "⚡")
 
-            if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
-                try:
-                    clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                    tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
-                    mensaje_log = (f"<b>🔔 ¡Nuevo enlace recibido!</b>\n\n👤 <b>Usuario:</b> <b>@{username}</b>\n📄 <b>Nombre:</b> <b>{filename}</b>\n⚖️ <b>Peso:</b> <b>{tamano_formateado}</b>\n🔗 <b>Enlace:</b> <code>{url}</code>\n☁️ <b>Nube:</b> <code>{clean_host}</code>")
-                    bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
-                except Exception as e:
-                    print(f"Error al notificar enlace: {e}")
-            
             task_id = createID()
-            task, is_immediate, position = queue_manager.submit(username, url, chat_id, task_id)
+            task, is_immediate, position = queue_manager.submit(username, url, chat_id, task_id, filename=filename)
 
             if is_immediate:
+                if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                    try:
+                        clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                        tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
+                        mensaje_log = (f"<b>🔔 ¡Nuevo enlace recibido!</b>\n\n👤 <b>Usuario:</b> <b>@{username}</b>\n📄 <b>Nombre:</b> <b>{filename}</b>\n⚖️ <b>Peso:</b> <b>{tamano_formateado}</b>\n🔗 <b>Enlace:</b> <code>{url}</code>\n☁️ <b>Nube:</b> <code>{clean_host}</code>")
+                        bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+                    except Exception as e:
+                        print(f"Error al notificar enlace: {e}")
+
                 task.thread_ctx = thread
                 ddl(update,bot,message,url,file_name='',thread=thread,jdb=jdb)
             else:
+                if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
+                    try:
+                        clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                        tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
+                        mensaje_log = (f"<b>⏳ ¡Enlace en cola de espera!</b>\n\n👤 <b>Usuario:</b> <b>@{username}</b>\n📄 <b>Nombre:</b> <b>{filename}</b>\n⚖️ <b>Peso:</b> <b>{tamano_formateado}</b>\n📊 <b>Posición:</b> <b>#{position}</b>\n☁️ <b>Nube:</b> <code>{clean_host}</code>")
+                        bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
+                    except Exception as e:
+                        print(f"Error al notificar enlace en cola: {e}")
+
                 queue_pos_msg = f"""
 <b>⏳ Enlace en cola de espera</b>
 
-🔗 <b>Enlace:</b> <code>{url[:60]}</code>
+📄 <b>Archivo:</b> <b>{filename}</b>
 📊 <b>Posición en tu cola:</b> <b>#{position}</b>
 ⚙️ <b>Se procesará automáticamente al terminar tu tarea actual.</b>
 
