@@ -3360,7 +3360,7 @@ def onmessage(update,bot:ObigramClient):
             
             send_reaction(chat_id, update.message.message_id, "⚡")
 
-            task_id = createID()
+            task_id = str(thread.id) if (thread and hasattr(thread, 'id') and thread.id) else createID()
             task, is_immediate, position = queue_manager.submit(username, url, chat_id, task_id, filename=filename)
 
             if is_immediate:
@@ -3373,6 +3373,8 @@ def onmessage(update,bot:ObigramClient):
                     except Exception as e:
                         print(f"Error al notificar enlace: {e}")
 
+                if thread and not hasattr(thread, 'id'):
+                    thread.id = task_id
                 task.thread_ctx = thread
                 ddl(update,bot,message,url,file_name='',thread=thread,jdb=jdb)
             else:
