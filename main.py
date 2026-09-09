@@ -21,46 +21,32 @@ import traceback
 import pytz
 import threading
 import json
+import collections
 
 # ==============================
 # CONFIGURACIÓN DE LÍMITES DIARIOS
 # ==============================
-# LÍMITE DIARIO POR USUARIO (EN BYTES)
-# Cambia este valor según necesites:
-# 0 = Sin límite (DESACTIVADO)
-# 500 * 1024 * 1024 = 500 MB
-# 1024 * 1024 * 1024 = 1 GB (valor anterior)
-# 2 * 1024 * 1024 * 1024 = 2 GB
-# 5 * 1024 * 1024 * 1024 = 5 GB
-# 10 * 1024 * 1024 * 1024 = 10 GB
 DAILY_LIMIT_BYTES = 100 * 1024 * 1024 * 1024  # 100 GB por defecto
 
-# FIXED CONFIGURATION IN CODE
 BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
-
-# ADMINISTRATOR CONFIGURATION
 ADMIN_USERNAME = "Eliel_21"
-ADMIN_CHAT_ID = 7363341763  # Tu ID
-LOG_GROUP_ID = -1004295272245  # ID del grupo para notificaciones de enlaces, archivos y txts
+ADMIN_CHAT_ID = 7363341763
+LOG_GROUP_ID = -1004295272245
 
-# VARIABLES GLOBALES DE CONTROL
 MAINTENANCE_MODE = False
 BANNED_USERS = set()
-REMOVED_USERS = set()  # Conjunto para usuarios quitados que anula la preconfiguración estática
-ACTIVE_PROCESSES = {}  # Diccionario para rastrear procesos activos en tiempo real (descargas, compresiones, preparando, subidas)
-ACTIVE_STATUS_CHECKS = set()  # Conjunto para evitar múltiples verificaciones simultáneas de estado
-CHANGING_CLOUD_USERS = set()  # Conjunto para usuarios que están en proceso de elegir nube con /cambiar
+REMOVED_USERS = set()
+ACTIVE_PROCESSES = {}
+ACTIVE_STATUS_CHECKS = set()
+CHANGING_CLOUD_USERS = set()
 
-# CUBA TIMEZONE
 try:
     CUBA_TZ = pytz.timezone('America/Havana')
 except:
     CUBA_TZ = None
 
-# SEPARATOR FOR USER EVIDENCES
-USER_EVIDENCE_MARKER = " "  # Space as separator
+USER_EVIDENCE_MARKER = " "
 
-# LISTA DISPONIBLE DE NUBES (1 al 7)
 AVAILABLE_CLOUDS = [
     {
         "cloudtype": "moodle",
@@ -141,7 +127,6 @@ AVAILABLE_CLOUDS = [
     }
 ]
 
-# PRE-CONFIGURACIÓN DE USUARIOS
 PRE_CONFIGURATED_USERS = {
     "Thali355,Eliel_21,Kev_inn10,Loe_son": AVAILABLE_CLOUDS[0],
     "thu,hola1": AVAILABLE_CLOUDS[1],
@@ -165,7 +150,6 @@ class CloudCache:
         self.last_full_refresh = None
     
     def should_refresh(self, cloud_name=None):
-        """Determina si debe refrescar los datos"""
         if cloud_name is None:
             if self.last_full_refresh is None:
                 return True
@@ -211,12 +195,11 @@ def format_cuba_datetime(dt=None):
     if dt is None:
         dt = get_cuba_time()
     formatted_date = dt.strftime("%d/%m/%y")
-    hour = str(int(dt.strftime("%I")))  # Elimina el cero inicial convirtiendo a entero y string
+    hour = str(int(dt.strftime("%I")))
     minute_ampm = dt.strftime("%M %p")
     return f"{formatted_date} {hour}:{minute_ampm}"
 
 def format_file_size(size_bytes):
-    """Formatea bytes a KB, MB o GB automáticamente sin decimales .0 innecesarios"""
     if size_bytes < 1024:
         return f"{size_bytes} B"
     
@@ -251,7 +234,6 @@ def format_file_size(size_bytes):
 # FUNCIONES PARA REACCIONES Y STICKERS
 # ==============================
 def send_reaction(chat_id, message_id, emoji="⚡"):
-    """Envía una reacción de emoji oficial y soportada a un mensaje específico"""
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/setMessageReaction"
         payload = {
@@ -264,7 +246,6 @@ def send_reaction(chat_id, message_id, emoji="⚡"):
         print(f"Error al enviar reacción: {e}")
 
 def send_sticker(chat_id, sticker_id):
-    """Envía un sticker oficial usando el file_id de Telegram"""
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendSticker"
         payload = {
@@ -280,13 +261,10 @@ def send_sticker(chat_id, sticker_id):
 # ==============================
 
 class MemoryStats:
-    """Sistema de estadísticas en memoria y control de límites diarios"""
-    
     def __init__(self):
         self.reset_stats()
     
     def reset_stats(self):
-        """Reinicia todas las estadísticas"""
         self.stats = {
             'total_uploads': 0,
             'total_deletes': 0,
@@ -297,7 +275,6 @@ class MemoryStats:
         self.delete_logs = []
     
     def check_and_update_daily_reset(self, username):
-        """Verifica si cambió el día en Cuba para restablecer el uso diario a 0"""
         current_date = format_cuba_date()
         if username in self.user_stats:
             if self.user_stats[username].get('last_date') != current_date:
@@ -314,7 +291,6 @@ class MemoryStats:
             }
     
     def log_upload(self, username, filename, file_size, moodle_host):
-        """Registra una subida exitosa y acumula el consumo diario"""
         try:
             file_size = int(file_size)
         except:
@@ -346,7 +322,6 @@ class MemoryStats:
         return True
     
     def log_delete(self, username, filename, evidence_name, moodle_host):
-        """Registra una eliminación individual"""
         self.stats['total_deletes'] += 1
         
         if username not in self.user_stats:
@@ -379,7 +354,6 @@ class MemoryStats:
         return True
     
     def log_delete_all(self, username, deleted_evidences, deleted_files, moodle_host):
-        """Registra eliminación masiva"""
         self.stats['total_deletes'] += deleted_files
         
         if username not in self.user_stats:
@@ -413,41 +387,187 @@ class MemoryStats:
         return True
     
     def get_user_stats(self, username):
-        """Obtiene estadísticas de un usuario"""
         self.check_and_update_daily_reset(username)
         if username in self.user_stats:
             return self.user_stats[username]
         return None
     
     def get_all_stats(self):
-        """Obtiene todas las estadísticas globales"""
         return self.stats
     
     def get_all_users(self):
-        """Obtiene todos los usuarios"""
         return self.user_stats
     
     def get_recent_uploads(self, limit=10):
-        """Obtiene subidas recientes"""
         return self.upload_logs[-limit:][::-1] if self.upload_logs else []
     
     def get_recent_deletes(self, limit=10):
-        """Obtiene eliminaciones recientes"""
         return self.delete_logs[-limit:][::-1] if self.delete_logs else []
     
     def has_any_data(self):
-        """Verifica si hay datos"""
         return len(self.upload_logs) > 0 or len(self.delete_logs) > 0
     
     def clear_all_data(self):
-        """Limpia todos los datos"""
         self.reset_stats()
         return "<b>✅ Todos los datos han sido eliminados</b>"
 
 memory_stats = MemoryStats()
 
+# ==============================
+# SISTEMA DE COLAS POR USUARIO
+# ==============================
+
+class QueuedTask:
+    def __init__(self, task_id, username, url, chat_id):
+        self.task_id = task_id
+        self.username = username
+        self.url = url
+        self.chat_id = chat_id
+        self.added_at = get_cuba_time()
+        self.status = 'esperando'  # esperando | procesando
+        self.thread_ctx = None
+
+class QueueThreadContext:
+    """Contexto de hilo ligero, compatible con la interfaz thread.store()/getStore()
+    que usan ddl/processFile/processUploadFiles, pero sin depender de bot.threads."""
+    def __init__(self, task_id):
+        self.id = task_id
+        self._store = {}
+    def store(self, key, value):
+        self._store[key] = value
+    def getStore(self, key):
+        return self._store.get(key)
+
+class _FakeSender:
+    def __init__(self, username):
+        self.username = username
+
+class _FakeChat:
+    def __init__(self, chat_id):
+        self.id = chat_id
+
+class _FakeMessage:
+    def __init__(self, username, chat_id):
+        self.sender = _FakeSender(username)
+        self.chat = _FakeChat(chat_id)
+
+class _FakeUpdate:
+    def __init__(self, username, chat_id):
+        self.message = _FakeMessage(username, chat_id)
+
+class QueueManager:
+    """
+    Sistema de colas por usuario: solo una tarea activa por usuario a la vez.
+    Los enlaces adicionales enviados mientras hay una tarea en curso pasan
+    a una cola FIFO y se disparan automáticamente al terminar la anterior.
+    """
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.active = {}    # username -> QueuedTask activa (o None)
+        self.pending = {}   # username -> deque[QueuedTask]
+
+    def _get_deque(self, username):
+        if username not in self.pending:
+            self.pending[username] = collections.deque()
+        return self.pending[username]
+
+    def submit(self, username, url, chat_id, task_id):
+        with self.lock:
+            task = QueuedTask(task_id, username, url, chat_id)
+            if self.active.get(username) is None:
+                task.status = 'procesando'
+                self.active[username] = task
+                return task, True, 0
+            else:
+                dq = self._get_deque(username)
+                dq.append(task)
+                return task, False, len(dq)
+
+    def find_task(self, task_id):
+        with self.lock:
+            for uname, t in self.active.items():
+                if t and t.task_id == task_id:
+                    return uname, t, 'active'
+            for uname, dq in self.pending.items():
+                for t in dq:
+                    if t.task_id == task_id:
+                        return uname, t, 'pending'
+            return None, None, None
+
+    def cancel(self, username, task_id):
+        with self.lock:
+            dq = self.pending.get(username, collections.deque())
+            for t in list(dq):
+                if t.task_id == task_id:
+                    dq.remove(t)
+                    return 'pending'
+            active_task = self.active.get(username)
+            if active_task and active_task.task_id == task_id:
+                if active_task.thread_ctx:
+                    active_task.thread_ctx.store('stop', True)
+                return 'active'
+        return None
+
+    def advance(self, username):
+        with self.lock:
+            self.active[username] = None
+            dq = self.pending.get(username)
+            if dq and len(dq) > 0:
+                next_task = dq.popleft()
+                next_task.status = 'procesando'
+                self.active[username] = next_task
+                return next_task
+            return None
+
+    def get_user_snapshot(self, username):
+        with self.lock:
+            active_task = self.active.get(username)
+            dq = list(self.pending.get(username, collections.deque()))
+        return active_task, dq
+
+    def get_full_snapshot(self):
+        with self.lock:
+            return dict(self.active), {u: list(dq) for u, dq in self.pending.items()}
+
+queue_manager = QueueManager()
+
+def advance_queue_and_continue(bot, username):
+    """Al terminar/cancelar la tarea activa de un usuario, activa automáticamente
+    la siguiente en su cola (si existe), en un hilo nuevo e independiente."""
+    next_task = queue_manager.advance(username)
+    if next_task is None:
+        return
+
+    def run_next():
+        try:
+            jdb = JsonDatabase('database')
+            jdb.check_create()
+            jdb.load()
+
+            ctx = QueueThreadContext(next_task.task_id)
+            next_task.thread_ctx = ctx
+
+            fake_message = bot.sendMessage(
+                next_task.chat_id,
+                '<b>🚀 ¡Tu turno en la cola! Iniciando descarga...</b>',
+                parse_mode='html'
+            )
+            ctx.store('msg', fake_message)
+
+            fake_update = _FakeUpdate(username, next_task.chat_id)
+            ddl(fake_update, bot, fake_message, next_task.url, file_name='', thread=ctx, jdb=jdb)
+        except Exception as e:
+            print(f"Error al iniciar tarea encolada: {e}")
+            try:
+                advance_queue_and_continue(bot, username)
+            except:
+                pass
+
+    t = threading.Thread(target=run_next)
+    t.daemon = True
+    t.start()
+
 def expand_user_groups():
-    """Convierte 'usuario1,usuario2':config a 'usuario1':config, 'usuario2':config"""
     expanded = {}
     for user_group, config in PRE_CONFIGURATED_USERS.items():
         users = [u.strip() for u in user_group.split(',')]
@@ -488,7 +608,7 @@ def check_single_cloud(cloud_config):
     }
 
 # ==============================
-# TRACKER DE PROCESOS ACTIVOS (PROFESIONAL Y PRECISO)
+# TRACKER DE PROCESOS ACTIVOS
 # ==============================
 def update_process(thread_id, username, filename, action, current, total):
     try:
@@ -516,7 +636,6 @@ def clean_process(thread_id):
 # FUNCIÓN PARA DIVIDIR MENSAJES LARGOS
 # ==============================
 def send_long_message(bot, chat_id, text, original_message=None, parse_mode='html'):
-    """Divide mensajes largos por saltos de línea para respetar el límite de Telegram"""
     MAX_LEN = 4000
     
     if len(text) <= MAX_LEN:
@@ -546,7 +665,7 @@ def send_long_message(bot, chat_id, text, original_message=None, parse_mode='htm
         bot.sendMessage(chat_id, messages_to_send[0], parse_mode=parse_mode)
         
     for msg_part in messages_to_send[1:]:
-        time.sleep(0.5)  # Breve pausa para evitar flood
+        time.sleep(0.5)
         bot.sendMessage(chat_id, msg_part, parse_mode=parse_mode)
 
 def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
@@ -603,7 +722,6 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         proxy = ProxyCloud.parse(user_info['proxy']) if user_info and user_info.get('proxy') else None
         upload_type = user_info.get('uploadtype', 'evidence') if user_info else 'evidence'
         
-        # VERIFICACIÓN RÁPIDA DE CONECTIVIDAD (Falla rápido y con mensajes mejorados si la Moodle está caída)
         try:
             test_url = user_info['moodle_host']
             requests.get(test_url, timeout=6, proxies=proxy, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
@@ -713,7 +831,6 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                     elif upload_type == 'calendar':
                         _,resp = client.upload_file_calendar(f,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
                     else:
-                        # 'draft' o cualquier otro valor no reconocido cae aquí por defecto
                         fileid,resp = client.upload_file_draft(f,None,fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
                     
                     if thread and thread.getStore('stop'):
@@ -882,7 +999,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             upload_type = upload_result.get('type', 'evidence')
             
             if upload_type == 'evidence':
-                # FLUJO ORIGINAL: reconsultar evidencias por retraso de indexación de Moodle
                 internal_evidname = upload_result.get('evidname', '')
                 try:
                     proxy = ProxyCloud.parse(getUser['proxy']) if getUser.get('proxy') else None
@@ -927,7 +1043,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                     print(f"Error obteniendo índice de evidencia: {e}")
                     findex = 0
             else:
-                # FLUJO 'draft' Y 'calendar': la URL ya viene lista desde la subida, sin re-consultar Moodle
                 for item in upload_result.get('files', []):
                     if not item:
                         continue
@@ -994,7 +1109,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 send_to_group_flag = False if username.lower() == ADMIN_USERNAME.lower() else True
                 sendTxt(txtname, files, update, bot, send_to_group=send_to_group_flag, user_info=getUser)
             
-            # Envío de sticker de subida completada (luego del txt)
             send_sticker(message.chat.id, "CAACAgEAAxkBAAIoXGqA9r31O2plFhlz_RG3tuYEg-_JAAK6BgACnFgJRDiBixe0VxapPQQ")
         else:
             if thread and thread.getStore('stop'):
@@ -1044,9 +1158,9 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             clean_process(thread.id)
 
 def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
+    username = update.message.sender.username
     try:
         downloader = Downloader()
-        username = update.message.sender.username
         file = None
         retries = 3
         for attempt in range(retries):
@@ -1113,6 +1227,7 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
     finally:
         if thread:
             clean_process(thread.id)
+        advance_queue_and_continue(bot, username)
 
 def sendTxt(name, files, update, bot, send_to_group=False, user_info=None):
     txt = open(name,'w')
@@ -1149,8 +1264,7 @@ def sendTxt(name, files, update, bot, send_to_group=False, user_info=None):
             print(f"Error enviando txt al grupo: {e}")
             
     os.unlink(name)
-
-def initialize_database(jdb):
+    def initialize_database(jdb):
     expanded_users = expand_user_groups()
     database_updated = False
     
@@ -1674,19 +1788,33 @@ def onmessage(update,bot:ObigramClient):
             try:
                 cmd = str(msgText).split('_',2)
                 tid = cmd[1]
-                tcancel = bot.threads[tid]
-                msg = tcancel.getStore('msg')
-                tcancel.store('stop',True)
-                
+
+                owner_username, target_task, location = queue_manager.find_task(tid)
+                if target_task is None:
+                    return
+
+                cancel_result = queue_manager.cancel(owner_username, tid)
+
                 proc_info = ACTIVE_PROCESSES.get(tid, {})
-                proc_user = proc_info.get('user', username)
-                proc_file = proc_info.get('file', 'Desconocido')
-                proc_action = proc_info.get('action', 'Proceso')
-                
+                proc_user = proc_info.get('user', owner_username)
+                proc_file = proc_info.get('file', target_task.url)
+                proc_action = proc_info.get('action', 'Enlace en cola')
+
                 clean_process(tid)
-                time.sleep(1)
-                bot.editMessageText(msg,'<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
-                
+
+                if cancel_result == 'pending':
+                    try:
+                        bot.sendMessage(target_task.chat_id, f'<b>➲ Enlace retirado de la cola ✗</b>\n\n🔗 <b>{target_task.url[:60]}</b>', parse_mode='html')
+                    except: pass
+                elif cancel_result == 'active':
+                    time.sleep(1)
+                    if target_task.thread_ctx:
+                        msg_obj = target_task.thread_ctx.getStore('msg')
+                        if msg_obj:
+                            try:
+                                bot.editMessageText(msg_obj,'<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
+                            except: pass
+
                 if LOG_GROUP_ID != 0 and proc_user.lower() != ADMIN_USERNAME.lower():
                     try:
                         mensaje_log = (f"<b>❌ ¡Proceso cancelado!</b>\n\n"
@@ -2072,6 +2200,7 @@ def onmessage(update,bot:ObigramClient):
 /adm_uploads - <b>Últimas subidas</b>
 /adm_deletes - <b>Últimas eliminaciones</b>
 /adm_cleardata - <b>Limpiar estadísticas</b>
+/adm_colas - <b>Ver colas de todos los usuarios 🚦</b>
 
 ☁️ <b>Gestión de nubes:</b>
 /adm_allclouds - <b>Ver todas las nubes</b>
@@ -2089,6 +2218,7 @@ def onmessage(update,bot:ObigramClient):
 /del_X - <b>Eliminar tu evidencia</b>
 /delall - <b>Eliminar tus evidencias</b>
 /mystats - <b>Tus estadísticas</b>
+/cola - <b>Ver tu cola de descargas 🚦</b>
                 """
             else:
                 current_cloud_short = user_info["moodle_host"].replace('https://', '').replace('http://', '').strip('/')
@@ -2109,6 +2239,7 @@ def onmessage(update,bot:ObigramClient):
 /del_X - <b>Eliminar evidencia X</b>
 /delall - <b>Eliminar tus evidencias</b>
 /mystats - <b>Ver tus estadísticas</b>
+/cola - <b>Ver tu cola de descargas 🚦</b>
                 """
             
             bot.editMessageText(message, start_msg, parse_mode='html')
@@ -2258,6 +2389,7 @@ def onmessage(update,bot:ObigramClient):
 /adm_uploads - <b>Últimas subidas</b>
 /adm_deletes - <b>Últimas eliminaciones</b>
 /adm_cleardata - <b>Limpiar todos los datos</b>
+/adm_colas - <b>Ver colas de todos los usuarios 🚦</b>
 
 ☁️ <b>Gestión de nubes:</b>
 /adm_allclouds - <b>Ver todas las nubes</b>
@@ -2298,6 +2430,7 @@ def onmessage(update,bot:ObigramClient):
 /adm_userclouds - <b>Ver nubes y usuarios</b>
 /adm_uploads - <b>Últimas subidas</b>
 /adm_deletes - <b>Últimas eliminaciones</b>
+/adm_colas - <b>Ver colas de todos los usuarios 🚦</b>
 
 ☁️ <b>Gestión de nubes:</b>
 /adm_allclouds - <b>Ver todas las nubes</b>
@@ -2315,6 +2448,34 @@ def onmessage(update,bot:ObigramClient):
                 return
             
             elif '/adm_' in msgText:
+                if msgText == '/adm_colas':
+                    try:
+                        active_dict, pending_dict = queue_manager.get_full_snapshot()
+                        all_users = {u for u in (set(active_dict.keys()) | set(pending_dict.keys()))
+                                     if active_dict.get(u) or pending_dict.get(u)}
+
+                        if not all_users:
+                            bot.editMessageText(message, "<b>✅ No hay colas activas en este momento. Todo despejado.</b>", parse_mode='html')
+                            return
+
+                        colas_msg = "🚦 <b>Panel de colas — todos los usuarios</b>\n\n"
+                        for u in sorted(all_users):
+                            active_task = active_dict.get(u)
+                            dq = pending_dict.get(u, [])
+                            colas_msg += f"👤 <b>@{u}</b>\n"
+                            if active_task:
+                                colas_msg += f"   ▶️ <b>En curso:</b> <b>{active_task.url[:45]}</b>\n   🗑️ /cancel_{active_task.task_id}\n"
+                            if dq:
+                                colas_msg += f"   ⏳ <b>En espera ({len(dq)}):</b>\n"
+                                for idx, t in enumerate(dq, 1):
+                                    colas_msg += f"      <b>{idx}.</b> {t.url[:45]}  🗑️ /cancel_{t.task_id}\n"
+                            colas_msg += "\n"
+
+                        send_long_message(bot, chat_id, colas_msg, original_message=message, parse_mode='html')
+                    except Exception as e:
+                        bot.editMessageText(message, f'<b>❌ Error al obtener colas:</b> <b>{str(e)}</b>', parse_mode='html')
+                    return
+
                 if msgText == '/adm_userclouds':
                     try:
                         uclouds_msg = "☁️ <b>Gestión de nubes y usuarios</b>\n\n"
@@ -2873,6 +3034,28 @@ def onmessage(update,bot:ObigramClient):
                 """
             bot.editMessageText(message, stats_msg, parse_mode='html')
             return
+
+        elif msgText == '/cola' or msgText == '/colas':
+            active_task, pending_list = queue_manager.get_user_snapshot(username)
+
+            if not active_task and not pending_list:
+                bot.editMessageText(message, "<b>📭 No tienes tareas en cola en este momento.</b>", parse_mode='html')
+                return
+
+            cola_msg = "🚦 <b>Tu cola de descargas</b>\n\n"
+
+            if active_task:
+                cola_msg += f"▶️ <b>En curso ahora:</b>\n   🔗 <b>{active_task.url[:50]}</b>\n   🗑️ /cancel_{active_task.task_id}\n\n"
+
+            if pending_list:
+                cola_msg += "⏳ <b>En espera:</b>\n"
+                for idx, t in enumerate(pending_list, 1):
+                    cola_msg += f"   <b>{idx}.</b> <b>{t.url[:50]}</b>\n      🗑️ /cancel_{t.task_id}\n"
+            else:
+                cola_msg += "✅ <b>No tienes más enlaces esperando.</b>"
+
+            bot.editMessageText(message, cola_msg, parse_mode='html')
+            return
         
         elif '/files' == msgText:
             proxy = ProxyCloud.parse(user_info['proxy']) if user_info.get('proxy') else None
@@ -3115,14 +3298,11 @@ def onmessage(update,bot:ObigramClient):
                     filename = unquote(filename)
             except: pass
 
-            # --- VERIFICACIÓN DE LÍMITE DIARIO (EXCEPTO ADMIN) ---
-            # Usa la variable global DAILY_LIMIT_BYTES para controlar el límite
             if username.lower() != ADMIN_USERNAME.lower():
                 memory_stats.check_and_update_daily_reset(username)
                 user_st = memory_stats.get_user_stats(username)
                 current_daily_size = user_st['daily_size'] if user_st else 0
                 
-                # Si DAILY_LIMIT_BYTES es 0, significa SIN LÍMITE
                 if DAILY_LIMIT_BYTES > 0 and current_daily_size + file_size > DAILY_LIMIT_BYTES:
                     send_reaction(chat_id, update.message.message_id, "💩")
                     if current_daily_size == 0:
@@ -3163,7 +3343,6 @@ def onmessage(update,bot:ObigramClient):
                             print(f"Error al notificar bloqueo por límite diario al grupo: {e}")
                     return
             
-            # Reacción con rayo para enlace aceptado
             send_reaction(chat_id, update.message.message_id, "⚡")
 
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
@@ -3175,7 +3354,24 @@ def onmessage(update,bot:ObigramClient):
                 except Exception as e:
                     print(f"Error al notificar enlace: {e}")
             
-            ddl(update,bot,message,url,file_name='',thread=thread,jdb=jdb)
+            task_id = createID()
+            task, is_immediate, position = queue_manager.submit(username, url, chat_id, task_id)
+
+            if is_immediate:
+                task.thread_ctx = thread
+                ddl(update,bot,message,url,file_name='',thread=thread,jdb=jdb)
+            else:
+                queue_pos_msg = f"""
+<b>⏳ Enlace en cola de espera</b>
+
+🔗 <b>Enlace:</b> <code>{url[:60]}</code>
+📊 <b>Posición en tu cola:</b> <b>#{position}</b>
+⚙️ <b>Se procesará automáticamente al terminar tu tarea actual.</b>
+
+🗑️ <b>Cancelar este turno:</b> /cancel_{task_id}
+📋 <b>Ver tu cola completa:</b> /cola
+                """
+                bot.editMessageText(message, queue_pos_msg, parse_mode='html')
         else:
             bot.editMessageText(message,'<b>➲ No se pudo procesar ✗ </b>', parse_mode='html')
             
