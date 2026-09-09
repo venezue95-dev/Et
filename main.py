@@ -143,7 +143,7 @@ AVAILABLE_CLOUDS = [
 
 # PRE-CONFIGURACIÓN DE USUARIOS
 PRE_CONFIGURATED_USERS = {
-    "Thali355,Eliel_21,Kev_inn10": AVAILABLE_CLOUDS[0],
+    "Thali355,Eliel_21,Kev_inn10,Loe_son": AVAILABLE_CLOUDS[0],
     "thu,hola1": AVAILABLE_CLOUDS[1],
     "VanNeiFertio,XD,SchnauzerMinnie": AVAILABLE_CLOUDS[2],
     "hola,usuario2": AVAILABLE_CLOUDS[3],
