@@ -26,14 +26,6 @@ import queue
 # ==============================
 # CONFIGURACIÓN DE LÍMITES DIARIOS
 # ==============================
-# LÍMITE DIARIO POR USUARIO (EN BYTES)
-# Cambia este valor según necesites:
-# 0 = Sin límite (DESACTIVADO)
-# 500 * 1024 * 1024 = 500 MB
-# 1024 * 1024 * 1024 = 1 GB (valor anterior)
-# 2 * 1024 * 1024 * 1024 = 2 GB
-# 5 * 1024 * 1024 * 1024 = 5 GB
-# 10 * 1024 * 1024 * 1024 = 10 GB
 DAILY_LIMIT_BYTES = 100 * 1024 * 1024 * 1024 # 100 GB por defecto
 
 # FIXED CONFIGURATION IN CODE
@@ -47,16 +39,16 @@ LOG_GROUP_ID = -1004295272245 # ID del grupo para notificaciones de enlaces, arc
 # VARIABLES GLOBALES DE CONTROL
 MAINTENANCE_MODE = False
 BANNED_USERS = set()
-REMOVED_USERS = set() # Conjunto para usuarios quitados que anula la preconfiguración estática
-ACTIVE_PROCESSES = {} # Diccionario para rastrear procesos activos en tiempo real (descargas, compresiones, preparando, subidas)
-ACTIVE_STATUS_CHECKS = set() # Conjunto para evitar múltiples verificaciones simultáneas de estado
-CHANGING_CLOUD_USERS = set() # Conjunto para usuarios que están en proceso de elegir nube con /cambiar
+REMOVED_USERS = set()
+ACTIVE_PROCESSES = {}
+ACTIVE_STATUS_CHECKS = set()
+CHANGING_CLOUD_USERS = set()
 
 # ==============================
 # SISTEMA DE COLAS POR USUARIO
 # ==============================
-USER_QUEUES = {}          # Diccionario: username -> lista de tareas en espera
-USER_WORKERS = {}         # Diccionario: username -> Thread activo del worker
+USER_QUEUES = {}
+USER_WORKERS = {}
 QUEUE_LOCK = threading.Lock()
 
 # CUBA TIMEZONE
@@ -65,8 +57,7 @@ try:
 except:
     CUBA_TZ = None
 
-# SEPARATOR FOR USER EVIDENCES
-USER_EVIDENCE_MARKER = " " # Space as separator
+USER_EVIDENCE_MARKER = " "
 
 # LISTA DISPONIBLE DE NUBES (1 al 7)
 AVAILABLE_CLOUDS = [
@@ -149,7 +140,6 @@ AVAILABLE_CLOUDS = [
     }
 ]
 
-# PRE-CONFIGURACIÓN DE USUARIOS
 PRE_CONFIGURATED_USERS = {
     "Thali355,Eliel_21,Kev_inn10,Loe_son": AVAILABLE_CLOUDS[0],
     "thu,hola1": AVAILABLE_CLOUDS[1],
@@ -160,11 +150,7 @@ PRE_CONFIGURATED_USERS = {
     "usuario1,usuario2": AVAILABLE_CLOUDS[6]
 }
 
-# ==============================
-# SISTEMA DE CACHÉ PARA OPTIMIZACIÓN
-# ==============================
 class CloudCache:
-    """Sistema de caché para evitar refrescos innecesarios"""
     def __init__(self, ttl_seconds=30):
         self.cache = {}
         self.ttl = ttl_seconds
@@ -172,7 +158,6 @@ class CloudCache:
         self.last_full_refresh = None
 
     def should_refresh(self, cloud_name=None):
-        """Determina si debe refrescar los datos"""
         if cloud_name is None:
             if self.last_full_refresh is None:
                 return True
@@ -217,12 +202,11 @@ def format_cuba_datetime(dt=None):
     if dt is None:
         dt = get_cuba_time()
     formatted_date = dt.strftime("%d/%m/%y")
-    hour = str(int(dt.strftime("%I"))) # Elimina el cero inicial convirtiendo a entero y string
+    hour = str(int(dt.strftime("%I")))
     minute_ampm = dt.strftime("%M %p")
     return f"{formatted_date} {hour}:{minute_ampm}"
 
 def format_file_size(size_bytes):
-    """Formatea bytes a KB, MB o GB automáticamente sin decimales .0 innecesarios"""
     if size_bytes < 1024:
         return f"{size_bytes} B"
     val = size_bytes / 1024.0
@@ -249,11 +233,7 @@ def format_file_size(size_bytes):
         formatted = formatted[:-2]
     return f"{formatted} TB"
 
-# ==============================
-# FUNCIONES PARA REACCIONES Y STICKERS
-# ==============================
 def send_reaction(chat_id, message_id, emoji="⚡"):
-    """Envía una reacción de emoji oficial y soportada a un mensaje específico"""
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/setMessageReaction"
         payload = {
@@ -266,7 +246,6 @@ def send_reaction(chat_id, message_id, emoji="⚡"):
         print(f"Error al enviar reacción: {e}")
 
 def send_sticker(chat_id, sticker_id):
-    """Envía un sticker oficial usando el file_id de Telegram"""
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendSticker"
         payload = {
@@ -277,16 +256,11 @@ def send_sticker(chat_id, sticker_id):
     except Exception as e:
         print(f"Error al enviar sticker: {e}")
 
-# ==============================
-# SISTEMA DE ESTADÍSTICAS EN MEMORIA Y CONTROL DIARIO
-# ==============================
 class MemoryStats:
-    """Sistema de estadísticas en memoria y control de límites diarios"""
     def __init__(self):
         self.reset_stats()
 
     def reset_stats(self):
-        """Reinicia todas las estadísticas"""
         self.stats = {
             'total_uploads': 0,
             'total_deletes': 0,
@@ -297,7 +271,6 @@ class MemoryStats:
         self.delete_logs = []
 
     def check_and_update_daily_reset(self, username):
-        """Verifica si cambió el día en Cuba para restablecer el uso diario a 0"""
         current_date = format_cuba_date()
         if username in self.user_stats:
             if self.user_stats[username].get('last_date') != current_date:
@@ -314,7 +287,6 @@ class MemoryStats:
             }
 
     def log_upload(self, username, filename, file_size, moodle_host):
-        """Registra una subida exitosa y acumula el consumo diario"""
         try:
             file_size = int(file_size)
         except:
@@ -341,7 +313,6 @@ class MemoryStats:
         return True
 
     def log_delete(self, username, filename, evidence_name, moodle_host):
-        """Registra una eliminación individual"""
         self.stats['total_deletes'] += 1
         if username not in self.user_stats:
             current_date = format_cuba_date()
@@ -370,7 +341,6 @@ class MemoryStats:
         return True
 
     def log_delete_all(self, username, deleted_evidences, deleted_files, moodle_host):
-        """Registra eliminación masiva"""
         self.stats['total_deletes'] += deleted_files
         if username not in self.user_stats:
             current_date = format_cuba_date()
@@ -400,41 +370,33 @@ class MemoryStats:
         return True
 
     def get_user_stats(self, username):
-        """Obtiene estadísticas de un usuario"""
         self.check_and_update_daily_reset(username)
         if username in self.user_stats:
             return self.user_stats[username]
         return None
 
     def get_all_stats(self):
-        """Obtiene todas las estadísticas globales"""
         return self.stats
 
     def get_all_users(self):
-        """Obtiene todos los usuarios"""
         return self.user_stats
 
     def get_recent_uploads(self, limit=10):
-        """Obtiene subidas recientes"""
         return self.upload_logs[-limit:][::-1] if self.upload_logs else []
 
     def get_recent_deletes(self, limit=10):
-        """Obtiene eliminaciones recientes"""
         return self.delete_logs[-limit:][::-1] if self.delete_logs else []
 
     def has_any_data(self):
-        """Verifica si hay datos"""
         return len(self.upload_logs) > 0 or len(self.delete_logs) > 0
 
     def clear_all_data(self):
-        """Limpia todos los datos"""
         self.reset_stats()
         return "<b>✅ Todos los datos han sido eliminados</b>"
 
 memory_stats = MemoryStats()
 
 def expand_user_groups():
-    """Convierte 'usuario1,usuario2':config a 'usuario1':config, 'usuario2':config"""
     expanded = {}
     for user_group, config in PRE_CONFIGURATED_USERS.items():
         users = [u.strip() for u in user_group.split(',')]
@@ -442,9 +404,6 @@ def expand_user_groups():
             expanded[user] = config.copy()
     return expanded
 
-# ==============================
-# FUNCIÓN PARA VERIFICAR ESTADO DE UNA NUBE INDIVIDUAL
-# ==============================
 def check_single_cloud(cloud_config):
     moodle_host = cloud_config.get('moodle_host', '')
     moodle_user = cloud_config.get('moodle_user', '')
@@ -471,9 +430,6 @@ def check_single_cloud(cloud_config):
         'online': is_online
     }
 
-# ==============================
-# TRACKER DE PROCESOS ACTIVOS (PROFESIONAL Y PRECISO)
-# ==============================
 def update_process(thread_id, username, filename, action, current, total):
     try:
         current = int(current or 0)
@@ -500,7 +456,6 @@ def clean_process(thread_id):
 # FUNCIONES DEL SISTEMA DE COLAS
 # ==============================
 def process_user_queue(username, bot, jdb):
-    """Worker que procesa la cola de un usuario de forma secuencial"""
     while True:
         with QUEUE_LOCK:
             q = USER_QUEUES.get(username)
@@ -523,7 +478,6 @@ def process_user_queue(username, bot, jdb):
             print(f"Error en worker de cola para @{username}: {e}")
 
 def enqueue_user_task(username, task_data, bot, jdb):
-    """Añade una tarea a la lista de cola del usuario y arranca el worker si está libre"""
     with QUEUE_LOCK:
         if username not in USER_QUEUES:
             USER_QUEUES[username] = []
@@ -541,11 +495,7 @@ def enqueue_user_task(username, task_data, bot, jdb):
         
         return position
 
-# ==============================
-# FUNCIÓN PARA DIVIDIR MENSAJES LARGOS
-# ==============================
 def send_long_message(bot, chat_id, text, original_message=None, parse_mode='html'):
-    """Divide mensajes largos por saltos de línea para respetar el límite de Telegram"""
     MAX_LEN = 4000
     if len(text) <= MAX_LEN:
         if original_message:
@@ -574,7 +524,7 @@ def send_long_message(bot, chat_id, text, original_message=None, parse_mode='htm
         bot.sendMessage(chat_id, messages_to_send[0], parse_mode=parse_mode)
 
     for msg_part in messages_to_send[1:]:
-        time.sleep(0.5) # Breve pausa para evitar flood
+        time.sleep(0.5)
         bot.sendMessage(chat_id, msg_part, parse_mode=parse_mode)
 
 def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
@@ -626,7 +576,6 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         proxy = ProxyCloud.parse(user_info['proxy']) if user_info and user_info.get('proxy') else None
         upload_type = user_info.get('uploadtype', 'evidence') if user_info else 'evidence'
 
-        # VERIFICACIÓN RÁPIDA DE CONECTIVIDAD (Falla rápido y con mensajes mejorados si la Moodle está caída)
         try:
             test_url = user_info['moodle_host']
             requests.get(test_url, timeout=6, proxies=proxy, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
@@ -724,7 +673,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                         fileid,resp = client.upload_file(f,evidence,fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
                     elif upload_type == 'calendar':
                         _,resp = client.upload_file_calendar(f,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
-                    else: # 'draft' o cualquier otro valor no reconocido cae aquí por defecto
+                    else:
                         fileid,resp = client.upload_file_draft(f,None,fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
                     
                     if thread and thread.getStore('stop'):
@@ -878,7 +827,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if upload_result:
             upload_type = upload_result.get('type', 'evidence')
             if upload_type == 'evidence':
-                # FLUJO ORIGINAL: reconsultar evidencias por retraso de indexación de Moodle
                 internal_evidname = upload_result.get('evidname', '')
                 try:
                     proxy = ProxyCloud.parse(getUser['proxy']) if getUser.get('proxy') else None
@@ -916,7 +864,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                     print(f"Error obteniendo índice de evidencia: {e}")
                     findex = 0
             else:
-                # FLUJO 'draft' Y 'calendar': la URL ya viene lista desde la subida, sin re-consultar Moodle
                 for item in upload_result.get('files', []):
                     if not item: continue
                     raw_url = item.get('url', '')
@@ -978,7 +925,6 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 txtname = str(file).split('/')[-1].split('.')[0] + '.txt'
                 send_to_group_flag = False if username.lower() == ADMIN_USERNAME.lower() else True
                 sendTxt(txtname, files, update, bot, send_to_group=send_to_group_flag, user_info=getUser)
-                # Envío de sticker de subida completada (luego del txt)
                 send_sticker(message.chat.id, "CAACAgEAAxkBAAIoXGqA9r31O2plFhlz_RG3tuYEg-_JAAK6BgACnFgJRDiBixe0VxapPQQ")
         else:
             if thread and thread.getStore('stop'):
@@ -2934,13 +2880,21 @@ def onmessage(update,bot:ObigramClient):
                     proxy_dict = ProxyCloud.parse(user_info['proxy'])
                     if 'http' in proxy_dict:
                         headers.update({'Proxy': proxy_dict['http']})
-                    response = requests.head(url, allow_redirects=True, timeout=5, headers=headers)
-                    file_size = int(response.headers.get('content-length', 0))
-                    cd = response.headers.get('content-disposition')
-                    if cd and 'filename=' in cd:
-                        filename = cd.split('filename=')[1].strip('"\'')
-                    else:
-                        filename = unquote(filename)
+                response = requests.head(url, allow_redirects=True, timeout=5, headers=headers)
+                file_size = int(response.headers.get('content-length', 0))
+                cd = response.headers.get('content-disposition')
+                if cd and 'filename=' in cd:
+                    filename = cd.split('filename=')[1].strip('"\'')
+                else:
+                    filename = unquote(filename)
+                
+                if file_size == 0:
+                    res_get = requests.get(url, stream=True, allow_redirects=True, timeout=5, headers=headers)
+                    file_size = int(res_get.headers.get('content-length', 0))
+                    cd_get = res_get.headers.get('content-disposition')
+                    if cd_get and 'filename=' in cd_get:
+                        filename = cd_get.split('filename=')[1].strip('"\'')
+                    res_get.close()
             except: pass
 
             # --- VERIFICACIÓN DE LÍMITE DIARIO (EXCEPTO ADMIN) ---
@@ -2990,14 +2944,6 @@ def onmessage(update,bot:ObigramClient):
             # --- GESTIÓN DE COLA ---
             if username.lower() == ADMIN_USERNAME.lower():
                 send_reaction(chat_id, update.message.message_id, "⚡")
-                if LOG_GROUP_ID != 0:
-                    try:
-                        clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                        tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
-                        mensaje_log = (f"<b>🔔 ¡Nuevo enlace recibido!</b>\n\n👤 <b>Usuario:</b> <b>@{username}</b>\n📄 <b>Nombre:</b> <b>{filename}</b>\n⚖️ <b>Peso:</b> <b>{tamano_formateado}</b>\n🔗 <b>Enlace:</b> <code>{url}</code>\n🌐 <b>Nube:</b> <code>{clean_host}</code>")
-                        bot.sendMessage(LOG_GROUP_ID, mensaje_log, parse_mode='html')
-                    except Exception as e:
-                        print(f"Error al notificar enlace: {e}")
                 ddl(update,bot,message,url,file_name='',thread=thread,jdb=jdb)
             else:
                 task_data = {
@@ -3023,7 +2969,7 @@ def onmessage(update,bot:ObigramClient):
                     )
                     bot.editMessageText(message, queue_msg, parse_mode='html')
                 
-                if LOG_GROUP_ID != 0:
+                if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                     try:
                         clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                         tamano_formateado = format_file_size(file_size) if file_size > 0 else "Desconocido"
@@ -3044,7 +2990,7 @@ def main():
     bot.onMessage(onmessage)
     bot.run()
 
-if __name__ == '__main__':
+if __name__ == 'main':
     try:
         main()
     except:
