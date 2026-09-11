@@ -28,7 +28,7 @@ import collections
 # ==============================
 DAILY_LIMIT_BYTES = 100 * 1024 * 1024 * 1024  # 100 GB por defecto
 
-BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
+BOT_TOKEN = "8941256926:AAEXDG_IsPBbseC7Q9mmpFQDqHsK6MKpK9s"
 ADMIN_USERNAME = "Eliel_21"
 ADMIN_CHAT_ID = 7363341763
 LOG_GROUP_ID = -1004295272245
