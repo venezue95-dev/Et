@@ -25,9 +25,10 @@ import collections
 import re
 
 # ==============================
-# CONFIGURACIÓN DE LÍMITES DIARIOS
+# CONFIGURACIÓN DE LÍMITES DIARIOS Y PROXY GLOBAL
 # ==============================
 DAILY_LIMIT_BYTES = 100 * 1024 * 1024 * 1024  # 100 GB por defecto
+GLOBAL_PROXY = ""  # Proxy global de subida para todos los usuarios (configurado exclusivamente por el admin)
 
 BOT_TOKEN = "8941256926:AAEkvECxYM6smX0xV1adNv8uESbCUaG1_co"
 ADMIN_USERNAME = "Eliel_21"
@@ -725,7 +726,11 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             
         fileid = None
         user_info = jdb.get_user(username)
-        proxy = ProxyCloud.parse(user_info['proxy']) if user_info and user_info.get('proxy') else None
+        
+        # Usar el proxy global configurado por el administrador exclusivamente para la subida
+        global GLOBAL_PROXY
+        proxy = ProxyCloud.parse(GLOBAL_PROXY) if GLOBAL_PROXY else None
+        
         upload_type = user_info.get('uploadtype', 'evidence') if user_info else 'evidence'
         
         try:
@@ -1007,7 +1012,8 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             if upload_type == 'evidence':
                 internal_evidname = upload_result.get('evidname', '')
                 try:
-                    proxy = ProxyCloud.parse(getUser['proxy']) if getUser.get('proxy') else None
+                    global GLOBAL_PROXY
+                    proxy = ProxyCloud.parse(GLOBAL_PROXY) if GLOBAL_PROXY else None
                     moodle_client = MoodleClient(getUser['moodle_user'],
                                                  getUser['moodle_password'],
                                                  getUser['moodle_host'],
@@ -1872,6 +1878,25 @@ def onmessage(update,bot:ObigramClient):
         message = bot.sendMessage(chat_id,'<b>➲ Procesando ✪ ●●○</b>', parse_mode='html')
         thread.store('msg',message)
 
+        # ============================================
+        # COMANDO EXCLUSIVO ADMIN: /setproxy
+        # ============================================
+        if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/setproxy'):
+            try:
+                global GLOBAL_PROXY
+                new_proxy = msgText.replace('/setproxy', '').strip()
+                
+                if new_proxy.lower() in ('none', 'off', 'borrar', 'limpiar', ''):
+                    GLOBAL_PROXY = ''
+                    bot.editMessageText(message, "<b>✅ Proxy global de subida desactivado correctamente.</b>", parse_mode='html')
+                else:
+                    GLOBAL_PROXY = new_proxy
+                    bot.editMessageText(message, f"<b>✅ Proxy global de subida actualizado para todos los usuarios:</b>\n\n🔗 <code>{GLOBAL_PROXY}</code>", parse_mode='html')
+                return
+            except Exception as e:
+                bot.editMessageText(message, f"<b>❌ Error al configurar el proxy:</b> <b>{str(e)}</b>", parse_mode='html')
+            return
+
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/add '):
             try:
                 parts = msgText.replace('/add', '').strip().split()
@@ -2228,6 +2253,7 @@ def onmessage(update,bot:ObigramClient):
 /status - <b>Estado de las nubes 🟢/🔴</b>
 /procesos - <b>Procesos en tiempo real 🚀</b>
 /mantenimiento - <b>Modo mantenimiento 🛠️</b>
+/setproxy [url] - <b>Configurar proxy global de subida 🔗</b>
 /add - <b>Agregar usuario y nube ➕</b>
 /remove - <b>Quitar usuario del bot ➖</b>
 /ban - <b>Banear usuario 🚫</b>
@@ -2447,6 +2473,7 @@ def onmessage(update,bot:ObigramClient):
 /status - <b>Estado de las nubes 🟢/🔴</b>
 /procesos - <b>Procesos activos 🚀</b>
 /mantenimiento - <b>Activar/Desactivar 🛠️</b>
+/setproxy [url] - <b>Configurar proxy global 🔗</b>
 /add - <b>Agregar usuario y nube ➕</b>
 /remove - <b>Quitar usuario del bot ➖</b>
 /ban - <b>Banear usuario 🚫</b>
@@ -2489,6 +2516,7 @@ def onmessage(update,bot:ObigramClient):
 /status - <b>Estado de las nubes 🟢/🔴</b>
 /procesos - <b>Procesos activos 🚀</b>
 /mantenimiento - <b>Activar/Desactivar 🛠️</b>
+/setproxy [url] - <b>Configurar proxy global 🔗</b>
 /add - <b>Agregar usuario y nube ➕</b>
 /remove - <b>Quitar usuario del bot ➖</b>
 /ban - <b>Banear usuario 🚫</b>
