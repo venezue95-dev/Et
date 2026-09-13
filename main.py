@@ -133,9 +133,9 @@ PRE_CONFIGURATED_USERS = {
     "thu,hola1": AVAILABLE_CLOUDS[1],
     "VanNeiFertio,XD,SchnauzerMinnie": AVAILABLE_CLOUDS[2],
     "hola,usuario2": AVAILABLE_CLOUDS[3],
-    "gatitoo_miauu,usuario_nuevo2,alejandrorosell": AVAILABLE_CLOUDS[4],
+    "gatitoo_miauu,usuario_nuevo2": AVAILABLE_CLOUDS[4],
     "Satoru_2115,usuario_nuevo4": AVAILABLE_CLOUDS[5],
-    "usuario1,usuario2": AVAILABLE_CLOUDS[6]
+    "usuario1,usuario2,alejandrorosell": AVAILABLE_CLOUDS[6]
 }
 
 # ==============================
@@ -1936,26 +1936,18 @@ def onmessage(update,bot:ObigramClient):
                 bot.editMessageText(message, f"<b>❌ Error:</b> <b>{str(e)}</b>", parse_mode='html')
             return
 
-        if username.lower() == ADMIN_USERNAME.lower() and (msgText.lower().startswith('/udel_all ') or msgText.lower().startswith('/udel_all_')):
+        if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/udel_all_'):
             try:
-                target_user = ""
-                cloud_idx = 0
-                
-                if msgText.lower().startswith('/udel_all_'):
-                    parts = msgText.strip().split('_')
-                    if len(parts) >= 3:
-                        cloud_idx = int(parts[2])
-                        target_user = parts[3].strip().lstrip('@')
+                parts = msgText.strip().split('_')
+                if len(parts) >= 4:
+                    cloud_idx = int(parts[2])
+                    target_user = parts[3].strip().lstrip('@')
                 else:
-                    parts = msgText.strip().split()
-                    if len(parts) >= 3:
-                        target_user = parts[1].strip().lstrip('@')
-                        cloud_num_part = parts[2].strip()
-                        if cloud_num_part.isdigit():
-                            cloud_idx = int(cloud_num_part) - 1
+                    bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>", parse_mode='html')
+                    return
                 
                 if not (0 <= cloud_idx < len(AVAILABLE_CLOUDS)) or not target_user:
-                    bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /udel_all @usuario 1", parse_mode='html')
+                    bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>", parse_mode='html')
                     return
                 
                 cloud_cfg = AVAILABLE_CLOUDS[cloud_idx]
@@ -2003,9 +1995,8 @@ def onmessage(update,bot:ObigramClient):
 
                     if LOG_GROUP_ID != 0:
                         try:
-                            msg_log = (f"<b>🗑️💥 ¡Eliminación masiva de usuario por Admin!</b>\n\n"
-                                       f"<b>👤 Propietario:</b> <b>@{target_user}</b>\n"
-                                       f"<b>👑 Admin:</b> <b>@{username}</b>\n"
+                            msg_log = (f"<b>🗑️💥 ¡Eliminación masiva de usuario!</b>\n\n"
+                                       f"<b>👤 Usuario:</b> <b>@{target_user}</b>\n"
                                        f"<b>📊 Evidencias borradas:</b> <b>{total_evidences}</b>\n"
                                        f"<b>📁 Archivos borrados:</b> <b>{total_files}</b>\n"
                                        f"<b>☁️ Nube:</b> <code>{short_host}</code>")
@@ -2097,9 +2088,8 @@ def onmessage(update,bot:ObigramClient):
 
                     if LOG_GROUP_ID != 0:
                         try:
-                            msg_log = (f"<b>🗑️ ¡Evidencia de usuario eliminada por Admin!</b>\n\n"
-                                       f"<b>👤 Propietario:</b> <b>@{target_user}</b>\n"
-                                       f"<b>👑 Admin:</b> <b>@{username}</b>\n"
+                            msg_log = (f"<b>🗑️ ¡Evidencia de usuario eliminada!</b>\n\n"
+                                       f"<b>👤 Usuario:</b> <b>@{target_user}</b>\n"
                                        f"<b>📄 Evidencia:</b> <b>{evidence_clean_name}</b>\n"
                                        f"<b>📁 Archivos:</b> <b>{file_count}</b>\n"
                                        f"<b>☁️ Nube:</b> <code>{short_host}</code>")
@@ -2485,7 +2475,6 @@ def onmessage(update,bot:ObigramClient):
 /ban - <b>Banear usuario 🚫</b>
 /unban - <b>Desbanear usuario ✅</b>
 /userfiles @usuario [nube] - <b>Ver y borrar evidencias de un usuario 📁</b>
-/udel_all @usuario [nube] - <b>Borrar todas las evidencias de un usuario 💣</b>
 
 📈 <b>Estadísticas y gestión:</b>
 /adm_logs - <b>Logs del sistema</b>
@@ -2640,6 +2629,14 @@ def onmessage(update,bot:ObigramClient):
                     for tid, p in list(ACTIVE_PROCESSES.items()):
                         if p.get('user', '').lower() != ADMIN_USERNAME.lower():
                             clean_process(tid)
+                    
+                    if LOG_GROUP_ID != 0:
+                        try:
+                            msg_maint = (f"<b>🛠️ ¡Modo mantenimiento activado!</b>\n\n"
+                                         f"⚠️ <b>Se cancelaron {cancel_count} proceso(s) activo(s) y {pending_count} enlace(s) en cola.</b>")
+                            bot.sendMessage(LOG_GROUP_ID, msg_maint, parse_mode='html')
+                        except Exception as e:
+                            print(f"Error al notificar mantenimiento al grupo: {e}")
                 
                 aviso_cancelados = ""
                 if cancel_count > 0 or pending_count > 0:
@@ -2706,7 +2703,6 @@ def onmessage(update,bot:ObigramClient):
 /ban - <b>Banear usuario 🚫</b>
 /unban - <b>Desbanear usuario ✅</b>
 /userfiles @usuario [nube] - <b>Ver evidencias de usuario 📁</b>
-/udel_all @usuario [nube] - <b>Borrar todas las evidencias 💣</b>
 
 📈 <b>Estadísticas y usuarios:</b>
 /adm_logs - <b>Ver últimos logs</b>
@@ -2750,7 +2746,6 @@ def onmessage(update,bot:ObigramClient):
 /ban - <b>Banear usuario 🚫</b>
 /unban - <b>Desbanear usuario ✅</b>
 /userfiles @usuario [nube] - <b>Ver evidencias de usuario 📁</b>
-/udel_all @usuario [nube] - <b>Borrar todas las evidencias 💣</b>
 
 📈 <b>Estadísticas y usuarios:</b>
 /adm_logs - <b>Ver últimos logs</b>
@@ -3266,7 +3261,7 @@ def onmessage(update,bot:ObigramClient):
                             logs_msg = logs_msg[:4000] + "\n\n⚠️ <b>Truncado</b>"
                         bot.editMessageText(message, logs_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b>❌ Error al obtener logs:</b> <b>{str(e)}</b>", parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error al obtener logs:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_users' in msgText:
@@ -3285,7 +3280,7 @@ def onmessage(update,bot:ObigramClient):
                             users_msg = users_msg[:4000] + "\n\n⚠️ <b>Truncado</b>"
                         bot.editMessageText(message, users_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b>❌ Error al obtener usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error al obtener usuarios:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_uploads' in msgText:
@@ -3300,7 +3295,7 @@ def onmessage(update,bot:ObigramClient):
                             uploads_msg += f"<b>{i}.</b> <b>{log['filename']}</b>\n   👤 <b>@{log['username']}</b> | 📏 <b>{log['file_size_formatted']}</b>\n\n"
                         bot.editMessageText(message, uploads_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b>❌ Error al obtener subidas:</b> <b>{str(e)}</b>", parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error al obtener subidas:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_deletes' in msgText:
@@ -3318,7 +3313,7 @@ def onmessage(update,bot:ObigramClient):
                                 deletes_msg += f"<b>{i}.</b> <b>{log['filename']}</b>\n   👤 <b>@{log['username']}</b>\n\n"
                         bot.editMessageText(message, deletes_msg, parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b>❌ Error al obtener eliminaciones:</b> <b>{str(e)}</b>", parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error al obtener eliminaciones:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
                 
                 elif '/adm_cleardata' in msgText:
@@ -3329,7 +3324,7 @@ def onmessage(update,bot:ObigramClient):
                         result = memory_stats.clear_all_data()
                         bot.editMessageText(message, f"<b>{result}</b>", parse_mode='html')
                     except Exception as e:
-                        bot.editMessageText(message, f"<b>❌ Error al limpiar datos:</b> <b>{str(e)}</b>", parse_mode='html')
+                        bot.editMessageText(message, f'<b>❌ Error al limpiar datos:</b> <b>{str(e)}</b>', parse_mode='html')
                     return
         
         # ============================================
