@@ -895,19 +895,21 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None):
             return "LOGIN_FAILED"
     except Exception as ex:
         if thread and thread.getStore('stop'):
-            try:
-                p_act = ACTIVE_PROCESSES.get(thread.id, {}).get('action', '') if thread else ''
-                if 'Comprimiendo' in p_act:
-                    cancel_txt = '<b>⚠️ Compresión cancelada.</b>'
-                elif 'Subiendo' in p_act or 'Preparando' in p_act:
-                    cancel_txt = '<b>⚠️ Subida cancelada.</b>'
-                elif 'Descargando' in p_act:
-                    cancel_txt = '<b>⚠️ Descarga cancelada.</b>'
-                else:
-                    cancel_txt = '<b>⚠️ Tarea cancelada.</b>'
-                bot.editMessageText(message, cancel_txt, parse_mode='html')
-            except:
-                pass
+            if not thread.getStore('cancelled'):
+                try:
+                    p_act = ACTIVE_PROCESSES.get(thread.id, {}).get('action', '') if thread else ''
+                    if 'Comprimiendo' in p_act:
+                        cancel_txt = '<b>⚠️ Compresión cancelada.</b>'
+                    elif 'Subiendo' in p_act or 'Preparando' in p_act:
+                        cancel_txt = '<b>⚠️ Subida cancelada.</b>'
+                    elif 'Descargando' in p_act:
+                        cancel_txt = '<b>⚠️ Descarga cancelada.</b>'
+                    else:
+                        cancel_txt = '<b>⚠️ Tarea cancelada.</b>'
+                    bot.editMessageText(message, cancel_txt, parse_mode='html')
+                    thread.store('cancelled', True)
+                except:
+                    pass
             return None
 
         error_detail = str(ex) if str(ex) else "Error desconocido en la subida"
@@ -1156,19 +1158,21 @@ def processFile(update,bot,message,file,thread=None):
                 bot.editMessageText(message, error_page_msg, parse_mode='html')
     except Exception as ex:
         if thread and thread.getStore('stop'):
-            try:
-                p_act = ACTIVE_PROCESSES.get(thread.id, {}).get('action', '') if thread else ''
-                if 'Comprimiendo' in p_act:
-                    cancel_txt = '<b>⚠️ Compresión cancelada.</b>'
-                elif 'Subiendo' in p_act or 'Preparando' in p_act:
-                    cancel_txt = '<b>⚠️ Subida cancelada.</b>'
-                elif 'Descargando' in p_act:
-                    cancel_txt = '<b>⚠️ Descarga cancelada.</b>'
-                else:
-                    cancel_txt = '<b>⚠️ Tarea cancelada.</b>'
-                bot.editMessageText(message, cancel_txt, parse_mode='html')
-            except:
-                pass
+            if not thread.getStore('cancelled'):
+                try:
+                    p_act = ACTIVE_PROCESSES.get(thread.id, {}).get('action', '') if thread else ''
+                    if 'Comprimiendo' in p_act:
+                        cancel_txt = '<b>⚠️ Compresión cancelada.</b>'
+                    elif 'Subiendo' in p_act or 'Preparando' in p_act:
+                        cancel_txt = '<b>⚠️ Subida cancelada.</b>'
+                    elif 'Descargando' in p_act:
+                        cancel_txt = '<b>⚠️ Descarga cancelada.</b>'
+                    else:
+                        cancel_txt = '<b>⚠️ Tarea cancelada.</b>'
+                    bot.editMessageText(message, cancel_txt, parse_mode='html')
+                    thread.store('cancelled', True)
+                except:
+                    pass
             return
 
         error_detail = str(ex) if str(ex) else "Error desconocido"
@@ -1263,15 +1267,17 @@ def ddl(update,bot,message,url,file_name='',thread=None):
                     bot.editMessageText(message,'<b>❌ Error en la descarga.</b>', parse_mode='html')
     except Exception as ex:
         if thread and thread.getStore('stop'):
-            try:
-                p_act = ACTIVE_PROCESSES.get(thread.id, {}).get('action', '') if thread else ''
-                if 'Descargando' in p_act:
-                    cancel_txt = '<b>⚠️ Descarga cancelada.</b>'
-                else:
-                    cancel_txt = '<b>⚠️ Tarea cancelada.</b>'
-                bot.editMessageText(message, cancel_txt, parse_mode='html')
-            except:
-                pass
+            if not thread.getStore('cancelled'):
+                try:
+                    p_act = ACTIVE_PROCESSES.get(thread.id, {}).get('action', '') if thread else ''
+                    if 'Descargando' in p_act:
+                        cancel_txt = '<b>⚠️ Descarga cancelada.</b>'
+                    else:
+                        cancel_txt = '<b>⚠️ Tarea cancelada.</b>'
+                    bot.editMessageText(message, cancel_txt, parse_mode='html')
+                    thread.store('cancelled', True)
+                except:
+                    pass
         else:
             print(f"Error en ddl: {ex}")
     finally:
@@ -1827,6 +1833,7 @@ def onmessage(update,bot:ObigramClient):
                     elif cancel_result == 'active':
                         if target_task.thread_ctx:
                             target_task.thread_ctx.store('stop', True)
+                            target_task.thread_ctx.store('cancelled', True)
                             dl = target_task.thread_ctx.getStore('downloader')
                             if dl:
                                 try:
@@ -1883,7 +1890,7 @@ def onmessage(update,bot:ObigramClient):
                 print(str(ex))
             return
 
-        message = bot.sendMessage(chat_id,'<b>✨Procesando solicitud...✨</b>', parse_mode='html')
+        message = bot.sendMessage(chat_id,'<b>Procesando solicitud...</b>', parse_mode='html')
         thread.store('msg',message)
 
         # ============================================
@@ -2563,6 +2570,7 @@ def onmessage(update,bot:ObigramClient):
                         try:
                             if active_task.thread_ctx:
                                 active_task.thread_ctx.store('stop', True)
+                                active_task.thread_ctx.store('cancelled', True)
                                 dl = active_task.thread_ctx.getStore('downloader')
                                 if dl:
                                     try: dl.stop()
