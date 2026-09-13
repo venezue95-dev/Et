@@ -1,7 +1,6 @@
 from pyobigram.utils import sizeof_fmt,get_file_size,createID,nice_time
 from pyobigram.client import ObigramClient, inlineQueryResultArticle
 from MoodleClient import MoodleClient, StopUploadException
-from JDatabase import JsonDatabase
 import zipfile
 import os
 import infos
@@ -40,6 +39,7 @@ REMOVED_USERS = set()
 ACTIVE_PROCESSES = {}
 ACTIVE_STATUS_CHECKS = set()
 CHANGING_CLOUD_USERS = set()
+USER_CLOUD_OVERRIDES = {}
 
 try:
     CUBA_TZ = pytz.timezone('America/Havana')
@@ -137,6 +137,23 @@ PRE_CONFIGURATED_USERS = {
     "Satoru_2115,usuario_nuevo4": AVAILABLE_CLOUDS[5],
     "usuario1,usuario2,alejandrorosell": AVAILABLE_CLOUDS[6]
 }
+
+def get_user_info(username):
+    if not username:
+        return AVAILABLE_CLOUDS[0].copy()
+    uname = username.lower()
+    if uname in USER_CLOUD_OVERRIDES:
+        return USER_CLOUD_OVERRIDES[uname].copy()
+    
+    for user_group, config in PRE_CONFIGURATED_USERS.items():
+        users = [u.strip().lower() for u in user_group.split(',')]
+        if uname in users:
+            return config.copy()
+            
+    if uname == ADMIN_USERNAME.lower():
+        return AVAILABLE_CLOUDS[0].copy()
+        
+    return AVAILABLE_CLOUDS[0].copy()
 
 # ==============================
 # SISTEMA DE CACHÉ PARA OPTIMIZACIÓN
@@ -430,8 +447,6 @@ class QueuedTask:
         self.thread_ctx = None
 
 class QueueThreadContext:
-    """Contexto de hilo ligero, compatible con la interfaz thread.store()/getStore()
-    que usan ddl/processFile/processUploadFiles, pero sin depender de bot.threads."""
     def __init__(self, task_id):
         self.id = task_id
         self._store = {}
@@ -458,15 +473,10 @@ class _FakeUpdate:
         self.message = _FakeMessage(username, chat_id)
 
 class QueueManager:
-    """
-    Sistema de colas por usuario: solo una tarea activa por usuario a la vez.
-    Los enlaces adicionales enviados mientras hay una tarea en curso pasan
-    a una cola FIFO y se disparan automáticamente al terminar la anterior.
-    """
     def __init__(self):
         self.lock = threading.Lock()
-        self.active = {}    # username -> QueuedTask activa (o None)
-        self.pending = {}   # username -> deque[QueuedTask]
+        self.active = {}
+        self.pending = {}
 
     def _get_deque(self, username):
         if username not in self.pending:
@@ -534,18 +544,12 @@ class QueueManager:
 queue_manager = QueueManager()
 
 def advance_queue_and_continue(bot, username):
-    """Al terminar/cancelar la tarea activa de un usuario, activa automáticamente
-    la siguiente en su cola (si existe), en un hilo nuevo e independiente."""
     next_task = queue_manager.advance(username)
     if next_task is None:
         return
 
     def run_next():
         try:
-            jdb = JsonDatabase('database')
-            jdb.check_create()
-            jdb.load()
-
             ctx = QueueThreadContext(next_task.task_id)
             next_task.thread_ctx = ctx
 
@@ -557,7 +561,7 @@ def advance_queue_and_continue(bot, username):
             ctx.store('msg', fake_message)
 
             fake_update = _FakeUpdate(username, next_task.chat_id)
-            ddl(fake_update, bot, fake_message, next_task.url, file_name='', thread=ctx, jdb=jdb)
+            ddl(fake_update, bot, fake_message, next_task.url, file_name='', thread=ctx)
         except Exception as e:
             print(f"Error al iniciar tarea encolada: {e}")
             try:
@@ -710,7 +714,7 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
     except Exception as ex: 
         raise ex
 
-def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jdb=None):
+def processUploadFiles(filename,filesize,files,update,bot,message,thread=None):
     try:
         prep_msg = '<b>⬆️ Preparando para subir archivo...</b>'
         if thread:
@@ -724,7 +728,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             update_process(thread.id, username, os.path.basename(str(filename)), '⬆️ Preparando para subir', 0, 100)
             
         fileid = None
-        user_info = jdb.get_user(username)
+        user_info = get_user_info(username)
         proxy = ProxyCloud.parse(user_info['proxy']) if user_info and user_info.get('proxy') else None
         upload_type = user_info.get('uploadtype', 'evidence') if user_info else 'evidence'
         
@@ -897,7 +901,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             return None
 
         error_detail = str(ex) if str(ex) else "Error desconocido en la subida"
-        u_info = jdb.get_user(username) if jdb else None
+        u_info = get_user_info(username)
         clean_host = u_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if u_info else "Desconocido"
         filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
 
@@ -921,7 +925,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 print(f"Error al notificar error de subida al grupo: {e}")
         return None
 
-def processFile(update,bot,message,file,thread=None,jdb=None):
+def processFile(update,bot,message,file,thread=None):
     phase = "procesamiento"
     findex = 0
     getUser = None
@@ -931,7 +935,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
             
         file_size = get_file_size(file)
-        getUser = jdb.get_user(username)
+        getUser = get_user_info(username)
         max_file_size = 1024 * 1024 * getUser['zips']
         file_upload_count = 0
         upload_result = None
@@ -985,14 +989,14 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
 
             phase = "subida"
-            upload_result = processUploadFiles(file,file_size,mult_file.files,update,bot,message,thread=thread,jdb=jdb)
+            upload_result = processUploadFiles(file,file_size,mult_file.files,update,bot,message,thread=thread)
             try:
                 os.unlink(file)
             except:pass
             file_upload_count = len(mult_file.files)
         else:
             phase = "subida"
-            upload_result = processUploadFiles(file,file_size,[file],update,bot,message,thread=thread,jdb=jdb)
+            upload_result = processUploadFiles(file,file_size,[file],update,bot,message,thread=thread)
             file_upload_count = 1
         
         if thread and thread.getStore('stop'):
@@ -1015,7 +1019,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                                                  proxy=proxy)
                     if moodle_client.login():
                         evidence_index = -1
-                        max_attempts = 8  # antes 3 (ahora hasta ~16s de margen para que Moodle indexe)
+                        max_attempts = 8
                         for attempt in range(max_attempts):
                             evidences = moodle_client.getEvidences()
                             for idx, ev in enumerate(evidences):
@@ -1176,7 +1180,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
         if thread:
             clean_process(thread.id)
 
-def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
+def ddl(update,bot,message,url,file_name='',thread=None):
     username = update.message.sender.username
     downloader = Downloader()
     if thread and hasattr(thread, 'store'):
@@ -1202,7 +1206,7 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
             except Exception as ex:
                 error_detail = str(ex) if str(ex) else "Error desconocido"
                 if attempt == retries - 1:
-                    u_info = jdb.get_user(username) if jdb else None
+                    u_info = get_user_info(username)
                     clean_host = u_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if u_info else "Desconocido"
                     filename_fail = url.split('/')[-1] or "Desconocido"
 
@@ -1232,7 +1236,7 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
         
         if not downloader.stoping:
             if file:
-                processFile(update,bot,message,file,thread=thread,jdb=jdb)
+                processFile(update,bot,message,file,thread=thread)
             else:
                 try:
                     bot.editMessageText(message,'<b>❌ Error en la descarga.</b>', parse_mode='html')
@@ -1286,26 +1290,6 @@ def sendTxt(name, files, update, bot, send_to_group=False, user_info=None):
             print(f"Error enviando txt al grupo: {e}")
             
     os.unlink(name)
-
-def initialize_database(jdb):
-    expanded_users = expand_user_groups()
-    database_updated = False
-    
-    for username, config in expanded_users.items():
-        if username.lower() in {r.lower() for r in REMOVED_USERS}:
-            continue
-        existing_user = jdb.get_user(username)
-        
-        if existing_user is None:
-            jdb.create_user(username)
-            user_data = jdb.get_user(username)
-            for key, value in config.items():
-                user_data[key] = value
-            jdb.save_data_user(username, user_data)
-            database_updated = True
-    
-    if database_updated:
-        jdb.save()
 
 def delete_message_after_delay(bot, chat_id, message_id, delay=8):
     def delete():
@@ -1749,10 +1733,6 @@ def onmessage(update,bot:ObigramClient):
         msgText = ''
         try: msgText = update.message.text
         except:pass
-
-        jdb = JsonDatabase('database')
-        jdb.check_create()
-        jdb.load()
         
         expanded_users = expand_user_groups()
         
@@ -1770,7 +1750,7 @@ def onmessage(update,bot:ObigramClient):
                     if u.lower() == username.lower():
                         has_access = True
                         break
-                if not has_access and jdb.get_user(username) is not None:
+                if not has_access and get_user_info(username) is not None:
                     has_access = True
 
         if not has_access:
@@ -1785,27 +1765,10 @@ def onmessage(update,bot:ObigramClient):
                 parse_mode='html')
             return
         
-        initialize_database(jdb)
-        
-        user_info = jdb.get_user(username)
-        if user_info is None:
-            matched_config = None
-            for u, cfg in expanded_users.items():
-                if u.lower() == username.lower():
-                    matched_config = cfg
-                    break
-            config = matched_config or AVAILABLE_CLOUDS[0]
-            jdb.create_user(username)
-            user_info = jdb.get_user(username)
-            for key, value in config.items():
-                user_info[key] = value
-            jdb.save_data_user(username, user_info)
-            jdb.save()
-            
+        user_info = get_user_info(username)
         if user_info.get('chat_id') != chat_id:
             user_info['chat_id'] = chat_id
-            jdb.save_data_user(username, user_info)
-            jdb.save()
+            USER_CLOUD_OVERRIDES[username.lower()] = user_info
 
         if '/cancel_' in msgText:
             try:
@@ -1918,7 +1881,7 @@ def onmessage(update,bot:ObigramClient):
                         if u.lower() in {r.lower() for r in REMOVED_USERS}:
                             continue
                         is_in_exp = any(eu.lower() == u.lower() for eu in expanded_users.keys())
-                        if is_in_exp or jdb.get_user(u) is not None:
+                        if is_in_exp or get_user_info(u) is not None:
                             already_has_access.append(u)
 
                     if already_has_access:
@@ -1929,12 +1892,7 @@ def onmessage(update,bot:ObigramClient):
                     is_plural_users = len(usernames) > 1
                     for u in usernames:
                         REMOVED_USERS = {r for r in REMOVED_USERS if r.lower() != u.lower()}
-                        jdb.create_user(u)
-                        u_data = jdb.get_user(u)
-                        for key, val in selected_cloud.items():
-                            u_data[key] = val
-                        jdb.save_data_user(u, u_data)
-                    jdb.save()
+                        USER_CLOUD_OVERRIDES[u.lower()] = selected_cloud.copy()
                     
                     short_host = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
                     users_str = ", ".join([f"@{u}" for u in usernames])
@@ -1970,20 +1928,15 @@ def onmessage(update,bot:ObigramClient):
                     for u in usernames:
                         exists = False
                         is_in_exp = any(eu.lower() == u.lower() for eu in expanded_users.keys())
-                        if is_in_exp or jdb.get_user(u) is not None:
+                        if is_in_exp or get_user_info(u) is not None:
                             exists = True
                             REMOVED_USERS.add(u.lower())
                             if u.lower() in {b.lower() for b in BANNED_USERS}:
                                 BANNED_USERS = {b for b in BANNED_USERS if b.lower() != u.lower()}
-                            try:
-                                if hasattr(jdb, 'remove_user'): jdb.remove_user(u)
-                                elif hasattr(jdb, 'delete_user'): jdb.delete_user(u)
-                                elif hasattr(jdb, 'data') and isinstance(jdb.data, dict) and u in jdb.data: del jdb.data[u]
-                                elif hasattr(jdb, 'users') and isinstance(jdb.users, dict) and u in jdb.users: del jdb.users[u]
-                            except Exception: pass
+                            if u.lower() in USER_CLOUD_OVERRIDES:
+                                del USER_CLOUD_OVERRIDES[u.lower()]
                         if exists: removed_users.append(u)
                         else: not_found_users.append(u)
-                    jdb.save()
                     
                     is_plural = len(removed_users) > 1
                     users_str = ", ".join([f"@{u}" for u in removed_users])
@@ -2021,7 +1974,7 @@ def onmessage(update,bot:ObigramClient):
                     banned_lower = {b.lower() for b in BANNED_USERS}
                     for target in targets:
                         is_in_exp = any(eu.lower() == target.lower() for eu in expanded_users.keys()) and not any(r.lower() == target.lower() for r in REMOVED_USERS)
-                        if not is_in_exp and jdb.get_user(target) is None:
+                        if not is_in_exp and get_user_info(target) is None:
                             not_found.append(target); continue
                         if target.lower() in banned_lower:
                             already_banned.append(target); continue
@@ -2067,7 +2020,7 @@ def onmessage(update,bot:ObigramClient):
                     banned_lower = {b.lower() for b in BANNED_USERS}
                     for target in targets:
                         is_in_exp = any(eu.lower() == target.lower() for eu in expanded_users.keys())
-                        if not is_in_exp and jdb.get_user(target) is None:
+                        if not is_in_exp and get_user_info(target) is None:
                             not_found.append(target); continue
                         if target.lower() not in banned_lower:
                             not_banned.append(target); continue
@@ -2340,10 +2293,6 @@ def onmessage(update,bot:ObigramClient):
                 bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
             return
 
-        if '/cancel_' in msgText:
-            # Handled earlier
-            pass
-
         if username in CHANGING_CLOUD_USERS:
             if msgText.strip().isdigit():
                 num = int(msgText.strip())
@@ -2357,10 +2306,7 @@ def onmessage(update,bot:ObigramClient):
                         bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                         return
                     
-                    for key, val in selected_cloud.items():
-                        user_info[key] = val
-                    jdb.save_data_user(username, user_info)
-                    jdb.save()
+                    USER_CLOUD_OVERRIDES[username.lower()] = selected_cloud.copy()
                     CHANGING_CLOUD_USERS.discard(username)
                     
                     bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
@@ -2396,10 +2342,7 @@ def onmessage(update,bot:ObigramClient):
                         bot.editMessageText(message, f"ℹ️ <b>Ya estás usando esta nube</b>\n\n☁️ <b>Nube actual:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                         return
                     
-                    for key, val in selected_cloud.items():
-                        user_info[key] = val
-                    jdb.save_data_user(username, user_info)
-                    jdb.save()
+                    USER_CLOUD_OVERRIDES[username.lower()] = selected_cloud.copy()
                     bot.editMessageText(message, f"<b>✅ ¡Nube cambiada exitosamente!</b>\n\n☁️ <b>Nueva nube:</b> <code>{short_name}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>", parse_mode='html')
                     
                     if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
@@ -2448,7 +2391,7 @@ def onmessage(update,bot:ObigramClient):
 /remove - <b>Quitar usuario del bot ➖</b>
 /ban - <b>Banear usuario 🚫</b>
 /unban - <b>Desbanear usuario ✅</b>
-/userfiles @usuario [nube] - <b>Ver evidencias y borrar archivos de usuario 📁</b>
+/userfiles @usuario [nube] - <b>Ver y borrar evidencias de un usuario 📁</b>
 
 📈 <b>Estadísticas y gestión:</b>
 /adm_logs - <b>Logs del sistema</b>
@@ -2596,7 +2539,6 @@ def onmessage(update,bot:ObigramClient):
                         if p.get('user', '').lower() != ADMIN_USERNAME.lower():
                             clean_process(tid)
                 
-                # Notificar siempre al grupo tanto si se activa como si se desactiva
                 if LOG_GROUP_ID != 0:
                     try:
                         if MAINTENANCE_MODE:
@@ -2605,8 +2547,9 @@ def onmessage(update,bot:ObigramClient):
                         else:
                             msg_maint = "<b>🛠️ ¡Modo mantenimiento DESACTIVADO! El bot opera con normalidad.</b>"
                         bot.sendMessage(LOG_GROUP_ID, msg_maint, parse_mode='html')
+                        bot.sendMessage(ADMIN_CHAT_ID, msg_maint, parse_mode='html')
                     except Exception as e:
-                        print(f"Error al notificar mantenimiento al grupo: {e}")
+                        print(f"Error al notificar mantenimiento: {e}")
                 
                 aviso_cancelados = ""
                 if MAINTENANCE_MODE and (cancel_count > 0 or pending_count > 0):
@@ -2783,7 +2726,7 @@ def onmessage(update,bot:ObigramClient):
                             for u in expanded_users.keys():
                                 if u in REMOVED_USERS:
                                     continue
-                                u_info = jdb.get_user(u)
+                                u_info = get_user_info(u)
                                 current_host = u_info.get('moodle_host', '') if u_info else cloud_cfg.get('moodle_host', '')
                                 if current_host == target_host:
                                     assigned_users.append(f"@{u.lstrip('@')}")
@@ -3655,7 +3598,7 @@ def onmessage(update,bot:ObigramClient):
                 if thread and not hasattr(thread, 'id'):
                     thread.id = task_id
                 task.thread_ctx = thread
-                ddl(update,bot,message,url,file_name='',thread=thread,jdb=jdb)
+                ddl(update,bot,message,url,file_name='',thread=thread)
             else:
                 if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                     try:
