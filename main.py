@@ -2233,12 +2233,14 @@ def onmessage(update,bot:ObigramClient):
 
                     if LOG_GROUP_ID != 0:
                         try:
-                            msg_log = (f"<b>🗑️💥 ¡Eliminación masiva de usuario!</b>\n\n"
-                                       f"<b>👤 Usuario:</b> <b>@{target_user}</b>\n"
-                                       f"<b>📊 Evidencias borradas:</b> <b>{total_evidences}</b>\n"
-                                       f"<b>📁 Archivos borrados:</b> <b>{total_files}</b>\n"
-                                       f"<b>☁️ Nube:</b> <code>{short_host}</code>")
-                            bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
+                            msg_log = (
+    f"<b>🗑️💥 ¡Eliminación masiva! (Admin)</b>\n\n"
+    f"👤 <b>Usuario afectado:</b> <b>@{target_user}</b>\n"
+    f"📊 <b>Evidencias borradas:</b> <b>{total_evidences}</b>\n"
+    f"📁 <b>Archivos borrados:</b> <b>{total_files}</b>\n"
+    f"☁️ <b>Nube:</b> <code>{short_host}</code>"
+)
+bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
                         except Exception as e:
                             print(f"Error al notificar eliminación masiva de usuario al grupo: {e}")
                     
@@ -2326,12 +2328,14 @@ def onmessage(update,bot:ObigramClient):
 
                     if LOG_GROUP_ID != 0:
                         try:
-                            msg_log = (f"<b>🗑️ ¡Evidencia de usuario eliminada!</b>\n\n"
-                                       f"<b>👤 Usuario:</b> <b>@{target_user}</b>\n"
-                                       f"<b>📄 Evidencia:</b> <b>{evidence_clean_name}</b>\n"
-                                       f"<b>📁 Archivos:</b> <b>{file_count}</b>\n"
-                                       f"<b>☁️ Nube:</b> <code>{short_host}</code>")
-                            bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
+                            msg_log = (
+    f"<b>🗑️ ¡Eliminación de evidencia! (Admin)</b>\n\n"
+    f"👤 <b>Usuario afectado:</b> <b>@{target_user}</b>\n"
+    f"📄 <b>Evidencia:</b> <b>{evidence_clean_name}</b>\n"
+    f"📁 <b>Archivos eliminados:</b> <b>{file_count}</b>\n"
+    f"☁️ <b>Nube:</b> <code>{short_host}</code>"
+)
+bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
                         except Exception as e:
                             print(f"Error al notificar eliminación de admin al grupo: {e}")
                     
@@ -3447,8 +3451,7 @@ def onmessage(update,bot:ObigramClient):
                 client = MoodleClient(user_info['moodle_user'],
                                        user_info['moodle_password'],
                                        user_info['moodle_host'],
-                                       user_info['moodle_repo_id'],
-                                       proxy=proxy)
+                                       user_info['moodle_repo_id'],proxy=proxy)
                 loged = client.login()
                 if loged:
                     all_evidences = client.getEvidences()
