@@ -1890,7 +1890,7 @@ def onmessage(update,bot:ObigramClient):
                 print(str(ex))
             return
 
-        message = bot.sendMessage(chat_id,'<b>Procesando solicitud...</b>', parse_mode='html')
+        message = bot.sendMessage(chat_id,'<b>✨Procesando solicitud...✨</b>', parse_mode='html')
         thread.store('msg',message)
 
         # ============================================
