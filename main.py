@@ -1,6 +1,7 @@
 from pyobigram.utils import sizeof_fmt,get_file_size,createID,nice_time
 from pyobigram.client import ObigramClient, inlineQueryResultArticle
 from MoodleClient import MoodleClient, StopUploadException
+from JDatabase import JsonDatabase
 import zipfile
 import os
 import infos
@@ -28,7 +29,7 @@ import re
 # ==============================
 DAILY_LIMIT_BYTES = 16 * 1024 * 1024 * 1024  # 16 GB por defecto
 
-BOT_TOKEN = "8941256926:AAFoxOOcJ0bQ8NG5enzrHjAsLtkdMPDqYRM"
+BOT_TOKEN = "8941256926:AAGK7BH9EEhSsIVMgD19r7x66TL-BoQ2BHU"
 ADMIN_USERNAME = "Eliel_21"
 ADMIN_CHAT_ID = 7363341763
 LOG_GROUP_ID = -1004295272245
@@ -716,7 +717,7 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
 
 def processUploadFiles(filename,filesize,files,update,bot,message,thread=None):
     try:
-        prep_msg = '<b>⬆️ Preparando para subir archivo...</b>'
+        prep_msg = '<b>⬆️ Preparando para subir...</b>'
         if thread:
             prep_msg += f"\n\n/cancel_{thread.id}"
         bot.editMessageText(message, prep_msg, parse_mode='html')
@@ -895,7 +896,16 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None):
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
-                bot.editMessageText(message, '<b>⚠️ Tarea cancelada.</b>', parse_mode='html')
+                p_act = ACTIVE_PROCESSES.get(thread.id, {}).get('action', '') if thread else ''
+                if 'Comprimiendo' in p_act:
+                    cancel_txt = '<b>⚠️ Compresión cancelada.</b>'
+                elif 'Subiendo' in p_act or 'Preparando' in p_act:
+                    cancel_txt = '<b>⚠️ Subida cancelada.</b>'
+                elif 'Descargando' in p_act:
+                    cancel_txt = '<b>⚠️ Descarga cancelada.</b>'
+                else:
+                    cancel_txt = '<b>⚠️ Tarea cancelada.</b>'
+                bot.editMessageText(message, cancel_txt, parse_mode='html')
             except:
                 pass
             return None
@@ -1147,7 +1157,16 @@ def processFile(update,bot,message,file,thread=None):
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
-                bot.editMessageText(message, '<b>⚠️ Tarea cancelada.</b>', parse_mode='html')
+                p_act = ACTIVE_PROCESSES.get(thread.id, {}).get('action', '') if thread else ''
+                if 'Comprimiendo' in p_act:
+                    cancel_txt = '<b>⚠️ Compresión cancelada.</b>'
+                elif 'Subiendo' in p_act or 'Preparando' in p_act:
+                    cancel_txt = '<b>⚠️ Subida cancelada.</b>'
+                elif 'Descargando' in p_act:
+                    cancel_txt = '<b>⚠️ Descarga cancelada.</b>'
+                else:
+                    cancel_txt = '<b>⚠️ Tarea cancelada.</b>'
+                bot.editMessageText(message, cancel_txt, parse_mode='html')
             except:
                 pass
             return
@@ -1245,7 +1264,12 @@ def ddl(update,bot,message,url,file_name='',thread=None):
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
-                bot.editMessageText(message, '<b>⚠️ Tarea cancelada.</b>', parse_mode='html')
+                p_act = ACTIVE_PROCESSES.get(thread.id, {}).get('action', '') if thread else ''
+                if 'Descargando' in p_act:
+                    cancel_txt = '<b>⚠️ Descarga cancelada.</b>'
+                else:
+                    cancel_txt = '<b>⚠️ Tarea cancelada.</b>'
+                bot.editMessageText(message, cancel_txt, parse_mode='html')
             except:
                 pass
         else:
@@ -1783,19 +1807,20 @@ def onmessage(update,bot:ObigramClient):
 
                     is_admin_action = (username.lower() == ADMIN_USERNAME.lower() and owner_username.lower() != username.lower())
 
+                    proc_info = ACTIVE_PROCESSES.get(tid, {})
+                    proc_action = proc_info.get('action', '')
+
                     cancel_result = queue_manager.cancel(owner_username, tid)
 
-                    proc_info = ACTIVE_PROCESSES.get(tid, {})
                     proc_user = proc_info.get('user', owner_username)
                     proc_file = proc_info.get('file', target_task.filename)
-                    proc_action = proc_info.get('action', 'Enlace en cola')
 
                     clean_process(tid)
 
                     if cancel_result == 'pending':
                         try:
                             if is_admin_action:
-                                bot.sendMessage(target_task.chat_id, f'<b>⚠️ Un administrador retiró tu tarea de la cola.</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
+                                bot.sendMessage(target_task.chat_id, f'<b>⚠️ El administrador retiró tu tarea de la cola.</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
                             else:
                                 bot.sendMessage(target_task.chat_id, f'<b>⚠️ Tarea retirada de la cola.</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
                         except: pass
@@ -1809,11 +1834,38 @@ def onmessage(update,bot:ObigramClient):
                                 except:
                                     pass
                         time.sleep(0.5)
+
+                        stage_name = "tarea"
+                        if 'Descargando' in proc_action:
+                            stage_name = "descarga"
+                        elif 'Comprimiendo' in proc_action:
+                            stage_name = "compresión"
+                        elif 'Subiendo' in proc_action or 'Preparando' in proc_action:
+                            stage_name = "subida"
+
+                        if is_admin_action:
+                            if stage_name == "descarga":
+                                texto_cancelado = '<b>⚠️ El administrador canceló la descarga.</b>'
+                            elif stage_name == "compresión":
+                                texto_cancelado = '<b>⚠️ El administrador canceló la compresión.</b>'
+                            elif stage_name == "subida":
+                                texto_cancelado = '<b>⚠️ El administrador canceló la subida.</b>'
+                            else:
+                                texto_cancelado = '<b>⚠️ El administrador canceló tu tarea.</b>'
+                        else:
+                            if stage_name == "descarga":
+                                texto_cancelado = '<b>⚠️ Descarga cancelada.</b>'
+                            elif stage_name == "compresión":
+                                texto_cancelado = '<b>⚠️ Compresión cancelada.</b>'
+                            elif stage_name == "subida":
+                                texto_cancelado = '<b>⚠️ Subida cancelada.</b>'
+                            else:
+                                texto_cancelado = '<b>⚠️ Tarea cancelada.</b>'
+
                         if target_task.thread_ctx:
                             msg_obj = target_task.thread_ctx.getStore('msg')
                             if msg_obj:
                                 try:
-                                    texto_cancelado = '<b>⚠️ Un administrador canceló tu tarea.</b>' if is_admin_action else '<b>⚠️ Tarea cancelada.</b>'
                                     bot.editMessageText(msg_obj, texto_cancelado, parse_mode='html')
                                 except: pass
 
@@ -1831,7 +1883,7 @@ def onmessage(update,bot:ObigramClient):
                 print(str(ex))
             return
 
-        message = bot.sendMessage(chat_id,'<b>Procesando solicitud... ⏳</b>', parse_mode='html')
+        message = bot.sendMessage(chat_id,'<b>Procesando...</b>', parse_mode='html')
         thread.store('msg',message)
 
         # ============================================
@@ -2539,6 +2591,17 @@ def onmessage(update,bot:ObigramClient):
                         if p.get('user', '').lower() != ADMIN_USERNAME.lower():
                             clean_process(tid)
                 
+                try:
+                    bot.deleteMessage(chat_id, message.message_id)
+                except:
+                    pass
+
+                aviso_cancelados = ""
+                if MAINTENANCE_MODE and (cancel_count > 0 or pending_count > 0):
+                    aviso_cancelados = f"\n\n⚠️ <b>Procesos afectados:</b>\n• Activos cancelados: <b>{cancel_count}</b>\n• En cola cancelados: <b>{pending_count}</b>"
+                
+                admin_maint_msg = f"<b>🛠️ Modo mantenimiento:</b> <b>{estado}</b>{aviso_cancelados}"
+
                 if LOG_GROUP_ID != 0:
                     try:
                         if MAINTENANCE_MODE:
@@ -2551,12 +2614,7 @@ def onmessage(update,bot:ObigramClient):
                     except Exception as e:
                         print(f"Error al notificar mantenimiento: {e}")
                 
-                aviso_cancelados = ""
-                if MAINTENANCE_MODE and (cancel_count > 0 or pending_count > 0):
-                    aviso_cancelados = f"\n\n⚠️ <b>Procesos afectados:</b>\n• Activos cancelados: <b>{cancel_count}</b>\n• En cola cancelados: <b>{pending_count}</b>"
-                
-                admin_maint_msg = f"<b>🛠️ Modo mantenimiento:</b> <b>{estado}</b>{aviso_cancelados}"
-                bot.editMessageText(message, admin_maint_msg, parse_mode='html')
+                bot.sendMessage(chat_id, admin_maint_msg, parse_mode='html')
                 return
                 
             elif msgText == '/procesos':
