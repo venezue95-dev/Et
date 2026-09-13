@@ -2179,7 +2179,7 @@ def onmessage(update,bot:ObigramClient):
                 parts = msgText.strip().split('_')
                 if len(parts) >= 4:
                     cloud_idx = int(parts[2])
-                    target_user = parts[3].strip().lstrip('@')
+                    target_user = "_".join(parts[3:]).strip().lstrip('@')
                 else:
                     bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>", parse_mode='html')
                     return
@@ -2258,8 +2258,8 @@ def onmessage(update,bot:ObigramClient):
                     return
                 
                 cloud_idx = int(parts[1])
-                target_user = parts[2]
-                ev_idx = int(parts[3])
+                ev_idx = int(parts[-1])
+                target_user = "_".join(parts[2:-1]).strip().lstrip('@')
                 
                 if not (0 <= cloud_idx < len(AVAILABLE_CLOUDS)):
                     bot.editMessageText(message, '<b>❌ Índice de nube inválido.</b>', parse_mode='html')
