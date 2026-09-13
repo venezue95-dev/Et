@@ -30,6 +30,15 @@ import re
 DAILY_LIMIT_BYTES = 100 * 1024 * 1024 * 1024  # 100 GB por defecto
 GLOBAL_PROXY = ""  # Proxy global de subida para todos los usuarios (configurado exclusivamente por el admin)
 
+class DirectProxyWrapper:
+    """Adaptador para forzar el uso del proxy por diccionario sin el filtrado silencioso de ProxyCloud"""
+    def __init__(self, proxy_url):
+        self.proxy_url = proxy_url.strip() if proxy_url else ""
+    def as_dict_proxy(self):
+        if not self.proxy_url:
+            return None
+        return {'http': self.proxy_url, 'https': self.proxy_url}
+
 BOT_TOKEN = "8941256926:AAEkvECxYM6smX0xV1adNv8uESbCUaG1_co"
 ADMIN_USERNAME = "Eliel_21"
 ADMIN_CHAT_ID = 7363341763
@@ -63,11 +72,11 @@ AVAILABLE_CLOUDS = [
     },
     {
         "cloudtype": "moodle",
-        "moodle_host": "https://uvs.ucm.cmw.sld.cu/",
-        "moodle_repo_id": 5,
-        "moodle_user": "eliel211515",
-        "moodle_password": "ElielEliel15211.",
-        "zips": 49,
+        "moodle_host": "https://cursos.uo.edu.cu/",
+        "moodle_repo_id": 4,
+        "moodle_user": "sifcf",
+        "moodle_password": "Encargado321.",
+        "zips": 99,
         "uploadtype": "draft",
         "proxy": "",
         "tokenize": 0
@@ -727,15 +736,16 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         fileid = None
         user_info = jdb.get_user(username)
         
-        # Usar el proxy global configurado por el administrador exclusivamente para la subida
+        # Usar el proxy global mediante DirectProxyWrapper para evitar fallos silenciosos
         global GLOBAL_PROXY
-        proxy = ProxyCloud.parse(GLOBAL_PROXY) if GLOBAL_PROXY else None
+        proxy_obj = DirectProxyWrapper(GLOBAL_PROXY) if GLOBAL_PROXY else None
+        proxy_dict = proxy_obj.as_dict_proxy() if proxy_obj else None
         
         upload_type = user_info.get('uploadtype', 'evidence') if user_info else 'evidence'
         
         try:
             test_url = user_info['moodle_host']
-            requests.get(test_url, timeout=6, proxies=proxy, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
+            requests.get(test_url, timeout=6, proxies=proxy_dict, allow_redirects=True, headers={'User-Agent': 'Mozilla/5.0'})
         except requests.exceptions.Timeout:
             if thread and thread.getStore('stop'):
                 return None
@@ -769,10 +779,10 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 return None
             clean_host = user_info['moodle_host'].replace('https://', '').replace('http://', '').strip('/') if user_info else "Desconocido"
             filename_fail = os.path.basename(str(filename)) if filename else "Desconocido"
-            error_desc = "<b>La plataforma Moodle no responde (Servidor caído o inaccesible).</b>"
+            error_desc = "<b>La plataforma Moodle no responde (Servidor caído, proxy inválido o inaccesible).</b>"
             
             error_msg_user = (
-                f"<b>❌ ¡Error de conexión con Moodle (Servidor Caído)!</b>\n\n"
+                f"<b>❌ ¡Error de conexión con Moodle (Servidor Caído / Proxy Inválido)!</b>\n\n"
                 f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
                 f"⚠️ <b>Detalle:</b> {error_desc}\n\n"
                 f"💡 <i>Usa /status para revisar el estado o /cambiar para elegir otra nube.</i>"
@@ -782,7 +792,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             if LOG_GROUP_ID != 0 and username.lower() != ADMIN_USERNAME.lower():
                 try:
                     mensaje_log = (
-                        f"<b>❌ ¡Error de Conexión (Servidor Caído)!</b>\n\n"
+                        f"<b>❌ ¡Error de Conexión (Servidor Caído / Proxy Inválido)!</b>\n\n"
                         f"👤 <b>Usuario:</b> <b>@{username}</b>\n"
                         f"📄 <b>Nombre:</b> <b>{filename_fail}</b>\n"
                         f"☁️ <b>Nube:</b> <code>{clean_host}</code>\n"
@@ -797,7 +807,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                               user_info['moodle_password'],
                               user_info['moodle_host'],
                               user_info['moodle_repo_id'],
-                              proxy=proxy)
+                              proxy=proxy_obj)
         
         if thread and thread.getStore('stop'):
             return None
@@ -1013,12 +1023,12 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 internal_evidname = upload_result.get('evidname', '')
                 try:
                     global GLOBAL_PROXY
-                    proxy = ProxyCloud.parse(GLOBAL_PROXY) if GLOBAL_PROXY else None
+                    proxy_obj = DirectProxyWrapper(GLOBAL_PROXY) if GLOBAL_PROXY else None
                     moodle_client = MoodleClient(getUser['moodle_user'],
                                                  getUser['moodle_password'],
                                                  getUser['moodle_host'],
                                                  getUser['moodle_repo_id'],
-                                                 proxy=proxy)
+                                                 proxy=proxy_obj)
                     if moodle_client.login():
                         evidence_index = -1
                         max_attempts = 8  # antes 3 (ahora hasta ~16s de margen para que Moodle indexe)
@@ -1371,7 +1381,7 @@ def get_all_cloud_evidences_fast(use_cache=True):
                 if use_cache:
                     cloud_cache.update_cache(moodle_host, [ev for ev in all_evidences if ev['cloud_name'] == moodle_host])
             else:
-                print(f"No se pudo conectar a {moodle_host}")
+                print(f"No se pudo conectar to {moodle_host}")
                 
         except Exception as e:
             print(f"Error obteniendo evidencias de {moodle_host}: {str(e)}")
