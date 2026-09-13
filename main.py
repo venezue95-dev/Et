@@ -64,10 +64,10 @@ AVAILABLE_CLOUDS = [
     {
         "cloudtype": "moodle",
         "moodle_host": "https://evea.uh.cu/",
-        "moodle_repo_id": 4,
+        "moodle_repo_id": 5,
         "moodle_user": "isleny",
         "moodle_password": "Islenyflex35*",
-        "zips": 99,
+        "zips": 49,
         "uploadtype": "draft",
         "proxy": "",
         "tokenize": 0
