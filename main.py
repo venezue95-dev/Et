@@ -2234,13 +2234,13 @@ def onmessage(update,bot:ObigramClient):
                     if LOG_GROUP_ID != 0:
                         try:
                             msg_log = (
-    f"<b>🗑️💥 ¡Eliminación masiva! (Admin)</b>\n\n"
-    f"👤 <b>Usuario afectado:</b> <b>@{target_user}</b>\n"
-    f"📊 <b>Evidencias borradas:</b> <b>{total_evidences}</b>\n"
-    f"📁 <b>Archivos borrados:</b> <b>{total_files}</b>\n"
-    f"☁️ <b>Nube:</b> <code>{short_host}</code>"
-)
-bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
+                                f"<b>🗑️💥 ¡Eliminación masiva! (Admin)</b>\n\n"
+                                f"👤 <b>Usuario afectado:</b> <b>@{target_user}</b>\n"
+                                f"📊 <b>Evidencias borradas:</b> <b>{total_evidences}</b>\n"
+                                f"📁 <b>Archivos borrados:</b> <b>{total_files}</b>\n"
+                                f"☁️ <b>Nube:</b> <code>{short_host}</code>"
+                            )
+                            bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
                         except Exception as e:
                             print(f"Error al notificar eliminación masiva de usuario al grupo: {e}")
                     
@@ -2329,13 +2329,13 @@ bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
                     if LOG_GROUP_ID != 0:
                         try:
                             msg_log = (
-    f"<b>🗑️ ¡Eliminación de evidencia! (Admin)</b>\n\n"
-    f"👤 <b>Usuario afectado:</b> <b>@{target_user}</b>\n"
-    f"📄 <b>Evidencia:</b> <b>{evidence_clean_name}</b>\n"
-    f"📁 <b>Archivos eliminados:</b> <b>{file_count}</b>\n"
-    f"☁️ <b>Nube:</b> <code>{short_host}</code>"
-)
-bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
+                                f"<b>🗑️ ¡Eliminación de evidencia! (Admin)</b>\n\n"
+                                f"👤 <b>Usuario afectado:</b> <b>@{target_user}</b>\n"
+                                f"📄 <b>Evidencia:</b> <b>{evidence_clean_name}</b>\n"
+                                f"📁 <b>Archivos eliminados:</b> <b>{file_count}</b>\n"
+                                f"☁️ <b>Nube:</b> <code>{short_host}</code>"
+                            )
+                            bot.sendMessage(LOG_GROUP_ID, msg_log, parse_mode='html')
                         except Exception as e:
                             print(f"Error al notificar eliminación de admin al grupo: {e}")
                     
