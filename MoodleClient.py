@@ -21,6 +21,11 @@ import threading
 import S5Crypto
 
 
+class StopUploadException(Exception):
+    """Excepción específica para abortar una subida en curso por cancelación o mantenimiento."""
+    pass
+
+
 class CallingUpload:
                 def __init__(self, func,filename,args):
                     self.func = func
@@ -38,12 +43,15 @@ class CallingUpload:
                         self.time_total += tcurrent
                         self.time_start = time.time()
                         if self.time_total>=1:
-                                clock_time = (monitor.len - monitor.bytes_read) / (self.speed)
+                                clock_time = (monitor.len - monitor.bytes_read) / (self.speed) if self.speed else 0
                                 if self.func:
                                     self.func(self.filename,monitor.bytes_read,monitor.len,self.speed,clock_time,self.args)
                                 self.time_total = 0
                                 self.speed = 0
-                    except:pass
+                    except StopUploadException:
+                        raise
+                    except:
+                        pass
 
 class MoodleClient(object):
     def __init__(self, user,passw,host='',repo_id=4,proxy:ProxyCloud=None):
