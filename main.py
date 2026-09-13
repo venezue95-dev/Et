@@ -29,7 +29,7 @@ import re
 # ==============================
 DAILY_LIMIT_BYTES = 16 * 1024 * 1024 * 1024  # 16 GB por defecto
 
-BOT_TOKEN = "8941256926:AAEkvECxYM6smX0xV1adNv8uESbCUaG1_co"
+BOT_TOKEN = "8941256926:AAFoxOOcJ0bQ8NG5enzrHjAsLtkdMPDqYRM"
 ADMIN_USERNAME = "Eliel_21"
 ADMIN_CHAT_ID = 7363341763
 LOG_GROUP_ID = -1004295272245
@@ -712,7 +712,7 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
 
 def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jdb=None):
     try:
-        prep_msg = '<b>⬆️ Preparando para subir ☁ ●●○</b>'
+        prep_msg = '<b>⬆️ Preparando para subir archivo...</b>'
         if thread:
             prep_msg += f"\n\n/cancel_{thread.id}"
         bot.editMessageText(message, prep_msg, parse_mode='html')
@@ -891,7 +891,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
-                bot.editMessageText(message, '<b>Tarea cancelada ✗</b>', parse_mode='html')
+                bot.editMessageText(message, '<b>⚠️ Tarea cancelada.</b>', parse_mode='html')
             except:
                 pass
             return None
@@ -1143,7 +1143,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
-                bot.editMessageText(message, '<b>Tarea cancelada ✗</b>', parse_mode='html')
+                bot.editMessageText(message, '<b>⚠️ Tarea cancelada.</b>', parse_mode='html')
             except:
                 pass
             return
@@ -1235,13 +1235,13 @@ def ddl(update,bot,message,url,file_name='',thread=None,jdb=None):
                 processFile(update,bot,message,file,thread=thread,jdb=jdb)
             else:
                 try:
-                    bot.editMessageText(message,'<b>Error en la descarga ✗</b>', parse_mode='html')
+                    bot.editMessageText(message,'<b>❌ Error en la descarga.</b>', parse_mode='html')
                 except:
-                    bot.editMessageText(message,'<b>Error en la descarga ✗</b>', parse_mode='html')
+                    bot.editMessageText(message,'<b>❌ Error en la descarga.</b>', parse_mode='html')
     except Exception as ex:
         if thread and thread.getStore('stop'):
             try:
-                bot.editMessageText(message, '<b>Tarea cancelada ✗</b>', parse_mode='html')
+                bot.editMessageText(message, '<b>⚠️ Tarea cancelada.</b>', parse_mode='html')
             except:
                 pass
         else:
@@ -1774,7 +1774,7 @@ def onmessage(update,bot:ObigramClient):
                     has_access = True
 
         if not has_access:
-            bot.sendMessage(chat_id, '<b>No tienes acceso a este bot ✗</b>', parse_mode='html')
+            bot.sendMessage(chat_id, '<b>🚫 No tienes acceso a este bot.</b>', parse_mode='html')
             return
 
         if MAINTENANCE_MODE and username.lower() != ADMIN_USERNAME.lower():
@@ -1832,9 +1832,9 @@ def onmessage(update,bot:ObigramClient):
                     if cancel_result == 'pending':
                         try:
                             if is_admin_action:
-                                bot.sendMessage(target_task.chat_id, f'<b>Un administrador retiró tu tarea de la cola ✗</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
+                                bot.sendMessage(target_task.chat_id, f'<b>⚠️ Un administrador retiró tu tarea de la cola.</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
                             else:
-                                bot.sendMessage(target_task.chat_id, f'<b>Tarea retirada de la cola ✗</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
+                                bot.sendMessage(target_task.chat_id, f'<b>⚠️ Tarea retirada de la cola.</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
                         except: pass
                     elif cancel_result == 'active':
                         if target_task.thread_ctx:
@@ -1850,11 +1850,10 @@ def onmessage(update,bot:ObigramClient):
                             msg_obj = target_task.thread_ctx.getStore('msg')
                             if msg_obj:
                                 try:
-                                    texto_cancelado = '<b>Un administrador canceló tu tarea ✗</b>' if is_admin_action else '<b>Tarea cancelada ✗</b>'
+                                    texto_cancelado = '<b>⚠️ Un administrador canceló tu tarea.</b>' if is_admin_action else '<b>⚠️ Tarea cancelada.</b>'
                                     bot.editMessageText(msg_obj, texto_cancelado, parse_mode='html')
                                 except: pass
 
-                    # Solo se notifica al grupo si fue el propio usuario quien canceló (no cuando es acción del admin)
                     if LOG_GROUP_ID != 0 and proc_user.lower() != ADMIN_USERNAME.lower() and not is_admin_action:
                         try:
                             mensaje_log = (f"<b>❌ ¡Proceso cancelado!</b>\n\n"
@@ -1869,72 +1868,299 @@ def onmessage(update,bot:ObigramClient):
                 print(str(ex))
             return
 
-        message = bot.sendMessage(chat_id,'<b>Procesando ✪ ●●○</b>', parse_mode='html')
+        message = bot.sendMessage(chat_id,'<b>Procesando solicitud... ⏳</b>', parse_mode='html')
         thread.store('msg',message)
 
-        if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/userfiles '):
-            try:
-                parts = msgText.strip().split()
-                if len(parts) < 3:
-                    bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /userfiles @usuario 1", parse_mode='html')
+        # ============================================
+        # COMPROBACIONES Y RECTIFICACIÓN DE COMANDOS ADMIN
+        # ============================================
+        if username.lower() == ADMIN_USERNAME.lower():
+            if msgText.lower().startswith('/add'):
+                parts = msgText.replace('/add', '').strip().split()
+                if len(parts) < 2:
+                    guide_msg = (
+                        "<b>❌ Formato incorrecto para /add.</b>\n\n"
+                        "💡 <b>Uso correcto:</b> <code>/add usuario1,usuario2 [número_de_nube]</code>\n"
+                        "<b>Ejemplo:</b> <code>/add Pedro,Maria 1</code>\n\n"
+                        "ℹ️ <i>Usa /adm_userclouds para revisar los números de nubes disponibles.</i>"
+                    )
+                    bot.editMessageText(message, guide_msg, parse_mode='html')
                     return
-                
-                target_user = parts[1].strip().lstrip('@')
-                cloud_num_part = parts[2].strip()
-                
-                if not cloud_num_part.isdigit():
-                    bot.editMessageText(message, "<b>❌ El número de nube debe ser un dígito.</b>\n💡 <b>Ejemplo:</b> /userfiles @Pedro 1", parse_mode='html')
-                    return
-                
-                cloud_idx = int(cloud_num_part) - 1
-                if not (0 <= cloud_idx < len(AVAILABLE_CLOUDS)):
-                    bot.editMessageText(message, f"<b>❌ Número de nube inválido.</b>\n💡 <b>Debe ser del 1 al {len(AVAILABLE_CLOUDS)}.</b>", parse_mode='html')
-                    return
-                
-                cloud_cfg = AVAILABLE_CLOUDS[cloud_idx]
-                short_host = cloud_cfg['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                
-                bot.editMessageText(message, f"<b>🔍 Buscando evidencias de @{target_user} en <code>{short_host}</code>...</b>", parse_mode='html')
-                
-                proxy = ProxyCloud.parse(cloud_cfg['proxy']) if cloud_cfg.get('proxy') else None
-                client = MoodleClient(cloud_cfg['moodle_user'],
-                                       cloud_cfg['moodle_password'],
-                                       cloud_cfg['moodle_host'],
-                                       cloud_cfg['moodle_repo_id'],
-                                       proxy=proxy)
-                
-                if client.login():
-                    all_evidences = client.getEvidences()
-                    user_evidences = []
-                    search_pattern = f"{USER_EVIDENCE_MARKER}{target_user}"
+                try:
+                    users_part = parts[0]
+                    cloud_num_part = parts[1]
+                    if not cloud_num_part.isdigit():
+                        raise ValueError()
+                    cloud_idx = int(cloud_num_part) - 1
+                    if not (0 <= cloud_idx < len(AVAILABLE_CLOUDS)):
+                        raise ValueError()
+                    selected_cloud = AVAILABLE_CLOUDS[cloud_idx]
+                    usernames = [u.strip().lstrip('@') for u in users_part.split(',')]
+                    usernames = [u for u in usernames if u]
                     
-                    for ev in all_evidences:
-                        if ev['name'].endswith(search_pattern):
-                            clean_name = ev['name'].replace(f"{USER_EVIDENCE_MARKER}{target_user}", "")
-                            file_count = len(ev.get('files', []))
-                            user_evidences.append({
-                                'clean_name': clean_name,
-                                'file_count': file_count,
-                                'original': ev
-                            })
+                    if not usernames:
+                        bot.editMessageText(message, "<b>❌ No se especificaron usuarios válidos.</b>\n💡 <b>Uso correcto:</b> /add usuario1,usuario2 1", parse_mode='html')
+                        return
+
+                    if any(u.lower() == ADMIN_USERNAME.lower() for u in usernames):
+                        bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> <b>No es posible agregar al usuario administrador (@{ADMIN_USERNAME}).</b>', parse_mode='html')
+                        return
+
+                    banned_lower = {b.lower() for b in BANNED_USERS}
+                    banned_found = [u for u in usernames if u.lower() in banned_lower]
+                    if banned_found:
+                        banned_str = ", ".join([f"@{u}" for u in banned_found])
+                        bot.editMessageText(message, f"<b>❌ Los usuarios</b> {banned_str} <b>están baneados y no se pueden agregar.</b>", parse_mode='html')
+                        return
+
+                    already_has_access = []
+                    for u in usernames:
+                        if u.lower() in {r.lower() for r in REMOVED_USERS}:
+                            continue
+                        is_in_exp = any(eu.lower() == u.lower() for eu in expanded_users.keys())
+                        if is_in_exp or jdb.get_user(u) is not None:
+                            already_has_access.append(u)
+
+                    if already_has_access:
+                        access_str = ", ".join([f"@{u}" for u in already_has_access])
+                        bot.editMessageText(message, f"<b>❌ Los usuarios</b> {access_str} <b>ya tienen acceso al bot.</b>", parse_mode='html')
+                        return
+
+                    is_plural_users = len(usernames) > 1
+                    for u in usernames:
+                        REMOVED_USERS = {r for r in REMOVED_USERS if r.lower() != u.lower()}
+                        jdb.create_user(u)
+                        u_data = jdb.get_user(u)
+                        for key, val in selected_cloud.items():
+                            u_data[key] = val
+                        jdb.save_data_user(u, u_data)
+                    jdb.save()
                     
-                    client.logout()
+                    short_host = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                    users_str = ", ".join([f"@{u}" for u in usernames])
                     
-                    if user_evidences:
-                        files_msg = f"📁 <b>Evidencias de @{target_user}</b>\n☁️ <b>Nube:</b> <code>{short_host}</code>\n\n"
-                        for idx, item in enumerate(user_evidences):
-                            files_msg += f"<b>{idx}.</b> <b>{item['clean_name']}</b> [ <b>{item['file_count']} archivos</b> ]\n   🗑️ Borrar: /udel_{cloud_idx}_{target_user}_{idx}\n\n"
-                        files_msg += f"<b>Total:</b> <b>{len(user_evidences)} evidencia(s)</b>\n\n"
-                        files_msg += f"💣 <b>Borrar todas:</b> /udel_all_{cloud_idx}_{target_user}"
-                        
-                        send_long_message(bot, chat_id, files_msg, original_message=message, parse_mode='html')
+                    if is_plural_users:
+                        msg_text = f"<b>✅ ¡Usuarios agregados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{users_str}</b>\n☁️ <b>Nube asignada:</b> <code>{short_host}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
                     else:
-                        bot.editMessageText(message, f"<b>📭 @{target_user} no tiene evidencias en la nube <code>{short_host}</code>.</b>", parse_mode='html')
-                else:
-                    bot.editMessageText(message, f"<b>❌ Error al conectar con la nube <code>{short_host}</code>.</b>", parse_mode='html')
-            except Exception as e:
-                bot.editMessageText(message, f"<b>❌ Error:</b> <b>{str(e)}</b>", parse_mode='html')
-            return
+                        msg_text = f"<b>✅ ¡Usuario agregado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{users_str}</b>\n☁️ <b>Nube asignada:</b> <code>{short_host}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
+                    
+                    bot.editMessageText(message, msg_text, parse_mode='html')
+                    return
+                except Exception as e:
+                    bot.editMessageText(message, f"<b>❌ Formato incorrecto para /add.</b>\n💡 <b>Uso correcto:</b> <code>/add usuario1,usuario2 [número_de_nube (1-{len(AVAILABLE_CLOUDS)})]</code>", parse_mode='html')
+                    return
+
+            if msgText.lower().startswith('/remove'):
+                parts = msgText.replace('/remove', '').strip()
+                if not parts:
+                    bot.editMessageText(message, "<b>❌ Formato incorrecto para /remove.</b>\n💡 <b>Uso correcto:</b> <code>/remove usuario1,usuario2</code>", parse_mode='html')
+                    return
+                try:
+                    usernames = [u.strip().lstrip('@') for u in parts.split(',')]
+                    usernames = [u for u in usernames if u]
+                    if not usernames:
+                        bot.editMessageText(message, "<b>❌ Especifica al menos un usuario válido.</b>\n💡 <b>Uso correcto:</b> /remove usuario1,usuario2", parse_mode='html')
+                        return
+                    if any(u.lower() == ADMIN_USERNAME.lower() for u in usernames):
+                        bot.editMessageText(message, f"🛡️ <b>Acción denegada:</b> <b>No es posible quitar al usuario administrador (@{ADMIN_USERNAME}).</b>", parse_mode='html')
+                        return
+                    
+                    removed_users = []
+                    not_found_users = []
+                    for u in usernames:
+                        exists = False
+                        is_in_exp = any(eu.lower() == u.lower() for eu in expanded_users.keys())
+                        if is_in_exp or jdb.get_user(u) is not None:
+                            exists = True
+                            REMOVED_USERS.add(u.lower())
+                            if u.lower() in {b.lower() for b in BANNED_USERS}:
+                                BANNED_USERS = {b for b in BANNED_USERS if b.lower() != u.lower()}
+                            try:
+                                if hasattr(jdb, 'remove_user'): jdb.remove_user(u)
+                                elif hasattr(jdb, 'delete_user'): jdb.delete_user(u)
+                                elif hasattr(jdb, 'data') and isinstance(jdb.data, dict) and u in jdb.data: del jdb.data[u]
+                                elif hasattr(jdb, 'users') and isinstance(jdb.users, dict) and u in jdb.users: del jdb.users[u]
+                            except Exception: pass
+                        if exists: removed_users.append(u)
+                        else: not_found_users.append(u)
+                    jdb.save()
+                    
+                    is_plural = len(removed_users) > 1
+                    users_str = ", ".join([f"@{u}" for u in removed_users])
+                    response_text = ""
+                    if removed_users:
+                        if is_plural: response_text += f"<b>✅ ¡Usuarios eliminados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{users_str}</b>"
+                        else: response_text += f"<b>✅ ¡Usuario eliminado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{users_str}</b>"
+                    if not_found_users:
+                        nf_str = ", ".join([f"@{u}" for u in not_found_users])
+                        response_text += f"\n\n⚠️ <b>No se encontraron en el sistema:</b> <b>{nf_str}</b>"
+                    bot.editMessageText(message, response_text, parse_mode='html')
+                    return
+                except Exception as e:
+                    bot.editMessageText(message, f"<b>❌ Error al quitar usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
+                    return
+
+            if msgText.lower().startswith('/ban'):
+                parts = msgText.replace('/ban', '').strip()
+                if not parts:
+                    bot.editMessageText(message, "<b>❌ Formato incorrecto para /ban.</b>\n💡 <b>Uso correcto:</b> <code>/ban usuario1,usuario2</code>", parse_mode='html')
+                    return
+                try:
+                    targets = [u.strip().lstrip('@') for u in parts.split(',')]
+                    targets = [u for u in targets if u]
+                    if not targets:
+                        bot.editMessageText(message, "<b>❌ Especifica al menos un usuario válido.</b>\n💡 <b>Uso correcto:</b> /ban usuario1,usuario2", parse_mode='html')
+                        return
+                    if any(t.lower() == ADMIN_USERNAME.lower() for t in targets):
+                        bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> <b>No es posible banear al usuario administrador (@{ADMIN_USERNAME}).</b>', parse_mode='html')
+                        return
+                    
+                    success_targets = []
+                    already_banned = []
+                    not_found = []
+                    banned_lower = {b.lower() for b in BANNED_USERS}
+                    for target in targets:
+                        is_in_exp = any(eu.lower() == target.lower() for eu in expanded_users.keys()) and not any(r.lower() == target.lower() for r in REMOVED_USERS)
+                        if not is_in_exp and jdb.get_user(target) is None:
+                            not_found.append(target); continue
+                        if target.lower() in banned_lower:
+                            already_banned.append(target); continue
+                        BANNED_USERS.add(target)
+                        success_targets.append(target)
+                    
+                    is_plural = len(success_targets) > 1
+                    targets_str = ", ".join([f"@{u}" for u in success_targets])
+                    response_text = ""
+                    if success_targets:
+                        if is_plural: response_text += f"<b>🚫 ¡Usuarios baneados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{targets_str}</b>"
+                        else: response_text += f"<b>🚫 ¡Usuario baneado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{targets_str}</b>"
+                    if already_banned:
+                        ab_str = ", ".join([f"@{u}" for u in already_banned])
+                        response_text += f"\n\nℹ️ <b>Ya se encontraban baneados:</b> <b>{ab_str}</b>"
+                    if not_found:
+                        nf_str = ", ".join([f"@{u}" for u in not_found])
+                        response_text += f"\n\n❌ <b>No existen en el sistema:</b> <b>{nf_str}</b>"
+                    bot.editMessageText(message, response_text, parse_mode='html')
+                    return
+                except Exception as e:
+                    bot.editMessageText(message, f"<b>❌ Error al banear usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
+                    return
+
+            if msgText.lower().startswith('/unban'):
+                parts = msgText.replace('/unban', '').strip()
+                if not parts:
+                    bot.editMessageText(message, "<b>❌ Formato incorrecto para /unban.</b>\n💡 <b>Uso correcto:</b> <code>/unban usuario1,usuario2</code>", parse_mode='html')
+                    return
+                try:
+                    targets = [u.strip().lstrip('@') for u in parts.split(',')]
+                    targets = [u for u in targets if u]
+                    if not targets:
+                        bot.editMessageText(message, "<b>❌ Especifica al menos un usuario válido.</b>\n💡 <b>Uso correcto:</b> /unban usuario1,usuario2", parse_mode='html')
+                        return
+                    if any(t.lower() == ADMIN_USERNAME.lower() for t in targets):
+                        bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> <b>El usuario administrador (@{ADMIN_USERNAME}) no puede ser objetivo de este comando.</b>', parse_mode='html')
+                        return
+                    
+                    success_targets = []
+                    not_banned = []
+                    not_found = []
+                    banned_lower = {b.lower() for b in BANNED_USERS}
+                    for target in targets:
+                        is_in_exp = any(eu.lower() == target.lower() for eu in expanded_users.keys())
+                        if not is_in_exp and jdb.get_user(target) is None:
+                            not_found.append(target); continue
+                        if target.lower() not in banned_lower:
+                            not_banned.append(target); continue
+                        BANNED_USERS = {b for b in BANNED_USERS if b.lower() != target.lower()}
+                        success_targets.append(target)
+                    
+                    is_plural = len(success_targets) > 1
+                    targets_str = ", ".join([f"@{u}" for u in success_targets])
+                    response_text = ""
+                    if success_targets:
+                        if is_plural: response_text += f"<b>✅ ¡Usuarios desbaneados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{targets_str}</b>"
+                        else: response_text += f"<b>✅ ¡Usuario desbaneado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{targets_str}</b>"
+                    if not_banned:
+                        nb_str = ", ".join([f"@{u}" for u in not_banned])
+                        response_text += f"\n\nℹ️ <b>No estaban baneados:</b> <b>{nb_str}</b>"
+                    if not_found:
+                        nf_str = ", ".join([f"@{u}" for u in not_found])
+                        response_text += f"\n\n❌ <b>No existen en el sistema:</b> <b>{nf_str}</b>"
+                    bot.editMessageText(message, response_text, parse_mode='html')
+                    return
+                except Exception as e:
+                    bot.editMessageText(message, f"<b>❌ Error al desbanear usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
+                    return
+
+            if msgText.lower().startswith('/userfiles'):
+                try:
+                    parts = msgText.strip().split()
+                    if len(parts) < 3:
+                        guide_msg = (
+                            "<b>❌ Formato incorrecto para /userfiles.</b>\n\n"
+                            "💡 <b>Uso correcto:</b> <code>/userfiles @usuario [número_de_nube]</code>\n"
+                            "<b>Ejemplo:</b> <code>/userfiles @Pedro 1</code>\n\n"
+                            "ℹ️ <i>Usa /adm_userclouds para revisar los números de nubes disponibles.</i>"
+                        )
+                        bot.editMessageText(message, guide_msg, parse_mode='html')
+                        return
+                    
+                    target_user = parts[1].strip().lstrip('@')
+                    cloud_num_part = parts[2].strip()
+                    
+                    if not cloud_num_part.isdigit():
+                        bot.editMessageText(message, "<b>❌ El número de nube debe ser un dígito válido.</b>\n💡 <b>Ejemplo:</b> /userfiles @Pedro 1", parse_mode='html')
+                        return
+                    
+                    cloud_idx = int(cloud_num_part) - 1
+                    if not (0 <= cloud_idx < len(AVAILABLE_CLOUDS)):
+                        bot.editMessageText(message, f"<b>❌ Número de nube inválido.</b>\n💡 <b>Debe ser un valor del 1 al {len(AVAILABLE_CLOUDS)}.</b>", parse_mode='html')
+                        return
+                    
+                    cloud_cfg = AVAILABLE_CLOUDS[cloud_idx]
+                    short_host = cloud_cfg['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
+                    
+                    bot.editMessageText(message, f"<b>🔍 Buscando evidencias de @{target_user} en <code>{short_host}</code>...</b>", parse_mode='html')
+                    
+                    proxy = ProxyCloud.parse(cloud_cfg['proxy']) if cloud_cfg.get('proxy') else None
+                    client = MoodleClient(cloud_cfg['moodle_user'],
+                                           cloud_cfg['moodle_password'],
+                                           cloud_cfg['moodle_host'],
+                                           cloud_cfg['moodle_repo_id'],
+                                           proxy=proxy)
+                    
+                    if client.login():
+                        all_evidences = client.getEvidences()
+                        user_evidences = []
+                        search_pattern = f"{USER_EVIDENCE_MARKER}{target_user}"
+                        
+                        for ev in all_evidences:
+                            if ev['name'].endswith(search_pattern):
+                                clean_name = ev['name'].replace(f"{USER_EVIDENCE_MARKER}{target_user}", "")
+                                file_count = len(ev.get('files', []))
+                                user_evidences.append({
+                                    'clean_name': clean_name,
+                                    'file_count': file_count,
+                                    'original': ev
+                                })
+                        
+                        client.logout()
+                        
+                        if user_evidences:
+                            files_msg = f"📁 <b>Evidencias de @{target_user}</b>\n☁️ <b>Nube:</b> <code>{short_host}</code>\n\n"
+                            for idx, item in enumerate(user_evidences):
+                                files_msg += f"<b>{idx}.</b> <b>{item['clean_name']}</b> [ <b>{item['file_count']} archivos</b> ]\n   🗑️ Borrar: /udel_{cloud_idx}_{target_user}_{idx}\n\n"
+                            files_msg += f"<b>Total:</b> <b>{len(user_evidences)} evidencia(s)</b>\n\n"
+                            files_msg += f"💣 <b>Borrar todas:</b> /udel_all_{cloud_idx}_{target_user}"
+                            
+                            send_long_message(bot, chat_id, files_msg, original_message=message, parse_mode='html')
+                        else:
+                            bot.editMessageText(message, f"<b>📭 @{target_user} no tiene evidencias en la nube <code>{short_host}</code>.</b>", parse_mode='html')
+                    else:
+                        bot.editMessageText(message, f"<b>❌ Error al conectar con la nube <code>{short_host}</code>.</b>", parse_mode='html')
+                except Exception as e:
+                    bot.editMessageText(message, f"<b>❌ Error:</b> <b>{str(e)}</b>", parse_mode='html')
+                return
 
         if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/udel_all_'):
             try:
@@ -2114,261 +2340,9 @@ def onmessage(update,bot:ObigramClient):
                 bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(e)}</b>', parse_mode='html')
             return
 
-        if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/add '):
-            try:
-                parts = msgText.replace('/add', '').strip().split()
-                if len(parts) >= 2:
-                    users_part = parts[0]
-                    cloud_num_part = parts[1]
-                    if cloud_num_part.isdigit():
-                        cloud_idx = int(cloud_num_part) - 1
-                        if 0 <= cloud_idx < len(AVAILABLE_CLOUDS):
-                            selected_cloud = AVAILABLE_CLOUDS[cloud_idx]
-                            usernames = [u.strip().lstrip('@') for u in users_part.split(',')]
-                            usernames = [u for u in usernames if u]
-                            
-                            if not usernames:
-                                bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /add usuario1,usuario2 1", parse_mode='html')
-                                return
-
-                            if any(u.lower() == ADMIN_USERNAME.lower() for u in usernames):
-                                bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> <b>No es posible agregar al usuario administrador (@{ADMIN_USERNAME}).</b>', parse_mode='html')
-                                return
-
-                            banned_lower = {b.lower() for b in BANNED_USERS}
-                            banned_found = [u for u in usernames if u.lower() in banned_lower]
-                            if banned_found:
-                                is_plural_banned = len(banned_found) > 1
-                                banned_str = ", ".join([f"@{u}" for u in banned_found])
-                                if is_plural_banned:
-                                    bot.editMessageText(message, f"<b>❌ Los usuarios</b> {banned_str} <b>están baneados y no se pueden agregar.</b>", parse_mode='html')
-                                else:
-                                    bot.editMessageText(message, f"<b>❌ El usuario</b> {banned_str} <b>está baneado y no se puede agregar.</b>", parse_mode='html')
-                                return
-
-                            already_has_access = []
-                            for u in usernames:
-                                if u.lower() in {r.lower() for r in REMOVED_USERS}:
-                                    continue
-                                is_in_exp = any(eu.lower() == u.lower() for eu in expanded_users.keys())
-                                if is_in_exp or jdb.get_user(u) is not None:
-                                    already_has_access.append(u)
-
-                            if already_has_access:
-                                is_plural_access = len(already_has_access) > 1
-                                access_str = ", ".join([f"@{u}" for u in already_has_access])
-                                if is_plural_access:
-                                    bot.editMessageText(message, f"<b>❌ Los usuarios</b> {access_str} <b>ya tienen acceso al bot.</b>", parse_mode='html')
-                                else:
-                                    bot.editMessageText(message, f"<b>❌ El usuario</b> {access_str} <b>ya tiene acceso al bot.</b>", parse_mode='html')
-                                return
-
-                            is_plural_users = len(usernames) > 1
-                            for u in usernames:
-                                REMOVED_USERS = {r for r in REMOVED_USERS if r.lower() != u.lower()}
-                                jdb.create_user(u)
-                                u_data = jdb.get_user(u)
-                                for key, val in selected_cloud.items():
-                                    u_data[key] = val
-                                jdb.save_data_user(u, u_data)
-                            jdb.save()
-                            
-                            short_host = selected_cloud['moodle_host'].replace('https://', '').replace('http://', '').strip('/')
-                            users_str = ", ".join([f"@{u}" for u in usernames])
-                            
-                            if is_plural_users:
-                                msg_text = f"<b>✅ ¡Usuarios agregados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{users_str}</b>\n☁️ <b>Nube asignada:</b> <code>{short_host}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
-                            else:
-                                msg_text = f"<b>✅ ¡Usuario agregado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{users_str}</b>\n☁️ <b>Nube asignada:</b> <code>{short_host}</code>\n⚖️ <b>Límite:</b> <b>{selected_cloud['zips']} MB</b>"
-                            
-                            bot.editMessageText(message, msg_text, parse_mode='html')
-                            return
-                        else:
-                            bot.editMessageText(message, f"<b>❌ Número de nube inválido.</b>\n💡 <b>Debe ser un número del 1 al {len(AVAILABLE_CLOUDS)}.</b>", parse_mode='html')
-                            return
-                    else:
-                        bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /add usuario1,usuario2 1", parse_mode='html')
-                        return
-                else:
-                    bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /add usuario1,usuario2 1", parse_mode='html')
-                    return
-            except Exception as e:
-                bot.editMessageText(message, f"<b>❌ Error al agregar usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
-            return
-
-        if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/remove '):
-            try:
-                users_part = msgText.replace('/remove', '').strip()
-                usernames = [u.strip().lstrip('@') for u in users_part.split(',')]
-                usernames = [u for u in usernames if u]
-                
-                if not usernames:
-                    bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /remove usuario1,usuario2", parse_mode='html')
-                    return
-                
-                if any(u.lower() == ADMIN_USERNAME.lower() for u in usernames):
-                    bot.editMessageText(message, f"🛡️ <b>Acción denegada:</b> <b>No es posible quitar al usuario administrador (@{ADMIN_USERNAME}).</b>", parse_mode='html')
-                    return
-                
-                removed_users = []
-                not_found_users = []
-                
-                for u in usernames:
-                    exists = False
-                    is_in_exp = any(eu.lower() == u.lower() for eu in expanded_users.keys())
-                    if is_in_exp or jdb.get_user(u) is not None:
-                        exists = True
-                        REMOVED_USERS.add(u.lower())
-                        if u.lower() in {b.lower() for b in BANNED_USERS}:
-                            BANNED_USERS = {b for b in BANNED_USERS if b.lower() != u.lower()}
-                        try:
-                            if hasattr(jdb, 'remove_user'):
-                                jdb.remove_user(u)
-                            elif hasattr(jdb, 'delete_user'):
-                                jdb.delete_user(u)
-                            elif hasattr(jdb, 'data') and isinstance(jdb.data, dict) and u in jdb.data:
-                                del jdb.data[u]
-                            elif hasattr(jdb, 'users') and isinstance(jdb.users, dict) and u in jdb.users:
-                                del jdb.users[u]
-                        except Exception as e:
-                            print(f"Error deleting user from jdb: {e}")
-                    
-                    if exists:
-                        removed_users.append(u)
-                    else:
-                        not_found_users.append(u)
-                
-                jdb.save()
-                
-                is_plural = len(removed_users) > 1
-                users_str = ", ".join([f"@{u}" for u in removed_users])
-                
-                response_text = ""
-                if removed_users:
-                    if is_plural:
-                        response_text += f"<b>✅ ¡Usuarios eliminados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{users_str}</b>"
-                    else:
-                        response_text += f"<b>✅ ¡Usuario eliminado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{users_str}</b>"
-                
-                if not_found_users:
-                    not_found_str = ", ".join([f"@{u}" for u in not_found_users])
-                    response_text += f"\n\n⚠️ <b>No se encontraron en el sistema:</b> <b>{not_found_str}</b>"
-                
-                bot.editMessageText(message, response_text, parse_mode='html')
-                return
-            except Exception as e:
-                bot.editMessageText(message, f"<b>❌ Error al quitar usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
-            return
-
-        if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/ban '):
-            try:
-                targets_part = msgText.replace('/ban', '').strip()
-                targets = [u.strip().lstrip('@') for u in targets_part.split(',')]
-                targets = [u for u in targets if u]
-                
-                if not targets:
-                    bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /ban usuario1,usuario2", parse_mode='html')
-                    return
-                
-                if any(t.lower() == ADMIN_USERNAME.lower() for t in targets):
-                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> <b>No es posible banear al usuario administrador (@{ADMIN_USERNAME}).</b>', parse_mode='html')
-                    return
-                
-                success_targets = []
-                already_banned = []
-                not_found = []
-                
-                banned_lower = {b.lower() for b in BANNED_USERS}
-                for target in targets:
-                    is_in_exp = any(eu.lower() == target.lower() for eu in expanded_users.keys()) and not any(r.lower() == target.lower() for r in REMOVED_USERS)
-                    if not is_in_exp and jdb.get_user(target) is None:
-                        not_found.append(target)
-                        continue
-                    if target.lower() in banned_lower:
-                        already_banned.append(target)
-                        continue
-                    
-                    BANNED_USERS.add(target)
-                    success_targets.append(target)
-                
-                is_plural = len(success_targets) > 1
-                targets_str = ", ".join([f"@{u}" for u in success_targets])
-                
-                response_text = ""
-                if success_targets:
-                    if is_plural:
-                        response_text += f"<b>🚫 ¡Usuarios baneados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{targets_str}</b>"
-                    else:
-                        response_text += f"<b>🚫 ¡Usuario baneado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{targets_str}</b>"
-                
-                if already_banned:
-                    ab_str = ", ".join([f"@{u}" for u in already_banned])
-                    response_text += f"\n\nℹ️ <b>Ya se encontraban baneados:</b> <b>{ab_str}</b>"
-                
-                if not_found:
-                    nf_str = ", ".join([f"@{u}" for u in not_found])
-                    response_text += f"\n\n❌ <b>No existen en el sistema:</b> <b>{nf_str}</b>"
-                
-                bot.editMessageText(message, response_text, parse_mode='html')
-                return
-            except Exception as e:
-                bot.editMessageText(message, f"<b>❌ Error al banear usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
-            return
-
-        if username.lower() == ADMIN_USERNAME.lower() and msgText.lower().startswith('/unban '):
-            try:
-                targets_part = msgText.replace('/unban', '').strip()
-                targets = [u.strip().lstrip('@') for u in targets_part.split(',')]
-                targets = [u for u in targets if u]
-                
-                if not targets:
-                    bot.editMessageText(message, "<b>❌ Formato incorrecto.</b>\n💡 <b>Uso correcto:</b> /unban usuario1,usuario2", parse_mode='html')
-                    return
-                
-                if any(t.lower() == ADMIN_USERNAME.lower() for t in targets):
-                    bot.editMessageText(message, f'🛡️ <b>Acción denegada:</b> <b>El usuario administrador (@{ADMIN_USERNAME}) no puede ser objetivo de este comando.</b>', parse_mode='html')
-                    return
-                
-                success_targets = []
-                not_banned = []
-                not_found = []
-                
-                banned_lower = {b.lower() for b in BANNED_USERS}
-                for target in targets:
-                    is_in_exp = any(eu.lower() == target.lower() for eu in expanded_users.keys())
-                    if not is_in_exp and jdb.get_user(target) is None:
-                        not_found.append(target)
-                        continue
-                    if target.lower() not in banned_lower:
-                        not_banned.append(target)
-                        continue
-                    
-                    BANNED_USERS = {b for b in BANNED_USERS if b.lower() != target.lower()}
-                    success_targets.append(target)
-                
-                is_plural = len(success_targets) > 1
-                targets_str = ", ".join([f"@{u}" for u in success_targets])
-                
-                response_text = ""
-                if success_targets:
-                    if is_plural:
-                        response_text += f"<b>✅ ¡Usuarios desbaneados con éxito!</b>\n\n👥 <b>Usuarios:</b> <b>{targets_str}</b>"
-                    else:
-                        response_text += f"<b>✅ ¡Usuario desbaneado con éxito!</b>\n\n👤 <b>Usuario:</b> <b>{targets_str}</b>"
-                
-                if not_banned:
-                    nb_str = ", ".join([f"@{u}" for u in not_banned])
-                    response_text += f"\n\nℹ️ <b>No estaban baneados:</b> <b>{nb_str}</b>"
-                
-                if not_found:
-                    nf_str = ", ".join([f"@{u}" for u in not_found])
-                    response_text += f"\n\n❌ <b>No existen en el sistema:</b> <b>{nf_str}</b>"
-                
-                bot.editMessageText(message, response_text, parse_mode='html')
-                return
-            except Exception as e:
-                bot.editMessageText(message, f"<b>❌ Error al desbanear usuarios:</b> <b>{str(e)}</b>", parse_mode='html')
-            return
+        if '/cancel_' in msgText:
+            # Handled earlier
+            pass
 
         if username in CHANGING_CLOUD_USERS:
             if msgText.strip().isdigit():
@@ -2474,7 +2448,7 @@ def onmessage(update,bot:ObigramClient):
 /remove - <b>Quitar usuario del bot ➖</b>
 /ban - <b>Banear usuario 🚫</b>
 /unban - <b>Desbanear usuario ✅</b>
-/userfiles @usuario [nube] - <b>Ver y borrar evidencias de un usuario 📁</b>
+/userfiles @usuario [nube] - <b>Ver evidencias y borrar archivos de usuario 📁</b>
 
 📈 <b>Estadísticas y gestión:</b>
 /adm_logs - <b>Logs del sistema</b>
@@ -2588,7 +2562,6 @@ def onmessage(update,bot:ObigramClient):
                 if MAINTENANCE_MODE:
                     active_dict, pending_dict = queue_manager.get_full_snapshot()
                     
-                    # 1) Cancelar tareas activas (descargando/subiendo) de cada usuario
                     for uname, active_task in active_dict.items():
                         if not active_task or uname.lower() == ADMIN_USERNAME.lower():
                             continue
@@ -2597,22 +2570,17 @@ def onmessage(update,bot:ObigramClient):
                                 active_task.thread_ctx.store('stop', True)
                                 dl = active_task.thread_ctx.getStore('downloader')
                                 if dl:
-                                    try:
-                                        dl.stop()
-                                    except:
-                                        pass
+                                    try: dl.stop()
+                                    except: pass
                                 msg_obj = active_task.thread_ctx.getStore('msg')
                                 if msg_obj:
                                     try:
-                                        bot.editMessageText(msg_obj, '<b>⚠️ Tarea cancelada automáticamente por inicio de mantenimiento del sistema ✗</b>', parse_mode='html')
-                                    except:
-                                        pass
+                                        bot.editMessageText(msg_obj, '<b>⚠️ Tarea cancelada automáticamente por mantenimiento.</b>', parse_mode='html')
+                                    except: pass
                             clean_process(active_task.task_id)
                             cancel_count += 1
-                        except:
-                            pass
+                        except: pass
                     
-                    # 2) Vaciar y avisar las colas de espera de cada usuario
                     for uname, dq in pending_dict.items():
                         if uname.lower() == ADMIN_USERNAME.lower():
                             continue
@@ -2620,29 +2588,32 @@ def onmessage(update,bot:ObigramClient):
                             try:
                                 queue_manager.cancel(uname, t.task_id)
                                 clean_process(t.task_id)
-                                bot.sendMessage(t.chat_id, f'<b>⚠️ Tu enlace en espera fue cancelado por inicio de mantenimiento del sistema ✗</b>\n\n📄 <b>{t.filename}</b>', parse_mode='html')
+                                bot.sendMessage(t.chat_id, f'<b>⚠️ Enlace en espera cancelado por mantenimiento.</b>\n\n📄 <b>{t.filename}</b>', parse_mode='html')
                                 pending_count += 1
-                            except:
-                                pass
+                            except: pass
                     
-                    # Limpieza de procesos huérfanos que solo quedaran en ACTIVE_PROCESSES
                     for tid, p in list(ACTIVE_PROCESSES.items()):
                         if p.get('user', '').lower() != ADMIN_USERNAME.lower():
                             clean_process(tid)
-                    
-                    if LOG_GROUP_ID != 0:
-                        try:
-                            msg_maint = (f"<b>🛠️ ¡Modo mantenimiento activado!</b>\n\n"
+                
+                # Notificar siempre al grupo tanto si se activa como si se desactiva
+                if LOG_GROUP_ID != 0:
+                    try:
+                        if MAINTENANCE_MODE:
+                            msg_maint = (f"<b>🛠️ ¡Modo mantenimiento ACTIVADO!</b>\n\n"
                                          f"⚠️ <b>Se cancelaron {cancel_count} proceso(s) activo(s) y {pending_count} enlace(s) en cola.</b>")
-                            bot.sendMessage(LOG_GROUP_ID, msg_maint, parse_mode='html')
-                        except Exception as e:
-                            print(f"Error al notificar mantenimiento al grupo: {e}")
+                        else:
+                            msg_maint = "<b>🛠️ ¡Modo mantenimiento DESACTIVADO! El bot opera con normalidad.</b>"
+                        bot.sendMessage(LOG_GROUP_ID, msg_maint, parse_mode='html')
+                    except Exception as e:
+                        print(f"Error al notificar mantenimiento al grupo: {e}")
                 
                 aviso_cancelados = ""
-                if cancel_count > 0 or pending_count > 0:
-                    aviso_cancelados = f"\n⚠️ <b>Se cancelaron {cancel_count} proceso(s) activo(s) y {pending_count} enlace(s) en cola (excepto administrador).</b>"
+                if MAINTENANCE_MODE and (cancel_count > 0 or pending_count > 0):
+                    aviso_cancelados = f"\n\n⚠️ <b>Procesos afectados:</b>\n• Activos cancelados: <b>{cancel_count}</b>\n• En cola cancelados: <b>{pending_count}</b>"
                 
-                bot.editMessageText(message, f'<b>🛠️ Modo mantenimiento:</b> <b>{estado}</b>{aviso_cancelados}', parse_mode='html')
+                admin_maint_msg = f"<b>🛠️ Modo mantenimiento:</b> <b>{estado}</b>{aviso_cancelados}"
+                bot.editMessageText(message, admin_maint_msg, parse_mode='html')
                 return
                 
             elif msgText == '/procesos':
@@ -3418,7 +3389,7 @@ def onmessage(update,bot:ObigramClient):
                     bot.editMessageText(message, '<b>📭 No hay evidencias disponibles</b>', parse_mode='html')
                 client.logout()
             else:
-                bot.editMessageText(message,'<b>Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
+                bot.editMessageText(message,'<b>⚠️ Error: Revise su cuenta o el servidor deshabilitado:</b> <code>'+client.path+'</code>', parse_mode='html')
                 
         elif '/txt_' in msgText:
             try:
@@ -3452,9 +3423,9 @@ def onmessage(update,bot:ObigramClient):
                     txtname = clean_name + '.txt'
                     sendTxt(txtname, evindex['files'], update, bot, user_info=user_info)
                     client.logout()
-                    bot.editMessageText(message,'<b>📄 TXT aquí</b>', parse_mode='html')
+                    bot.editMessageText(message,'<b>📄 TXT enviado con éxito.</b>', parse_mode='html')
                 else:
-                    bot.editMessageText(message,'<b>Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
+                    bot.editMessageText(message,'<b>⚠️ Error de conexión o cuenta inválida.</b>', parse_mode='html')
             except ValueError:
                 bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /txt_0', parse_mode='html')
             except Exception as e:
@@ -3536,7 +3507,7 @@ def onmessage(update,bot:ObigramClient):
                         confirmation_msg += "<b>📭 No hay evidencias disponibles</b>"
                         bot.editMessageText(message, confirmation_msg, parse_mode='html')
                 else:
-                    bot.editMessageText(message,'<b>Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
+                    bot.editMessageText(message,'<b>⚠️ Error al conectar con la nube.</b>', parse_mode='html')
             except ValueError:
                 bot.editMessageText(message, '<b>❌ Formato incorrecto. Use:</b> /del_0', parse_mode='html')
             except Exception as e:
@@ -3595,7 +3566,7 @@ def onmessage(update,bot:ObigramClient):
                     deletion_msg = f"🗑️ <b>Eliminación masiva completada</b>\n\n• <b>Evidencias eliminadas:</b> <b>{total_evidences}</b>\n• <b>Archivos borrados:</b> <b>{total_files}</b>\n\n<b>✅ ¡Todas tus evidencias han sido eliminadas!</b>"
                     bot.editMessageText(message, deletion_msg, parse_mode='html')
                 else:
-                    bot.editMessageText(message,'<b>Error y causas🧐</b>\n1-<b>Revise su cuenta</b>\n2-<b>Servidor deshabilitado:</b> <b>'+client.path+'</b>', parse_mode='html')
+                    bot.editMessageText(message,'<b>⚠️ Error al conectar con la cuenta.</b>', parse_mode='html')
             except Exception as ex:
                 bot.editMessageText(message, f'<b>❌ Error:</b> <b>{str(ex)}</b>', parse_mode='html')
                 
@@ -3707,7 +3678,11 @@ def onmessage(update,bot:ObigramClient):
                 """
                 bot.editMessageText(message, queue_pos_msg, parse_mode='html')
         else:
-            bot.editMessageText(message,'<b>No se pudo procesar ✗</b>', parse_mode='html')
+            invalid_msg = (
+                "<b>⚠️ Comando o formato no reconocido.</b>\n\n"
+                "💡 <i>Envía un enlace de descarga válido o escribe /start para ver la lista de comandos disponibles.</i>"
+            )
+            bot.editMessageText(message, invalid_msg, parse_mode='html')
             
     except Exception as ex:
         print(f"Error general onmessage: {str(ex)}")
