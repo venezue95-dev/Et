@@ -1,6 +1,6 @@
 from pyobigram.utils import sizeof_fmt,get_file_size,createID,nice_time
 from pyobigram.client import ObigramClient, inlineQueryResultArticle
-from MoodleClient import MoodleClient
+from MoodleClient import MoodleClient, StopUploadException
 from JDatabase import JsonDatabase
 import zipfile
 import os
@@ -22,13 +22,14 @@ import pytz
 import threading
 import json
 import collections
+import re
 
 # ==============================
 # CONFIGURACIÓN DE LÍMITES DIARIOS
 # ==============================
 DAILY_LIMIT_BYTES = 100 * 1024 * 1024 * 1024  # 100 GB por defecto
 
-BOT_TOKEN = "8941256926:AAEXDG_IsPBbseC7Q9mmpFQDqHsK6MKpK9s"
+BOT_TOKEN = "8340084935:AAHLn3ftkhaJg9KyDgtL1ely4vo-1DlFyqM"
 ADMIN_USERNAME = "Eliel_21"
 ADMIN_CHAT_ID = 7363341763
 LOG_GROUP_ID = -1004295272245
@@ -677,12 +678,14 @@ def downloadFile(downloader,filename,currentBits,totalBits,speed,time,args):
         username = args[3] if len(args) > 3 else "Desconocido"
         if thread.getStore('stop'):
             downloader.stop()
-            raise Exception("Tarea detenida por mantenimiento o cancelación")
+            raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
         
         update_process(thread.id, username, filename, '📥 Descargando', currentBits, totalBits)
         
         downloadingInfo = infos.createDownloading(filename,totalBits,currentBits,speed,time,tid=thread.id)
         bot.editMessageText(message, downloadingInfo, parse_mode='html')
+    except StopUploadException:
+        raise
     except Exception as ex: 
         raise ex
 
@@ -695,13 +698,15 @@ def uploadFile(filename,currentBits,totalBits,speed,time,args):
         username = args[4] if len(args) > 4 else "Desconocido"
         
         if thread and thread.getStore('stop'):
-            raise Exception("Tarea detenida por mantenimiento o cancelación")
+            raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
         
         update_process(thread.id, username, filename, '📤 Subiendo', currentBits, totalBits)
         
         tid_str = thread.id if thread else ''
         uploadingInfo = infos.createUploading(filename, totalBits, currentBits, speed, time, originalfile, tid=tid_str)
         bot.editMessageText(message, uploadingInfo, parse_mode='html')
+    except StopUploadException:
+        raise
     except Exception as ex: 
         raise ex
 
@@ -715,7 +720,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
         username = update.message.sender.username
         if thread:
             if thread.getStore('stop'):
-                raise Exception("Tarea detenida por mantenimiento o cancelación")
+                raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
             update_process(thread.id, username, os.path.basename(str(filename)), '⬆️ Preparando para subir', 0, 100)
             
         fileid = None
@@ -817,7 +822,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
             draftlist = []
             for f in files:
                 if thread and thread.getStore('stop'):
-                    raise Exception("Tarea detenida por mantenimiento o cancelación")
+                    raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
                 tokenize = False
                 if user_info['tokenize']!=0:
                    tokenize = True
@@ -825,7 +830,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 iter = 0
                 while resp is None:
                     if thread and thread.getStore('stop'):
-                        raise Exception("Tarea detenida por mantenimiento o cancelación")
+                        raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
 
                     if upload_type == 'evidence':
                         fileid,resp = client.upload_file(f,evidence,fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
@@ -835,7 +840,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                         fileid,resp = client.upload_file_draft(f,None,fileid,progressfunc=uploadFile,args=(bot,message,originalfile,thread,username),tokenize=tokenize)
                     
                     if thread and thread.getStore('stop'):
-                        raise Exception("Tarea detenida por mantenimiento o cancelación")
+                        raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
 
                     iter += 1
                     if resp is None and iter>=10:
@@ -848,7 +853,7 @@ def processUploadFiles(filename,filesize,files,update,bot,message,thread=None,jd
                 os.unlink(f)
             
             if thread and thread.getStore('stop'):
-                raise Exception("Tarea detenida por mantenimiento o cancelación")
+                raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
 
             if upload_type == 'evidence' and evidence:
                 try:
@@ -923,7 +928,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
     username = update.message.sender.username
     try:
         if thread and thread.getStore('stop'):
-            raise Exception("Tarea detenida por mantenimiento o cancelación")
+            raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
             
         file_size = get_file_size(file)
         getUser = jdb.get_user(username)
@@ -940,7 +945,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             
             if thread:
                 if thread.getStore('stop'):
-                    raise Exception("Tarea detenida por mantenimiento o cancelación")
+                    raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
                 update_process(thread.id, username, os.path.basename(file), '🗜️ Comprimiendo', 0, 100)
             
             zipname = str(file).split('.')[0] + createID()
@@ -950,7 +955,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             if thread and thread.getStore('stop'):
                 zip.close()
                 mult_file.close()
-                raise Exception("Tarea detenida por mantenimiento o cancelación")
+                raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
             
             arcname = os.path.basename(file)
             zinfo = zipfile.ZipInfo.from_file(file, arcname)
@@ -962,7 +967,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                         dest.close()
                         zip.close()
                         mult_file.close()
-                        raise Exception("Tarea detenida por mantenimiento o cancelación")
+                        raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
                     chunk = src.read(1024 * 1024)
                     if not chunk:
                         break
@@ -971,13 +976,13 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             if thread and thread.getStore('stop'):
                 zip.close()
                 mult_file.close()
-                raise Exception("Tarea detenida por mantenimiento o cancelación")
+                raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
                 
             zip.close()
             mult_file.close()
             
             if thread and thread.getStore('stop'):
-                raise Exception("Tarea detenida por mantenimiento o cancelación")
+                raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
 
             phase = "subida"
             upload_result = processUploadFiles(file,file_size,mult_file.files,update,bot,message,thread=thread,jdb=jdb)
@@ -991,7 +996,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
             file_upload_count = 1
         
         if thread and thread.getStore('stop'):
-            raise Exception("Tarea detenida por mantenimiento o cancelación")
+            raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
 
         files = []
         if upload_result == "LOGIN_FAILED":
@@ -1010,7 +1015,8 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                                                  proxy=proxy)
                     if moodle_client.login():
                         evidence_index = -1
-                        for attempt in range(3):
+                        max_attempts = 8  # antes 3 (ahora hasta ~16s de margen para que Moodle indexe)
+                        for attempt in range(max_attempts):
                             evidences = moodle_client.getEvidences()
                             for idx, ev in enumerate(evidences):
                                 if ev['name'] == internal_evidname:
@@ -1021,6 +1027,9 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                             if files:
                                 break
                             time.sleep(2)
+
+                        if not files:
+                            print(f"⚠️ No se pudieron obtener los archivos de la evidencia '{internal_evidname}' tras {max_attempts} intentos")
                         
                         if files:
                             for i in range(len(files)):
@@ -1069,7 +1078,7 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                 findex = 0
             
             if thread and thread.getStore('stop'):
-                raise Exception("Tarea detenida por mantenimiento o cancelación")
+                raise StopUploadException("Tarea detenida por mantenimiento o cancelación")
 
             bot.deleteMessage(message.chat.id,message.message_id)
             finishInfo = infos.createFinishUploading(file,file_size,max_file_size,file_upload_count,file_upload_count,findex)
@@ -1083,7 +1092,16 @@ def processFile(update,bot,message,file,thread=None,jdb=None):
                     m_pass = getUser.get('moodle_password', '')
                     extra_msg = f"\n<b>⚠️ Debes iniciar sesión con la cuenta en la plataforma para poder descargar:</b>\n\n<b>👤 Usuario:</b> <code>{m_user}</code>\n<b>🔑 Contraseña:</b> <code>{m_pass}</code>\n"
 
-            bot.sendMessage(message.chat.id, finishInfo + '\n' + extra_msg + '\n' + filesInfo, parse_mode='html')
+            mensaje_final = finishInfo + '\n' + extra_msg + '\n' + filesInfo
+            try:
+                bot.sendMessage(message.chat.id, mensaje_final, parse_mode='html')
+            except Exception as e:
+                print(f"Error enviando mensaje de finalización (probable HTML inválido en nombre/URL): {e}")
+                try:
+                    plano = re.sub('<[^<]+?>', '', mensaje_final)
+                    bot.sendMessage(message.chat.id, plano)
+                except Exception as e2:
+                    print(f"Fallback de mensaje de finalización también falló: {e2}")
             
             filename_clean = os.path.basename(file)
             memory_stats.log_upload(
@@ -1800,6 +1818,8 @@ def onmessage(update,bot:ObigramClient):
                         bot.sendMessage(chat_id, '<b>⚠️ Esta tarea ya no existe o ya finalizó.</b>', parse_mode='html')
                         return
 
+                    is_admin_action = (username.lower() == ADMIN_USERNAME.lower() and owner_username.lower() != username.lower())
+
                     cancel_result = queue_manager.cancel(owner_username, tid)
 
                     proc_info = ACTIVE_PROCESSES.get(tid, {})
@@ -1811,7 +1831,10 @@ def onmessage(update,bot:ObigramClient):
 
                     if cancel_result == 'pending':
                         try:
-                            bot.sendMessage(target_task.chat_id, f'<b>➲ Tarea retirada de la cola ✗</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
+                            if is_admin_action:
+                                bot.sendMessage(target_task.chat_id, f'<b>➲ Un administrador retiró tu tarea de la cola ✗</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
+                            else:
+                                bot.sendMessage(target_task.chat_id, f'<b>➲ Tarea retirada de la cola ✗</b>\n\n📄 <b>{target_task.filename}</b>', parse_mode='html')
                         except: pass
                     elif cancel_result == 'active':
                         if target_task.thread_ctx:
@@ -1827,10 +1850,12 @@ def onmessage(update,bot:ObigramClient):
                             msg_obj = target_task.thread_ctx.getStore('msg')
                             if msg_obj:
                                 try:
-                                    bot.editMessageText(msg_obj,'<b>➲ Tarea cancelada ✗ </b>', parse_mode='html')
+                                    texto_cancelado = '<b>➲ Un administrador canceló tu tarea ✗ </b>' if is_admin_action else '<b>➲ Tarea cancelada ✗ </b>'
+                                    bot.editMessageText(msg_obj, texto_cancelado, parse_mode='html')
                                 except: pass
 
-                    if LOG_GROUP_ID != 0 and proc_user.lower() != ADMIN_USERNAME.lower():
+                    # Solo se notifica al grupo si fue el propio usuario quien canceló (no cuando es acción del admin)
+                    if LOG_GROUP_ID != 0 and proc_user.lower() != ADMIN_USERNAME.lower() and not is_admin_action:
                         try:
                             mensaje_log = (f"<b>❌ ¡Proceso cancelado!</b>\n\n"
                                            f"<b>👤 Usuario:</b> <b>@{proc_user}</b>\n"
@@ -2316,26 +2341,56 @@ def onmessage(update,bot:ObigramClient):
                 estado = "ACTIVADO 🔴" if MAINTENANCE_MODE else "DESACTIVADO 🟢"
                 
                 cancel_count = 0
+                pending_count = 0
                 if MAINTENANCE_MODE:
-                    for tid, p in list(ACTIVE_PROCESSES.items()):
-                        if p.get('user').lower() == ADMIN_USERNAME.lower():
+                    active_dict, pending_dict = queue_manager.get_full_snapshot()
+                    
+                    # 1) Cancelar tareas activas (descargando/subiendo) de cada usuario
+                    for uname, active_task in active_dict.items():
+                        if not active_task or uname.lower() == ADMIN_USERNAME.lower():
                             continue
                         try:
-                            if hasattr(bot, 'threads') and tid in bot.threads:
-                                tcancel = bot.threads[tid]
-                                tcancel.store('stop', True)
-                                active_msg = tcancel.getStore('msg')
-                                if active_msg:
+                            if active_task.thread_ctx:
+                                active_task.thread_ctx.store('stop', True)
+                                dl = active_task.thread_ctx.getStore('downloader')
+                                if dl:
                                     try:
-                                        bot.editMessageText(active_msg, '<b>⚠️ Tarea cancelada automáticamente por inicio de mantenimiento del sistema ✗</b>', parse_mode='html')
+                                        dl.stop()
                                     except:
                                         pass
-                            clean_process(tid)
+                                msg_obj = active_task.thread_ctx.getStore('msg')
+                                if msg_obj:
+                                    try:
+                                        bot.editMessageText(msg_obj, '<b>⚠️ Tarea cancelada automáticamente por inicio de mantenimiento del sistema ✗</b>', parse_mode='html')
+                                    except:
+                                        pass
+                            clean_process(active_task.task_id)
                             cancel_count += 1
                         except:
                             pass
+                    
+                    # 2) Vaciar y avisar las colas de espera de cada usuario
+                    for uname, dq in pending_dict.items():
+                        if uname.lower() == ADMIN_USERNAME.lower():
+                            continue
+                        for t in dq:
+                            try:
+                                queue_manager.cancel(uname, t.task_id)
+                                clean_process(t.task_id)
+                                bot.sendMessage(t.chat_id, f'<b>⚠️ Tu enlace en espera fue cancelado por inicio de mantenimiento del sistema ✗</b>\n\n📄 <b>{t.filename}</b>', parse_mode='html')
+                                pending_count += 1
+                            except:
+                                pass
+                    
+                    # Limpieza de procesos huérfanos que solo quedaran en ACTIVE_PROCESSES
+                    for tid, p in list(ACTIVE_PROCESSES.items()):
+                        if p.get('user', '').lower() != ADMIN_USERNAME.lower():
+                            clean_process(tid)
                 
-                aviso_cancelados = f"\n⚠️ <b>Se cancelaron y notificaron {cancel_count} proceso(s) activo(s) (excepto administrador).</b>" if cancel_count > 0 else ""
+                aviso_cancelados = ""
+                if cancel_count > 0 or pending_count > 0:
+                    aviso_cancelados = f"\n⚠️ <b>Se cancelaron {cancel_count} proceso(s) activo(s) y {pending_count} enlace(s) en cola (excepto administrador).</b>"
+                
                 bot.editMessageText(message, f'<b>🛠️ Modo mantenimiento:</b> <b>{estado}</b>{aviso_cancelados}', parse_mode='html')
                 return
                 
