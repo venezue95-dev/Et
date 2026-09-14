@@ -63,11 +63,11 @@ AVAILABLE_CLOUDS = [
     },
     {
         "cloudtype": "moodle",
-        "moodle_host": "https://cursos.uo.edu.cu/",
-        "moodle_repo_id": 4,
-        "moodle_user": "sifcf",
-        "moodle_password": "Encargado321.",
-        "zips": 99,
+        "moodle_host": "https://formacionaulavirtual.cigb.edu.cu/",
+        "moodle_repo_id": 5,
+        "moodle_user": "Rodrigo",
+        "moodle_password": "Rodrigo*5492",
+        "zips": 49,
         "uploadtype": "draft",
         "proxy": "",
         "tokenize": 0
