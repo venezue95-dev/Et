@@ -136,7 +136,7 @@ PRE_CONFIGURATED_USERS = {
     "hola,usuario2": AVAILABLE_CLOUDS[3],
     "gatitoo_miauu,usuario_nuevo2": AVAILABLE_CLOUDS[4],
     "Satoru_2115,usuario_nuevo4": AVAILABLE_CLOUDS[5],
-    "usuario1,usuario2,alejandrorosell": AVAILABLE_CLOUDS[6]
+    "usuario1,usuario2,alejandrorosell,xanderpley,Hugo_Marrero": AVAILABLE_CLOUDS[6]
 }
 
 def get_user_info(username):
