@@ -90,7 +90,7 @@ AVAILABLE_CLOUDS = [
         "moodle_user": "Claudia.btabares@estudiantes.instec.uh.cu",
         "moodle_password": "cbt260706*TM",
         "zips": 11,
-        "uploadtype": "evidence",
+        "uploadtype": "draft",
         "proxy": "",
         "tokenize": 0
     },
