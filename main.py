@@ -67,7 +67,7 @@ AVAILABLE_CLOUDS = [
         "moodle_repo_id": 4,
         "moodle_user": "lircarrasco",
         "moodle_password": "ElielThali15152121.",
-        "zips": 49,
+        "zips": 79,
         "uploadtype": "draft",
         "proxy": "",
         "tokenize": 0
