@@ -85,12 +85,12 @@ AVAILABLE_CLOUDS = [
     },
     {
         "cloudtype": "moodle",
-        "moodle_host": "https://cursos.fundacion.uh.cu/",
-        "moodle_repo_id": 5,
-        "moodle_user": "Claudia.btabares@estudiantes.instec.uh.cu",
-        "moodle_password": "cbt260706*TM",
+        "moodle_host": "https://cursad.jovenclub.cu/",
+        "moodle_repo_id": 3,
+        "moodle_user": "eliel2222",
+        "moodle_password": "Eliel543345..",
         "zips": 11,
-        "uploadtype": "draft",
+        "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
     },
