@@ -64,7 +64,7 @@ AVAILABLE_CLOUDS = [
     {
         "cloudtype": "moodle",
         "moodle_host": "https://eva.desoft.cu/",
-        "moodle_repo_id": 5,
+        "moodle_repo_id": 4,
         "moodle_user": "eliel2222",
         "moodle_password": "Eliel543345..",
         "zips": 79,
