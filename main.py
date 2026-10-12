@@ -64,10 +64,10 @@ AVAILABLE_CLOUDS = [
     {
         "cloudtype": "moodle",
         "moodle_host": "https://eva.desoft.cu/",
-        "moodle_repo_id": 4,
+        "moodle_repo_id": 3,
         "moodle_user": "eliel2222",
         "moodle_password": "Eliel543345..",
-        "zips": 79,
+        "zips": 999,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
