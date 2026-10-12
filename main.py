@@ -63,10 +63,10 @@ AVAILABLE_CLOUDS = [
     },
     {
         "cloudtype": "moodle",
-        "moodle_host": "https://aula.uclv.edu.cu/",
+        "moodle_host": "https://eva.desoft.cu/",
         "moodle_repo_id": 5,
-        "moodle_user": "lircarrasco",
-        "moodle_password": "ElielThali15152121.",
+        "moodle_user": "eliel2222",
+        "moodle_password": "Eliel543345..",
         "zips": 79,
         "uploadtype": "evidence",
         "proxy": "",
