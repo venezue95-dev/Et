@@ -88,8 +88,8 @@ AVAILABLE_CLOUDS = [
         "moodle_host": "https://cursad.jovenclub.cu/",
         "moodle_repo_id": 3,
         "moodle_user": "eliel2222",
-        "moodle_password": "Eliel543345..",
-        "zips": 11,
+        "moodle_password": "Eluel543345..",
+        "zips": 99,
         "uploadtype": "evidence",
         "proxy": "",
         "tokenize": 0
